@@ -7,15 +7,9 @@ import {IStakingVault} from "./interfaces/IStakingVault.sol";
 import {VaultHub} from "./VaultHub.sol";
 
 interface IDashboardACL {
-    function getRoleMember(
-        bytes32 role,
-        uint256 index
-    ) external view returns (address);
+    function getRoleMember(bytes32 role, uint256 index) external view returns (address);
 
-    function hasRole(
-        bytes32 role,
-        address account
-    ) external view returns (bool);
+    function hasRole(bytes32 role, address account) external view returns (bool);
 }
 
 interface IVault is IStakingVault {
@@ -23,17 +17,13 @@ interface IVault is IStakingVault {
 }
 
 contract VaultDataViewer {
-    bytes32 constant strictTrue =
-        keccak256(
-            hex"0000000000000000000000000000000000000000000000000000000000000001"
-        );
+    bytes32 constant strictTrue = keccak256(hex"0000000000000000000000000000000000000000000000000000000000000001");
 
     VaultHub public immutable vaultHub;
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
     constructor(address _vaultHubAddress) {
-        if (_vaultHubAddress == address(0))
-            revert ZeroArgument("_vaultHubAddress");
+        if (_vaultHubAddress == address(0)) revert ZeroArgument("_vaultHubAddress");
         vaultHub = VaultHub(_vaultHubAddress);
     }
 
@@ -66,11 +56,7 @@ contract VaultDataViewer {
     /// @param _member The address to check
     /// @param _role The role to check
     /// @return True if the address has the role, false otherwise
-    function hasRole(
-        IVault vault,
-        address _member,
-        bytes32 _role
-    ) public view returns (bool) {
+    function hasRole(IVault vault, address _member, bytes32 _role) public view returns (bool) {
         address vaultOwner = vault.owner();
         if (vaultOwner == address(0)) {
             return false;
@@ -82,9 +68,7 @@ contract VaultDataViewer {
     /// @notice Returns all vaults owned by a given address
     /// @param _owner Address of the owner
     /// @return An array of vaults owned by the given address
-    function vaultsByOwner(
-        address _owner
-    ) public view returns (IVault[] memory) {
+    function vaultsByOwner(address _owner) public view returns (IVault[] memory) {
         (IVault[] memory vaults, uint256 valid) = _vaultsByOwner(_owner);
 
         return _filterNonZeroVaults(vaults, 0, valid);
@@ -113,10 +97,7 @@ contract VaultDataViewer {
     /// @param _role Role to check
     /// @param _member Address to check
     /// @return An array of vaults with the given role on the given address
-    function vaultsByRole(
-        bytes32 _role,
-        address _member
-    ) public view returns (IVault[] memory) {
+    function vaultsByRole(bytes32 _role, address _member) public view returns (IVault[] memory) {
         (IVault[] memory vaults, uint256 valid) = _vaultsByRole(_role, _member);
 
         return _filterNonZeroVaults(vaults, 0, valid);
@@ -156,10 +137,7 @@ contract VaultDataViewer {
     /// @param _to Index to end at non-inculsive
     /// @return array of connected vaults
     /// @return number of leftover connected vaults
-    function vaultsConnectedBound(
-        uint256 _from,
-        uint256 _to
-    ) public view returns (IVault[] memory, uint256) {
+    function vaultsConnectedBound(uint256 _from, uint256 _to) public view returns (IVault[] memory, uint256) {
         (IVault[] memory vaults, uint256 valid) = _vaultsConnected();
 
         uint256 count = valid > _to ? _to : valid;
@@ -171,11 +149,7 @@ contract VaultDataViewer {
     // ==================== Internal Functions ====================
 
     /// @dev common logic for vaultsConnected and vaultsConnectedBound
-    function _vaultsConnected()
-        internal
-        view
-        returns (IVault[] memory, uint256)
-    {
+    function _vaultsConnected() internal view returns (IVault[] memory, uint256) {
         // TODO: get vaults by pages, not all vaults
         uint256 count = vaultHub.vaultsCount();
         IVault[] memory vaults = new IVault[](count);
@@ -192,10 +166,7 @@ contract VaultDataViewer {
     }
 
     /// @dev common logic for vaultsByRole and vaultsByRoleBound
-    function _vaultsByRole(
-        bytes32 _role,
-        address _member
-    ) internal view returns (IVault[] memory, uint256) {
+    function _vaultsByRole(bytes32 _role, address _member) internal view returns (IVault[] memory, uint256) {
         // TODO: get vaults by pages, not all vaults
         uint256 count = vaultHub.vaultsCount();
         IVault[] memory vaults = new IVault[](count);
@@ -212,9 +183,7 @@ contract VaultDataViewer {
     }
 
     /// @dev common logic for vaultsByOwner and vaultsByOwnerBound
-    function _vaultsByOwner(
-        address _owner
-    ) internal view returns (IVault[] memory, uint256) {
+    function _vaultsByOwner(address _owner) internal view returns (IVault[] memory, uint256) {
         // TODO: get vaults by pages, not all vaults
         uint256 count = vaultHub.vaultsCount();
         IVault[] memory vaults = new IVault[](count);
@@ -237,18 +206,10 @@ contract VaultDataViewer {
     /// @param _contract that can have ACL or not
     /// @param _member addrress to check for role
     /// @return _role ACL role bytes
-    function _checkHasRole(
-        address _contract,
-        address _member,
-        bytes32 _role
-    ) internal view returns (bool) {
+    function _checkHasRole(address _contract, address _member, bytes32 _role) internal view returns (bool) {
         if (!isContract(_contract)) return false;
 
-        bytes memory payload = abi.encodeWithSignature(
-            "hasRole(bytes32,address)",
-            _role,
-            _member
-        );
+        bytes memory payload = abi.encodeWithSignature("hasRole(bytes32,address)", _role, _member);
         (bool success, bytes memory result) = _contract.staticcall(payload);
 
         if (success && keccak256(result) == strictTrue) {

@@ -1,0 +1,23 @@
+# env
+.env
+.env.local
+.env.production
+
+# test
+/deployed.json
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yalc
+yalc.lock
+tsconfig.tsbuildinfo
+
+# production
+/build
+/dist
+
+#ide
+.vscode
+.idea
