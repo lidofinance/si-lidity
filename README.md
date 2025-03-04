@@ -1,4 +1,4 @@
-# SI-Lidity
+# SI-lidity
 
 ## Description
 
