@@ -17,14 +17,16 @@ import { HardhatUserConfig } from "hardhat/config";
 
 import { mochaRootHooks } from "test/hooks";
 
-import "./tasks";
-
+// import "tasks";
 import { getHardhatForkingConfig, loadAccounts } from "./hardhat.helpers";
 
 const RPC_URL: string = process.env.RPC_URL || "";
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
+  paths: {
+    sources: "./src/contracts",
+  },
   gasReporter: {
     enabled: process.env.SKIP_GAS_REPORT ? false : true,
   },

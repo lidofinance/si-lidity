@@ -21,3 +21,15 @@ tsconfig.tsbuildinfo
 #ide
 .vscode
 .idea
+
+# typechain
+typechain/
+typechain-types/
+
+# Hardhat files
+cache/
+artifacts/
+
+# foundry artifacts
+foundry/cache/
+foundry/out/
