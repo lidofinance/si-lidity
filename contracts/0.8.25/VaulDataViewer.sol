@@ -3,11 +3,8 @@
 
 // See contracts/COMPILERS.md
 pragma solidity 0.8.25;
-import {IStakingVault} from "submodules/lido-core/contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
-import {VaultHub} from "submodules/lido-core/contracts/0.8.25/vaults/VaultHub.sol";
-//
-//import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
-//import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
+import {IStakingVault} from "lido-core/0.8.25/vaults/interfaces/IStakingVault.sol";
+import {VaultHub} from "lido-core/0.8.25/vaults/VaultHub.sol";
 
 
 interface IDashboardACL {
