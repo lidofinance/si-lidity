@@ -25,7 +25,7 @@ const RPC_URL: string = process.env.RPC_URL || "";
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   paths: {
-    sources: "./src/contracts",
+    sources: "./contracts",
   },
   gasReporter: {
     enabled: process.env.SKIP_GAS_REPORT ? false : true,
@@ -101,7 +101,7 @@ const config: HardhatUserConfig = {
         { command: "compile", params: { quiet: true } },
         { command: "test", params: { noCompile: true, testFiles: ["{path}"] } },
       ],
-      files: ["./src/test/**/*"],
+      files: ["./test/**/*"],
       clearOnStart: true,
       start: "echo Running tests...",
     },
@@ -111,10 +111,10 @@ const config: HardhatUserConfig = {
     timeout: 20 * 60 * 1000, // 20 minutes
   },
   warnings: {
-    "src/contracts/*/mocks/**/*": {
+    "contracts/*/mocks/**/*": {
       default: "off",
     },
-    "src/test/*/contracts/**/*": {
+    "test/*/contracts/**/*": {
       default: "off",
     },
   },

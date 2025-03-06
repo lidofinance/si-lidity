@@ -33,3 +33,6 @@ artifacts/
 # foundry artifacts
 foundry/cache/
 foundry/out/
+
+# Extracted ABI files
+lib/abi/*.json

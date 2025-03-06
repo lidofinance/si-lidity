@@ -3,7 +3,7 @@
 // solhint-disable-next-line lido/fixed-compiler-version
 pragma solidity ^0.8.9;
 
-import {UnstructuredStorage} from "src/contracts/common/lib/UnstructuredStorage.sol";
+import {UnstructuredStorage} from "contracts/common/lib/UnstructuredStorage.sol";
 
 /**
  * @title PausableUntil

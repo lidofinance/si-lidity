@@ -9,13 +9,15 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "test/*": ["./src/test/*"],
+      "lib": ["./lib"],
+      "test": ["./test"],
+      "scripts": ["./scripts"],
       "typechain-types": ["./typechain-types"]
     }
   },
   "ts-node": {
     "require": ["tsconfig-paths/register"]
   },
-  "include": ["./src/test", "./typechain-types", "./eslint.config.ts"],
+  "include": ["./test", "./typechain-types", "./lib", "./eslint.config.ts"],
   "files": ["./hardhat.config.ts", "./commitlint.config.ts", "./globals.d.ts"]
 }

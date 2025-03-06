@@ -5,14 +5,14 @@
 pragma solidity 0.8.25;
 
 import {IBeacon} from "@openzeppelin/contracts-v5.2/proxy/beacon/IBeacon.sol";
-import {OwnableUpgradeable} from "src/contracts/openzeppelin/5.2/upgradeable/access/OwnableUpgradeable.sol";
+import {OwnableUpgradeable} from "contracts/openzeppelin/5.2/upgradeable/access/OwnableUpgradeable.sol";
 
 import {IStakingVault} from "./interfaces/IStakingVault.sol";
 import {ILido as IStETH} from "./interfaces/ILido.sol";
 
 import {PausableUntilWithRoles} from "./utils/PausableUntilWithRoles.sol";
 
-import {Math256} from "src/contracts/common/lib/Math256.sol";
+import {Math256} from "contracts/common/lib/Math256.sol";
 
 /// @notice VaultHub is a contract that manages vaults connected to the Lido protocol
 /// It allows to connect vaults, disconnect them, mint and burn stETH

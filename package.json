@@ -3,7 +3,9 @@
   "scripts": {
     "compile": "hardhat compile",
     "cleanup": "hardhat clean",
-    "lint:sol": "solhint 'src/contracts/**/*.sol'",
+    "test": "hardhat test test/**/*.test.ts --parallel",
+    "test-v": "hardhat test test/0.8.25/vaults/vault-hub-viewer/vault-hub-viewer.test.ts --parallel",
+    "lint:sol": "solhint 'contracts/**/*.sol'",
     "lint:sol:fix": "yarn lint:sol --fix",
     "lint:ts": "eslint . --max-warnings=0",
     "lint:ts:fix": "yarn lint:ts --fix",
@@ -42,6 +44,7 @@
     "@types/chai": "4.3.20",
     "@types/mocha": "10.0.10",
     "@types/node": "22.13.9",
+    "bigint-conversion": "2.4.3",
     "chai": "4.5.0",
     "dotenv": "16.4.7",
     "eslint": "9.21.0",

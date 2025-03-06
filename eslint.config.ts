@@ -18,7 +18,7 @@ const gitignorePath = path.resolve(__dirname, ".gitignore");
 export default [
   includeIgnoreFile(gitignorePath),
   {
-    ignores: [".solcover.js", "eslint.config.ts"],
+    ignores: [".solcover.js"],
   },
   js.configs.recommended,
   ...ts.configs.recommended,
@@ -62,7 +62,7 @@ export default [
     },
   },
   {
-    files: ["src/test/**/*.ts"],
+    files: ["test/**/*.ts", "lib/protocol/helpers/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.mocha,
