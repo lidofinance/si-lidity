@@ -17,7 +17,6 @@ import { HardhatUserConfig } from "hardhat/config";
 
 import { mochaRootHooks } from "test/hooks";
 
-// import "tasks";
 import { getHardhatForkingConfig, loadAccounts } from "./hardhat.helpers";
 
 const RPC_URL: string = process.env.RPC_URL || "";
@@ -26,6 +25,14 @@ const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   paths: {
     sources: "./contracts",
+    // sources: ["./contracts", "./submodules/lido-core/contracts"],
+    // imports: {
+    //   "contracts/0.8.25/": "submodules/lido-core/contracts/0.8.25/",
+    //   "contracts/openzeppelin/": "submodules/lido-core/contracts/openzeppelin/",
+    // },
+    // remappings: [
+    //   "contracts/0.8.25/=submodules/lido-core/contracts/0.8.25/",
+    // ],
   },
   gasReporter: {
     enabled: process.env.SKIP_GAS_REPORT ? false : true,
