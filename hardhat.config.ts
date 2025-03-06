@@ -3,6 +3,7 @@ import * as process from "node:process";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-verify";
+import "@nomicfoundation/hardhat-foundry";
 import "@typechain/hardhat";
 
 import "dotenv/config";
