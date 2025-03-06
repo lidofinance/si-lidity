@@ -2,3 +2,6 @@
 	path = submodules/lido-core
 	url = https://github.com/lidofinance/core.git
 	branch = feat/hub-viewer
+[submodule "lib/forge-std"]
+	path = lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
