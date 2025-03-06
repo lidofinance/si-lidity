@@ -872,6 +872,13 @@
     debug "^4.1.1"
     lodash.isequal "^4.5.0"
 
+"@nomicfoundation/hardhat-foundry@^1.1.3":
+  version "1.1.3"
+  resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-foundry/-/hardhat-foundry-1.1.3.tgz#1b4f63c128e80f04aae22385dc9078ab9072794d"
+  integrity sha512-30Ezc3hlZ4pC5Z/9W9euW5uoPKKQQKaecLETHJH8BPpd30zYOooy6HfjmcTY1/taOQjlwirOdNO7tHlje8Qcgw==
+  dependencies:
+    picocolors "^1.1.0"
+
 "@nomicfoundation/hardhat-ignition-ethers@0.15.10":
   version "0.15.10"
   resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-ignition-ethers/-/hardhat-ignition-ethers-0.15.10.tgz#a053c3ef90bc2dd8739de7b12a1badf5915e5151"
