@@ -3,20 +3,21 @@ import { network } from "hardhat";
 
 import { HardhatEthers, HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
 
-// import {
-//   CustomOwner__MockForHubViewer,
-//   Dashboard,
-//   Delegation,
-//   DepositContract__MockForStakingVault,
-//   StakingVault,
-//   StakingVault__factory,
-//   StETHPermit__HarnessForDashboard,
-//   UpgradeableBeacon,
-//   VaultHub__MockForHubViewer,
-//   VaultHubViewerV1,
-//   WETH9__MockForVault,
-//   WstETH__HarnessForVault,
-// } from "typechain-types";
+import {
+  CustomOwner__MockForHubViewer,
+  Dashboard,
+  Delegation,
+  DepositContract__MockForStakingVault,
+  StakingVault,
+  // StakingVault__factory,
+  StETHPermit__HarnessForDashboard,
+  UpgradeableBeacon,
+  VaultHub__MockForHubViewer,
+  VaultHubViewerV1,
+  WETH9__MockForVault,
+  WstETH__HarnessForVault,
+} from "typechain-types";
+
 // import { ether, findEvents, impersonate } from "lib";
 import { ether, impersonate } from "lib";
 

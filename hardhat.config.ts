@@ -13,8 +13,20 @@ const config: HardhatUserConfig = {
   paths: {
     sources: [
       "./si-contracts",
-      "./submodules/lidofinance-core/contracts/0.4.24",
-      // "./submodules/lidofinance-core/contracts/0.8.25",
+      "./submodules/lidofinance-core/contracts/0.4.24/lib",
+      "./submodules/lidofinance-core/contracts/0.4.24/nos",
+      "./submodules/lidofinance-core/contracts/0.4.24/oracle",
+      // // "./submodules/lidofinance-core/contracts/0.4.24/template",
+      "./submodules/lidofinance-core/contracts/0.4.24/utils",
+      "./submodules/lidofinance-core/contracts/0.6.11",
+      "./submodules/lidofinance-core/contracts/0.6.12",
+      "./submodules/lidofinance-core/contracts/0.8.4",
+      "./submodules/lidofinance-core/contracts/0.8.9",
+      "./submodules/lidofinance-core/contracts/0.8.25",
+      "./submodules/lidofinance-core/contracts/common",
+      "./submodules/lidofinance-core/contracts/openzeppelin",
+      "./submodules/lidofinance-core/contracts/testnets",
+      "./submodules/lidofinance-core/test/0.8.25",
     ],
   },
   plugins: [
@@ -89,10 +101,8 @@ const config: HardhatUserConfig = {
         },
       },
     ],
-    remappings: [
-      // "forge-std/=npm/forge-std@1.9.4/src/",
-      "contracts/=submodules/lidofinance-core/contracts/",
-    ],
+    dependenciesToCompile: ["@openzeppelin/contracts-v5.2/proxy/beacon/UpgradeableBeacon.sol"],
+    remappings: ["forge-std/=npm/forge-std@1.9.4/src/", "contracts/=submodules/lidofinance-core/contracts/"],
   },
   typechain: {
     outDir: "typechain-types",
