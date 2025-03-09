@@ -1,13 +1,14 @@
-// import { configVariable, HardhatUserConfig } from "hardhat/config";
 import { HardhatUserConfig } from "hardhat/config";
 
 import HardhatEthers from "@nomicfoundation/hardhat-ethers";
-// import HardhatChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
+import HardhatChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
 // import HardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
-// import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
+import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
 import HardhatMochaTestRunner from "@nomicfoundation/hardhat-mocha";
-// import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
+import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
 import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
+
+// import { getHardhatForkingConfig } from "./hardhat.helpers";
 
 const config: HardhatUserConfig = {
   paths: {
@@ -30,13 +31,13 @@ const config: HardhatUserConfig = {
     ],
   },
   plugins: [
-    HardhatMochaTestRunner,
     HardhatEthers,
-    //   HardhatNetworkHelpers,
-    //   HardhatKeystore,
-    //   HardhatChaiMatchers,
+    HardhatKeystore,
+    HardhatMochaTestRunner,
+    HardhatNetworkHelpers,
+    HardhatChaiMatchers,
     HardhatTypechain,
-    //   HardhatIgnitionEthers,
+    // HardhatIgnitionEthers,
   ],
   solidity: {
     compilers: [
@@ -109,22 +110,27 @@ const config: HardhatUserConfig = {
     alwaysGenerateOverloads: false,
     dontOverrideCompile: false,
   },
-  // networks: {
-  //   hardhatMainnet: {
-  //     type: "edr",
-  //     chainType: "l1",
-  //   },
-  //   hardhatOp: {
-  //     type: "edr",
-  //     chainType: "optimism",
-  //   },
-  //   sepolia: {
-  //     type: "http",
-  //     chainType: "l1",
-  //     url: configVariable("SEPOLIA_RPC_URL"),
-  //     accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
-  //   },
-  // },
+  networks: {
+    // hardhat: {
+    //   // setting base fee to 0 to avoid extra calculations doesn't work :(
+    //   // minimal base fee is 1 for EIP-1559
+    //   // gasPrice: 0,
+    //   // initialBaseFeePerGas: 0,
+    //   blockGasLimit: 30000000,
+    //   allowUnlimitedContractSize: true,
+    //   accounts: {
+    //     // default hardhat's node mnemonic
+    //     mnemonic: "test test test test test test test test test test test junk",
+    //     count: 30,
+    //     accountsBalance: "100000000000000000000000",
+    //   },
+    //   // forking: getHardhatForkingConfig(),
+    // },
+    hardhatMainnet: {
+      type: "edr",
+      chainType: "l1",
+    },
+  },
   mocha: {
     parallel: true,
     timeout: 20 * 60 * 1000, // 20 minutes
