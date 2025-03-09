@@ -9,6 +9,14 @@ import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
 import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
 
 const config: HardhatUserConfig = {
+  paths: {
+    sources: [
+      "./si-contracts",
+      // "./submodules/lidofinance-core/contracts",
+    ],
+    // cache: "./cache",
+    // artifacts: "./artifacts",
+  },
   plugins: [
     HardhatMochaTestRunner,
     HardhatEthers,
@@ -19,21 +27,69 @@ const config: HardhatUserConfig = {
     HardhatIgnitionEthers,
   ],
   solidity: {
-    profiles: {
-      default: {
-        version: "0.8.25",
+    compilers: [
+      {
+        version: "0.4.24",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "constantinople",
+        },
       },
-      production: {
+      {
+        version: "0.6.11",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "istanbul",
+        },
+      },
+      {
+        version: "0.6.12",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "istanbul",
+        },
+      },
+      {
+        version: "0.8.4",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "istanbul",
+        },
+      },
+      {
+        version: "0.8.9",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "istanbul",
+        },
+      },
+      {
         version: "0.8.25",
         settings: {
           optimizer: {
             enabled: true,
             runs: 200,
           },
+          evmVersion: "cancun",
         },
       },
-    },
-    remappings: ["forge-std/=npm/forge-std@1.9.4/src/"],
+    ],
+    remappings: ["forge-std/=npm/forge-std@1.9.4/src/", "contracts/=submodules/lidofinance-core/contracts/"],
   },
   networks: {
     hardhatMainnet: {
@@ -51,6 +107,20 @@ const config: HardhatUserConfig = {
       accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
     },
   },
+  // warnings: {
+  //   "@aragon/**/*": {
+  //     default: "off",
+  //   },
+  //   "submodules/lidofinance-core/contracts/*/mocks/**/*": {
+  //     default: "off",
+  //   },
+  //   "submodules/lidofinance-core/test/*/contracts/**/*": {
+  //     default: "off",
+  //   },
+  //   "submodules/lidofinance-core/contracts/common/interfaces/ILidoLocator.sol": {
+  //     default: "off",
+  //   },
+  // },
 };
 
 export default config;
