@@ -3,10 +3,10 @@
   "type": "module",
   "scripts": {
     "postinstall": "cd submodules/lidofinance-core && yarn install --production=false && cd ../..",
-    "compile": "NODE_PATH=./node_modules:./submodules/lidofinance-core/node_modules hardhat compile",
+    "compile1": "NODE_PATH=./node_modules:./submodules/lidofinance-core/node_modules hardhat compile",
+    "compile": "hardhat compile",
     "cleanup": "hardhat clean",
-    "test": "hardhat test test/**/*.test.ts --parallel",
-    "test-v": "hardhat test test/0.8.25/vaults/vault-hub-viewer/vault-hub-viewer.test.ts --parallel",
+    "test": "hardhat test",
     "lint:sol": "solhint 'si-contracts/**/*.sol'",
     "lint:sol:fix": "yarn lint:sol --fix",
     "lint:ts": "eslint . --max-warnings=0",

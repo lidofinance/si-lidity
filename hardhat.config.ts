@@ -1,30 +1,30 @@
-import { configVariable, HardhatUserConfig } from "hardhat/config";
+// import { configVariable, HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/config";
 
 import HardhatEthers from "@nomicfoundation/hardhat-ethers";
-import HardhatChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
-import HardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
-import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
+// import HardhatChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
+// import HardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
+// import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
 import HardhatMochaTestRunner from "@nomicfoundation/hardhat-mocha";
-import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
+// import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
 import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
 
 const config: HardhatUserConfig = {
   paths: {
     sources: [
       "./si-contracts",
-      // "./submodules/lidofinance-core/contracts",
+      "./submodules/lidofinance-core/contracts/0.4.24",
+      // "./submodules/lidofinance-core/contracts/0.8.25",
     ],
-    // cache: "./cache",
-    // artifacts: "./artifacts",
   },
   plugins: [
     HardhatMochaTestRunner,
     HardhatEthers,
-    HardhatNetworkHelpers,
-    HardhatKeystore,
-    HardhatChaiMatchers,
+    //   HardhatNetworkHelpers,
+    //   HardhatKeystore,
+    //   HardhatChaiMatchers,
     HardhatTypechain,
-    HardhatIgnitionEthers,
+    //   HardhatIgnitionEthers,
   ],
   solidity: {
     compilers: [
@@ -89,38 +89,36 @@ const config: HardhatUserConfig = {
         },
       },
     ],
-    remappings: ["forge-std/=npm/forge-std@1.9.4/src/", "contracts/=submodules/lidofinance-core/contracts/"],
+    remappings: [
+      // "forge-std/=npm/forge-std@1.9.4/src/",
+      "contracts/=submodules/lidofinance-core/contracts/",
+    ],
   },
-  networks: {
-    hardhatMainnet: {
-      type: "edr",
-      chainType: "l1",
-    },
-    hardhatOp: {
-      type: "edr",
-      chainType: "optimism",
-    },
-    sepolia: {
-      type: "http",
-      chainType: "l1",
-      url: configVariable("SEPOLIA_RPC_URL"),
-      accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
-    },
+  typechain: {
+    outDir: "typechain-types",
+    alwaysGenerateOverloads: false,
+    dontOverrideCompile: false,
   },
-  // warnings: {
-  //   "@aragon/**/*": {
-  //     default: "off",
+  // networks: {
+  //   hardhatMainnet: {
+  //     type: "edr",
+  //     chainType: "l1",
   //   },
-  //   "submodules/lidofinance-core/contracts/*/mocks/**/*": {
-  //     default: "off",
+  //   hardhatOp: {
+  //     type: "edr",
+  //     chainType: "optimism",
   //   },
-  //   "submodules/lidofinance-core/test/*/contracts/**/*": {
-  //     default: "off",
-  //   },
-  //   "submodules/lidofinance-core/contracts/common/interfaces/ILidoLocator.sol": {
-  //     default: "off",
+  //   sepolia: {
+  //     type: "http",
+  //     chainType: "l1",
+  //     url: configVariable("SEPOLIA_RPC_URL"),
+  //     accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
   //   },
   // },
+  mocha: {
+    parallel: true,
+    timeout: 20 * 60 * 1000, // 20 minutes
+  },
 };
 
 export default config;

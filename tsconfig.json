@@ -1,13 +1,35 @@
 /* Based on https://github.com/tsconfig/bases/blob/501da2bcd640cf95c95805783e1012b992338f28/bases/node22.json */
+//{
+//  "compilerOptions": {
+//    "lib": ["es2023"],
+//    "module": "node16",
+//    "target": "es2022",
+//    "strict": true,
+//    "esModuleInterop": true,
+//    "skipLibCheck": true,
+//    "moduleResolution": "node16",
+//    "outDir": "dist"
+//  }
+//}
 {
   "compilerOptions": {
-    "lib": ["es2023"],
-    "module": "node16",
     "target": "es2022",
-    "strict": true,
+    "module": "es2022",
+    "moduleResolution": "node",
     "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
     "skipLibCheck": true,
-    "moduleResolution": "node16",
-    "outDir": "dist"
-  }
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "test/*": ["./test/*"],
+      "types": ["./types"]
+    }
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  },
+  "include": ["./test", "./types", "./eslint.config.ts"],
+  "files": ["./hardhat.config.ts", "./commitlint.config.ts", "./globals.d.ts"]
 }

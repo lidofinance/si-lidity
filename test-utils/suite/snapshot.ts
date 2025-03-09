@@ -1,9 +1,11 @@
-import { ethers } from "hardhat";
+// import { ethers } from "hardhat";
 
-import { HardhatEthersProvider } from "@nomicfoundation/hardhat-ethers/internal/hardhat-ethers-provider";
+// import { HardhatEthersProvider } from "@nomicfoundation/hardhat-ethers/internal/hardhat-ethers-provider";
 
 export class Snapshot {
-  private static provider: HardhatEthersProvider = ethers.provider;
+  // private static provider: HardhatEthersProvider = ethers.provider;
+  /* eslint-disable  @typescript-eslint/no-explicit-any */
+  private static provider: any;
 
   public static async take() {
     return Snapshot.provider.send("evm_snapshot", []);

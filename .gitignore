@@ -12,6 +12,7 @@
 .pnp.js
 .yalc
 yalc.lock
+yarn-error.log
 
 # TS
 tsconfig.tsbuildinfo

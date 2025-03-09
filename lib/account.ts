@@ -1,11 +1,13 @@
 import { bigintToHex } from "bigint-conversion";
-import { ethers } from "hardhat";
+import { network } from "hardhat";
 
-import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
 
 import { getNetworkName } from "./network";
 
 export async function impersonate(address: string, balance?: bigint): Promise<HardhatEthersSigner> {
+  const connection = await network.connect();
+  const ethers = connection.ethers;
   const networkName = await getNetworkName();
 
   await ethers.provider.send(`${networkName}_impersonateAccount`, [address]);
@@ -18,6 +20,8 @@ export async function impersonate(address: string, balance?: bigint): Promise<Ha
 }
 
 export async function updateBalance(address: string, balance: bigint): Promise<void> {
+  const connection = await network.connect();
+  const ethers = connection.ethers;
   const networkName = await getNetworkName();
 
   await ethers.provider.send(`${networkName}_setBalance`, [address, "0x" + bigintToHex(balance)]);

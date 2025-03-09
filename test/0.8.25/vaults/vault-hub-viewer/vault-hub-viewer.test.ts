@@ -1,149 +1,161 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network } from "hardhat";
 
-import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import { HardhatEthers, HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
 
-import {
-  CustomOwner__MockForHubViewer,
-  Dashboard,
-  Delegation,
-  DepositContract__MockForStakingVault,
-  StakingVault,
-  StakingVault__factory,
-  StETHPermit__HarnessForDashboard,
-  UpgradeableBeacon,
-  VaultHub__MockForHubViewer,
-  VaultHubViewerV1,
-  WETH9__MockForVault,
-  WstETH__HarnessForVault,
-} from "typechain-types";
+// import {
+//   CustomOwner__MockForHubViewer,
+//   Dashboard,
+//   Delegation,
+//   DepositContract__MockForStakingVault,
+//   StakingVault,
+//   StakingVault__factory,
+//   StETHPermit__HarnessForDashboard,
+//   UpgradeableBeacon,
+//   VaultHub__MockForHubViewer,
+//   VaultHubViewerV1,
+//   WETH9__MockForVault,
+//   WstETH__HarnessForVault,
+// } from "typechain-types";
+// import { ether, findEvents, impersonate } from "lib";
+import { ether, impersonate } from "lib";
 
-import { ether, findEvents, impersonate } from "lib";
+import { Snapshot } from "test-utils/suite";
 
-import { Snapshot } from "test/suite";
-
-const deployVaultDelegation = async (
-  beacon: UpgradeableBeacon,
-  delegationImpl: Delegation,
-  vaultOwner: HardhatEthersSigner,
-  manager: HardhatEthersSigner,
-  operator: HardhatEthersSigner,
-) => {
-  const factoryDelegation = await ethers.deployContract("VaultFactory", [
-    beacon.getAddress(),
-    delegationImpl.getAddress(),
-  ]);
-  expect(await factoryDelegation.BEACON()).to.equal(beacon);
-  expect(await factoryDelegation.DELEGATION_IMPL()).to.equal(delegationImpl);
-
-  const vaultDelegationCreationTx = await factoryDelegation.connect(vaultOwner).createVaultWithDelegation(
-    {
-      defaultAdmin: vaultOwner,
-      curator: manager,
-      funderWithdrawer: vaultOwner,
-      minterBurner: vaultOwner,
-      nodeOperatorManager: operator,
-      nodeOperatorFeeClaimer: operator,
-      curatorFeeBP: 0n,
-      nodeOperatorFeeBP: 0n,
-    },
-    "0x",
-  );
-
-  const vaultDelegationCreationReceipt = await vaultDelegationCreationTx.wait();
-  if (!vaultDelegationCreationReceipt) throw new Error("Vault creation receipt not found");
-
-  const vaultDelegationCreatedEvents = findEvents(vaultDelegationCreationReceipt, "VaultCreated");
-  expect(vaultDelegationCreatedEvents.length).to.equal(1);
-  const stakingVaultAddress = vaultDelegationCreatedEvents[0].args.vault;
-  const vaultDelegation = await ethers.getContractAt("StakingVault", stakingVaultAddress, vaultOwner);
-
-  const delegationCreatedEvents = findEvents(vaultDelegationCreationReceipt, "DelegationCreated");
-  expect(delegationCreatedEvents.length).to.equal(1);
-  const delegationAddress = delegationCreatedEvents[0].args.delegation;
-  const delegation = await ethers.getContractAt("Delegation", delegationAddress, vaultOwner);
-
-  return { vaultDelegation, delegation };
-};
-
-const deployVaultDashboard = async (
-  vaultImpl: StakingVault,
-  dashboardImpl: Dashboard,
-  factoryOwner: HardhatEthersSigner,
-  vaultOwner: HardhatEthersSigner,
-  operator: HardhatEthersSigner,
-) => {
-  // Dashboard Factory
-  const factoryDashboard = await ethers.deployContract("VaultFactory__MockForDashboard", [
-    factoryOwner,
-    vaultImpl,
-    dashboardImpl,
-  ]);
-  expect(await factoryDashboard.owner()).to.equal(factoryOwner);
-  expect(await factoryDashboard.implementation()).to.equal(vaultImpl);
-  expect(await factoryDashboard.dashboardImpl()).to.equal(dashboardImpl);
-
-  // Dashboard Vault
-  const vaultDashboardCreationTx = await factoryDashboard.connect(vaultOwner).createVault(operator);
-  const vaultDashboardCreationReceipt = await vaultDashboardCreationTx.wait();
-  if (!vaultDashboardCreationReceipt) throw new Error("Vault creation receipt not found");
-
-  const vaultDashboardCreatedEvents = findEvents(vaultDashboardCreationReceipt, "VaultCreated");
-  expect(vaultDashboardCreatedEvents.length).to.equal(1);
-  const vaultDashboardAddress = vaultDashboardCreatedEvents[0].args.vault;
-  const vaultDashboard = await ethers.getContractAt("StakingVault", vaultDashboardAddress, vaultOwner);
-
-  const dashboardCreatedEvents = findEvents(vaultDashboardCreationReceipt, "DashboardCreated");
-  expect(dashboardCreatedEvents.length).to.equal(1);
-  const dashboardAddress = dashboardCreatedEvents[0].args.dashboard;
-  const dashboard = await ethers.getContractAt("Dashboard", dashboardAddress, vaultOwner);
-
-  return { vaultDashboard, dashboard };
-};
-
-const deployCustomOwner = async (vaultImpl: StakingVault, operator: HardhatEthersSigner) => {
-  const customOwner = await ethers.deployContract("CustomOwner__MockForHubViewer");
-  // deploying factory/beacon
-  const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
-    await vaultImpl.getAddress(),
-  ]);
-  const vaultCreation = await factoryStakingVault
-    .createVault(await customOwner.getAddress(), await operator.getAddress())
-    .then((tx) => tx.wait());
-  if (!vaultCreation) throw new Error("Vault creation failed");
-  const events = findEvents(vaultCreation, "VaultCreated");
-  if (events.length != 1) throw new Error("There should be exactly one VaultCreated event");
-  const vaultCreatedEvent = events[0];
-
-  const stakingVault = StakingVault__factory.connect(vaultCreatedEvent.args.vault);
-  return { stakingVault, customOwner };
-};
-
-const deployStakingVault = async (
-  vaultImpl: StakingVault,
-  vaultOwner: HardhatEthersSigner,
-  operator: HardhatEthersSigner,
-) => {
-  // deploying factory/beacon
-  const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
-    await vaultImpl.getAddress(),
-  ]);
-
-  // deploying beacon proxy
-  const vaultCreation = await factoryStakingVault
-    .createVault(await vaultOwner.getAddress(), await operator.getAddress())
-    .then((tx) => tx.wait());
-  if (!vaultCreation) throw new Error("Vault creation failed");
-  const events = findEvents(vaultCreation, "VaultCreated");
-  if (events.length != 1) throw new Error("There should be exactly one VaultCreated event");
-  const vaultCreatedEvent = events[0];
-
-  const stakingVault = StakingVault__factory.connect(vaultCreatedEvent.args.vault, vaultOwner);
-  expect(await stakingVault.owner()).to.equal(await vaultOwner.getAddress());
-
-  return stakingVault;
-};
-
+// const deployVaultDelegation = async (
+//   beacon: UpgradeableBeacon,
+//   delegationImpl: Delegation,
+//   vaultOwner: HardhatEthersSigner,
+//   manager: HardhatEthersSigner,
+//   operator: HardhatEthersSigner,
+// ) => {
+//   const connection = await network.connect();
+//   const ethers = connection.ethers;
+//
+//   const factoryDelegation = await ethers.deployContract("VaultFactory", [
+//     beacon.getAddress(),
+//     delegationImpl.getAddress(),
+//   ]);
+//   expect(await factoryDelegation.BEACON()).to.equal(beacon);
+//   expect(await factoryDelegation.DELEGATION_IMPL()).to.equal(delegationImpl);
+//
+//   const vaultDelegationCreationTx = await factoryDelegation.connect(vaultOwner).createVaultWithDelegation(
+//     {
+//       defaultAdmin: vaultOwner,
+//       curator: manager,
+//       funderWithdrawer: vaultOwner,
+//       minterBurner: vaultOwner,
+//       nodeOperatorManager: operator,
+//       nodeOperatorFeeClaimer: operator,
+//       curatorFeeBP: 0n,
+//       nodeOperatorFeeBP: 0n,
+//     },
+//     "0x",
+//   );
+//
+//   const vaultDelegationCreationReceipt = await vaultDelegationCreationTx.wait();
+//   if (!vaultDelegationCreationReceipt) throw new Error("Vault creation receipt not found");
+//
+//   const vaultDelegationCreatedEvents = findEvents(vaultDelegationCreationReceipt, "VaultCreated");
+//   expect(vaultDelegationCreatedEvents.length).to.equal(1);
+//   const stakingVaultAddress = vaultDelegationCreatedEvents[0].args.vault;
+//   const vaultDelegation = await ethers.getContractAt("StakingVault", stakingVaultAddress, vaultOwner);
+//
+//   const delegationCreatedEvents = findEvents(vaultDelegationCreationReceipt, "DelegationCreated");
+//   expect(delegationCreatedEvents.length).to.equal(1);
+//   const delegationAddress = delegationCreatedEvents[0].args.delegation;
+//   const delegation = await ethers.getContractAt("Delegation", delegationAddress, vaultOwner);
+//
+//   return { vaultDelegation, delegation };
+// };
+//
+// const deployVaultDashboard = async (
+//   vaultImpl: StakingVault,
+//   dashboardImpl: Dashboard,
+//   factoryOwner: HardhatEthersSigner,
+//   vaultOwner: HardhatEthersSigner,
+//   operator: HardhatEthersSigner,
+// ) => {
+//   const connection = await network.connect();
+//   const ethers = connection.ethers;
+//
+//   // Dashboard Factory
+//   const factoryDashboard = await ethers.deployContract("VaultFactory__MockForDashboard", [
+//     factoryOwner,
+//     vaultImpl,
+//     dashboardImpl,
+//   ]);
+//   expect(await factoryDashboard.owner()).to.equal(factoryOwner);
+//   expect(await factoryDashboard.implementation()).to.equal(vaultImpl);
+//   expect(await factoryDashboard.dashboardImpl()).to.equal(dashboardImpl);
+//
+//   // Dashboard Vault
+//   const vaultDashboardCreationTx = await factoryDashboard.connect(vaultOwner).createVault(operator);
+//   const vaultDashboardCreationReceipt = await vaultDashboardCreationTx.wait();
+//   if (!vaultDashboardCreationReceipt) throw new Error("Vault creation receipt not found");
+//
+//   const vaultDashboardCreatedEvents = findEvents(vaultDashboardCreationReceipt, "VaultCreated");
+//   expect(vaultDashboardCreatedEvents.length).to.equal(1);
+//   const vaultDashboardAddress = vaultDashboardCreatedEvents[0].args.vault;
+//   const vaultDashboard = await ethers.getContractAt("StakingVault", vaultDashboardAddress, vaultOwner);
+//
+//   const dashboardCreatedEvents = findEvents(vaultDashboardCreationReceipt, "DashboardCreated");
+//   expect(dashboardCreatedEvents.length).to.equal(1);
+//   const dashboardAddress = dashboardCreatedEvents[0].args.dashboard;
+//   const dashboard = await ethers.getContractAt("Dashboard", dashboardAddress, vaultOwner);
+//
+//   return { vaultDashboard, dashboard };
+// };
+//
+// const deployCustomOwner = async (vaultImpl: StakingVault, operator: HardhatEthersSigner) => {
+//   const connection = await network.connect();
+//   const ethers = connection.ethers;
+//
+//   const customOwner = await ethers.deployContract("CustomOwner__MockForHubViewer");
+//   // deploying factory/beacon
+//   const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
+//     await vaultImpl.getAddress(),
+//   ]);
+//   const vaultCreation = await factoryStakingVault
+//     .createVault(await customOwner.getAddress(), await operator.getAddress())
+//     .then((tx) => tx.wait());
+//   if (!vaultCreation) throw new Error("Vault creation failed");
+//   const events = findEvents(vaultCreation, "VaultCreated");
+//   if (events.length != 1) throw new Error("There should be exactly one VaultCreated event");
+//   const vaultCreatedEvent = events[0];
+//
+//   const stakingVault = StakingVault__factory.connect(vaultCreatedEvent.args.vault);
+//   return { stakingVault, customOwner };
+// };
+//
+// const deployStakingVault = async (
+//   vaultImpl: StakingVault,
+//   vaultOwner: HardhatEthersSigner,
+//   operator: HardhatEthersSigner,
+// ) => {
+//   const connection = await network.connect();
+//   const ethers = connection.ethers;
+//
+//   // deploying factory/beacon
+//   const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
+//     await vaultImpl.getAddress(),
+//   ]);
+//
+//   // deploying beacon proxy
+//   const vaultCreation = await factoryStakingVault
+//     .createVault(await vaultOwner.getAddress(), await operator.getAddress())
+//     .then((tx) => tx.wait());
+//   if (!vaultCreation) throw new Error("Vault creation failed");
+//   const events = findEvents(vaultCreation, "VaultCreated");
+//   if (events.length != 1) throw new Error("There should be exactly one VaultCreated event");
+//   const vaultCreatedEvent = events[0];
+//
+//   const stakingVault = StakingVault__factory.connect(vaultCreatedEvent.args.vault, vaultOwner);
+//   expect(await stakingVault.owner()).to.equal(await vaultOwner.getAddress());
+//
+//   return stakingVault;
+// };
+//
 describe("VaultHubViewerV1", () => {
   let vaultOwner: HardhatEthersSigner;
   let manager: HardhatEthersSigner;
@@ -177,7 +189,12 @@ describe("VaultHubViewerV1", () => {
 
   let originalState: string;
 
+  let ethers: HardhatEthers;
+
   before(async () => {
+    const connection = await network.connect();
+    ethers = connection.ethers;
+
     [, vaultOwner, manager, operator, stranger, factoryOwner, beaconOwner] = await ethers.getSigners();
 
     steth = await ethers.deployContract("StETHPermit__HarnessForDashboard");
