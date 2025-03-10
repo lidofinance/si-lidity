@@ -16,25 +16,6 @@ const config: HardhatUserConfig = {
       "./submodules/lidofinance-core/contracts/0.8.25",
       "./submodules/lidofinance-core/test/0.8.25",
     ],
-    // TODO: remove this example
-    // sources: [
-    //   "./si-contracts",
-    //   "./submodules/lidofinance-core/contracts/0.4.24/lib",
-    //   "./submodules/lidofinance-core/contracts/0.4.24/nos",
-    //   "./submodules/lidofinance-core/contracts/0.4.24/oracle",
-    //   // troubles with compilation
-    //   // "./submodules/lidofinance-core/contracts/0.4.24/template",
-    //   "./submodules/lidofinance-core/contracts/0.4.24/utils",
-    //   "./submodules/lidofinance-core/contracts/0.6.11",
-    //   "./submodules/lidofinance-core/contracts/0.6.12",
-    //   "./submodules/lidofinance-core/contracts/0.8.4",
-    //   "./submodules/lidofinance-core/contracts/0.8.9",
-    //   "./submodules/lidofinance-core/contracts/0.8.25",
-    //   "./submodules/lidofinance-core/contracts/common",
-    //   "./submodules/lidofinance-core/contracts/openzeppelin",
-    //   "./submodules/lidofinance-core/contracts/testnets",
-    //   "./submodules/lidofinance-core/test/0.8.25",
-    // ],
   },
   plugins: [
     HardhatEthers,
