@@ -18,7 +18,10 @@ const gitignorePath = path.resolve(__dirname, ".gitignore");
 export default [
   includeIgnoreFile(gitignorePath),
   {
-    ignores: [".solcover.js"],
+    ignores: [
+      ".solcover.js",
+      "submodules",
+    ],
   },
   js.configs.recommended,
   ...ts.configs.recommended,
