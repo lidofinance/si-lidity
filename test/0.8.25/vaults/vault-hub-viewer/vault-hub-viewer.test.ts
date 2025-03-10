@@ -182,7 +182,7 @@ describe("VaultDataViewer", () => {
   let delegation: Delegation;
   let customOwnerContract: CustomOwner__MockForHubViewer;
 
-  // let originalState: string;
+  let originalState: string;
 
   before(async () => {
     const connection = await network.connect();
@@ -230,17 +230,17 @@ describe("VaultDataViewer", () => {
     hubSigner = await impersonate(ethers, provider, await hub.getAddress(), ether("100"));
   });
 
-  // beforeEach(async () => {
-  //   // originalState = await Snapshot.take();
-  //   // TODO
-  //   originalState = provider.send("evm_snapshot", []);
-  // });
-  //
-  // afterEach(async () => {
-  //   // await Snapshot.restore(originalState);
-  //   // TODO
-  //   await provider.send("evm_revert", [originalState]);
-  // });
+  beforeEach(async () => {
+    // TODO
+    // originalState = await Snapshot.take();
+    originalState = await provider.send("evm_snapshot", []);
+  });
+
+  afterEach(async () => {
+    // TODO
+    // await Snapshot.restore(originalState);
+    await provider.send("evm_revert", [originalState]);
+  });
 
   context("constructor", () => {
     it("reverts if vault hub is zero address", async () => {
