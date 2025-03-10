@@ -2,13 +2,12 @@ import { HardhatUserConfig } from "hardhat/config";
 
 import HardhatEthers from "@nomicfoundation/hardhat-ethers";
 import HardhatChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
-// import HardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
 import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
 import HardhatMochaTestRunner from "@nomicfoundation/hardhat-mocha";
 import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
 import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
-
-// import { getHardhatForkingConfig } from "./hardhat.helpers";
+// for deploying smart contracts on Ethereum
+// import HardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
 
 const config: HardhatUserConfig = {
   paths: {
@@ -17,6 +16,7 @@ const config: HardhatUserConfig = {
       "./submodules/lidofinance-core/contracts/0.4.24/lib",
       "./submodules/lidofinance-core/contracts/0.4.24/nos",
       "./submodules/lidofinance-core/contracts/0.4.24/oracle",
+      // troubles with compilation
       // "./submodules/lidofinance-core/contracts/0.4.24/template",
       "./submodules/lidofinance-core/contracts/0.4.24/utils",
       "./submodules/lidofinance-core/contracts/0.6.11",
@@ -37,6 +37,7 @@ const config: HardhatUserConfig = {
     HardhatNetworkHelpers,
     HardhatChaiMatchers,
     HardhatTypechain,
+    // for deploying smart contracts on Ethereum
     // HardhatIgnitionEthers,
   ],
   solidity: {
@@ -102,8 +103,16 @@ const config: HardhatUserConfig = {
         },
       },
     ],
-    dependenciesToCompile: ["@openzeppelin/contracts-v5.2/proxy/beacon/UpgradeableBeacon.sol"],
-    remappings: ["forge-std/=npm/forge-std@1.9.4/src/", "contracts/=submodules/lidofinance-core/contracts/"],
+    dependenciesToCompile: [
+      // for tests
+      "@openzeppelin/contracts-v5.2/proxy/beacon/UpgradeableBeacon.sol",
+    ],
+    remappings: [
+      "contracts/=submodules/lidofinance-core/contracts/",
+      // from hardhat v3 init command
+      // can be deleted if we aren't planning to use
+      "forge-std/=npm/forge-std@1.9.4/src/",
+    ],
   },
   typechain: {
     outDir: "typechain-types",
@@ -112,8 +121,6 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      type: "edr",
-      chainType: "l1",
       // setting base fee to 0 to avoid extra calculations doesn't work :(
       // minimal base fee is 1 for EIP-1559
       // gasPrice: 0,
@@ -126,13 +133,9 @@ const config: HardhatUserConfig = {
         count: 30,
         accountsBalance: "100000000000000000000000",
       },
-      // forking: getHardhatForkingConfig(),
     },
-    // hardhatMainnet: {
-    //   type: "edr",
-    //   chainType: "l1",
-    // },
   },
+  // for tests
   mocha: {
     parallel: true,
     timeout: 20 * 60 * 1000, // 20 minutes
