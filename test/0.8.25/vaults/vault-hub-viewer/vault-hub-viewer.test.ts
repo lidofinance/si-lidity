@@ -23,10 +23,11 @@ import { StakingVault__factory } from "typechain-types/factories/submodules/lido
 
 import { ether, findEvents, impersonate } from "lib";
 
-// import { Snapshot } from "test-utils/suite";
+import { Snapshot } from "test-utils/suite";
 
 let ethers: HardhatEthers;
 let provider: EthereumProvider;
+let snapshot: Snapshot;
 
 const deployVaultDelegation = async (
   beacon: UpgradeableBeacon,
@@ -189,6 +190,8 @@ describe("VaultDataViewer", () => {
     ethers = connection.ethers;
     provider = connection.provider;
 
+    snapshot = new Snapshot(provider);
+
     [, vaultOwner, manager, operator, stranger, factoryOwner, beaconOwner] = await ethers.getSigners();
 
     steth = await ethers.deployContract("StETHPermit__HarnessForDashboard");
@@ -231,15 +234,11 @@ describe("VaultDataViewer", () => {
   });
 
   beforeEach(async () => {
-    // TODO
-    // originalState = await Snapshot.take();
-    originalState = await provider.send("evm_snapshot", []);
+    originalState = await snapshot.take();
   });
 
   afterEach(async () => {
-    // TODO
-    // await Snapshot.restore(originalState);
-    await provider.send("evm_revert", [originalState]);
+    await snapshot.restore(originalState);
   });
 
   context("constructor", () => {

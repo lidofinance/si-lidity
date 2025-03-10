@@ -1,40 +1,39 @@
-// import { ethers } from "hardhat";
-
-// import { HardhatEthersProvider } from "@nomicfoundation/hardhat-ethers/internal/hardhat-ethers-provider";
+import type { EthereumProvider } from "hardhat/types/providers";
 
 export class Snapshot {
-  // private static provider: HardhatEthersProvider = ethers.provider;
-  /* eslint-disable  @typescript-eslint/no-explicit-any */
-  private static provider: any;
+  private provider: EthereumProvider;
 
-  public static async take() {
-    return Snapshot.provider.send("evm_snapshot", []);
+  constructor(provider: EthereumProvider) {
+    this.provider = provider;
   }
 
-  public static async restore(snapshot: string) {
-    const result = await Snapshot.provider.send("evm_revert", [snapshot]);
+  public async take(): Promise<string> {
+    return this.provider.send("evm_snapshot", []);
+  }
+
+  public async restore(snapshot: string): Promise<void> {
+    const result = await this.provider.send("evm_revert", [snapshot]);
     if (!result) {
       throw new Error("`evm_revert` failed.");
     }
   }
 
-  public static async refresh(snapshot: string) {
+  public async refresh(snapshot: string): Promise<string> {
     if (snapshot) {
-      await Snapshot.restore(snapshot);
+      await this.restore(snapshot);
     }
-
-    return Snapshot.take();
+    return this.take();
   }
 }
 
-export function resetState(suite: Mocha.Suite) {
+export function resetState(suite: Mocha.Suite, snapshot: Snapshot) {
   let suiteStartState: string;
 
   suite.beforeAll(async function () {
-    suiteStartState = await Snapshot.take();
+    suiteStartState = await snapshot.take();
   });
 
   suite.afterAll(async function () {
-    await Snapshot.restore(suiteStartState);
+    await snapshot.restore(suiteStartState);
   });
 }
