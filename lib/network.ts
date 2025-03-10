@@ -1,4 +1,6 @@
-export async function getNetworkName(provider): Promise<string> {
+import type { EthereumProvider } from "hardhat/types/providers";
+
+export async function getNetworkName(provider: EthereumProvider): Promise<string> {
   let clientVersion = await provider.send("web3_clientVersion");
 
   if (typeof clientVersion !== "string") {
