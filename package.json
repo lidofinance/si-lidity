@@ -2,8 +2,6 @@
   "name": "si-lidity",
   "type": "module",
   "scripts": {
-    "postinstall": "cd submodules/lidofinance-core && yarn install --production=false && cd ../..",
-    "compile1": "NODE_PATH=./node_modules:./submodules/lidofinance-core/node_modules hardhat compile",
     "compile": "hardhat compile",
     "cleanup": "hardhat clean",
     "test": "hardhat test",
