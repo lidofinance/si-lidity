@@ -13,8 +13,8 @@ import {
   // StakingVault__factory,
   StETHPermit__HarnessForDashboard,
   UpgradeableBeacon,
+  VaultDataViewer,
   VaultHub__MockForHubViewer,
-  VaultHubViewerV1,
   WETH9__MockForVault,
   WstETH__HarnessForVault,
   // VaultFactory,
@@ -151,7 +151,7 @@ const deployStakingVault = async (
   return stakingVault;
 };
 
-describe("VaultHubViewerV1", () => {
+describe("VaultDataViewer", () => {
   let vaultOwner: HardhatEthersSigner;
   let manager: HardhatEthersSigner;
   let operator: HardhatEthersSigner;
@@ -176,7 +176,7 @@ describe("VaultHubViewerV1", () => {
   let vaultDashboard: StakingVault;
   let vaultDelegation: StakingVault;
   let vaultCustom: StakingVault;
-  let vaultHubViewer: VaultHubViewerV1;
+  let vaultHubViewer: VaultDataViewer;
 
   let dashboard: Dashboard;
   let delegation: Delegation;
@@ -224,7 +224,7 @@ describe("VaultHubViewerV1", () => {
     vaultCustom = customdResult.stakingVault;
     customOwnerContract = customdResult.customOwner;
 
-    vaultHubViewer = await ethers.deployContract("VaultHubViewerV1", [hub]);
+    vaultHubViewer = await ethers.deployContract("VaultDataViewer", [hub]);
     expect(await vaultHubViewer.vaultHub()).to.equal(hub);
 
     hubSigner = await impersonate(ethers, provider, await hub.getAddress(), ether("100"));
@@ -244,7 +244,7 @@ describe("VaultHubViewerV1", () => {
 
   context("constructor", () => {
     it("reverts if vault hub is zero address", async () => {
-      await expect(ethers.deployContract("VaultHubViewerV1", [ethers.ZeroAddress]))
+      await expect(ethers.deployContract("VaultDataViewer", [ethers.ZeroAddress]))
         .to.be.revertedWithCustomError(vaultHubViewer, "ZeroArgument")
         .withArgs("_vaultHubAddress");
     });
