@@ -1,17 +1,5 @@
-/* Based on https://github.com/tsconfig/bases/blob/501da2bcd640cf95c95805783e1012b992338f28/bases/node22.json */
-//{
-//  "compilerOptions": {
-//    "lib": ["es2023"],
-//    "module": "node16",
-//    "target": "es2022",
-//    "strict": true,
-//    "esModuleInterop": true,
-//    "skipLibCheck": true,
-//    "moduleResolution": "node16",
-//    "outDir": "dist"
-//  }
-//}
 {
+  // TODO: https://github.com/NomicFoundation/hardhat/tree/v-next/config-v-next
   "compilerOptions": {
     "target": "es2022",
     "module": "es2022",
@@ -23,13 +11,14 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
+      "lib": ["./lib"],
       "test/*": ["./test/*"],
-      "types": ["./types"]
+      "typechain-types": ["./typechain-types"]
     }
   },
   "ts-node": {
     "require": ["tsconfig-paths/register"]
   },
-  "include": ["./test", "./types", "./eslint.config.ts"],
+  "include": ["./test", "./typechain-types", "./eslint.config.ts"],
   "files": ["./hardhat.config.ts", "./commitlint.config.ts", "./globals.d.ts"]
 }
