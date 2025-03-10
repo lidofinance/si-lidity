@@ -17,7 +17,7 @@ const config: HardhatUserConfig = {
       "./submodules/lidofinance-core/contracts/0.4.24/lib",
       "./submodules/lidofinance-core/contracts/0.4.24/nos",
       "./submodules/lidofinance-core/contracts/0.4.24/oracle",
-      // // "./submodules/lidofinance-core/contracts/0.4.24/template",
+      // "./submodules/lidofinance-core/contracts/0.4.24/template",
       "./submodules/lidofinance-core/contracts/0.4.24/utils",
       "./submodules/lidofinance-core/contracts/0.6.11",
       "./submodules/lidofinance-core/contracts/0.6.12",
@@ -111,25 +111,27 @@ const config: HardhatUserConfig = {
     dontOverrideCompile: false,
   },
   networks: {
-    // hardhat: {
-    //   // setting base fee to 0 to avoid extra calculations doesn't work :(
-    //   // minimal base fee is 1 for EIP-1559
-    //   // gasPrice: 0,
-    //   // initialBaseFeePerGas: 0,
-    //   blockGasLimit: 30000000,
-    //   allowUnlimitedContractSize: true,
-    //   accounts: {
-    //     // default hardhat's node mnemonic
-    //     mnemonic: "test test test test test test test test test test test junk",
-    //     count: 30,
-    //     accountsBalance: "100000000000000000000000",
-    //   },
-    //   // forking: getHardhatForkingConfig(),
-    // },
-    hardhatMainnet: {
+    hardhat: {
       type: "edr",
       chainType: "l1",
+      // setting base fee to 0 to avoid extra calculations doesn't work :(
+      // minimal base fee is 1 for EIP-1559
+      // gasPrice: 0,
+      // initialBaseFeePerGas: 0,
+      blockGasLimit: 30000000,
+      allowUnlimitedContractSize: true,
+      accounts: {
+        // default hardhat's node mnemonic
+        mnemonic: "test test test test test test test test test test test junk",
+        count: 30,
+        accountsBalance: "100000000000000000000000",
+      },
+      // forking: getHardhatForkingConfig(),
     },
+    // hardhatMainnet: {
+    //   type: "edr",
+    //   chainType: "l1",
+    // },
   },
   mocha: {
     parallel: true,

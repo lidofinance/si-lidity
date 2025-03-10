@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { network } from "hardhat";
+import type { EthereumProvider } from "hardhat/types/providers";
 
 import { HardhatEthers, HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
 
@@ -13,15 +14,19 @@ import {
   StETHPermit__HarnessForDashboard,
   UpgradeableBeacon,
   VaultHub__MockForHubViewer,
-  VaultHubViewer,
+  VaultHubViewerV1,
   WETH9__MockForVault,
   WstETH__HarnessForVault,
+  // VaultFactory,
 } from "typechain-types";
 import { StakingVault__factory } from "typechain-types/factories/submodules/lidofinance-core/contracts/0.8.25/vaults/index.ts";
 
 import { ether, findEvents, impersonate } from "lib";
 
-import { Snapshot } from "test-utils/suite";
+// import { Snapshot } from "test-utils/suite";
+
+let ethers: HardhatEthers;
+let provider: EthereumProvider;
 
 const deployVaultDelegation = async (
   beacon: UpgradeableBeacon,
@@ -30,9 +35,6 @@ const deployVaultDelegation = async (
   manager: HardhatEthersSigner,
   operator: HardhatEthersSigner,
 ) => {
-  const connection = await network.connect();
-  const ethers = connection.ethers;
-
   const factoryDelegation = await ethers.deployContract("VaultFactory", [
     beacon.getAddress(),
     delegationImpl.getAddress(),
@@ -41,7 +43,6 @@ const deployVaultDelegation = async (
   expect(await factoryDelegation.BEACON()).to.equal(beacon);
   expect(await factoryDelegation.DELEGATION_IMPL()).to.equal(delegationImpl);
 
-  // TODO: error
   const vaultDelegationCreationTx = await factoryDelegation.connect(vaultOwner).createVaultWithDelegation(
     {
       defaultAdmin: vaultOwner,
@@ -79,9 +80,6 @@ const deployVaultDashboard = async (
   vaultOwner: HardhatEthersSigner,
   operator: HardhatEthersSigner,
 ) => {
-  const connection = await network.connect();
-  const ethers = connection.ethers;
-
   // Dashboard Factory
   const factoryDashboard = await ethers.deployContract("VaultFactory__MockForDashboard", [
     factoryOwner,
@@ -111,9 +109,6 @@ const deployVaultDashboard = async (
 };
 
 const deployCustomOwner = async (vaultImpl: StakingVault, operator: HardhatEthersSigner) => {
-  const connection = await network.connect();
-  const ethers = connection.ethers;
-
   const customOwner = await ethers.deployContract("CustomOwner__MockForHubViewer");
   // deploying factory/beacon
   const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
@@ -136,9 +131,6 @@ const deployStakingVault = async (
   vaultOwner: HardhatEthersSigner,
   operator: HardhatEthersSigner,
 ) => {
-  const connection = await network.connect();
-  const ethers = connection.ethers;
-
   // deploying factory/beacon
   const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
     await vaultImpl.getAddress(),
@@ -159,7 +151,7 @@ const deployStakingVault = async (
   return stakingVault;
 };
 
-describe("VaultHubViewer", () => {
+describe("VaultHubViewerV1", () => {
   let vaultOwner: HardhatEthersSigner;
   let manager: HardhatEthersSigner;
   let operator: HardhatEthersSigner;
@@ -184,19 +176,18 @@ describe("VaultHubViewer", () => {
   let vaultDashboard: StakingVault;
   let vaultDelegation: StakingVault;
   let vaultCustom: StakingVault;
-  let vaultHubViewer: VaultHubViewer;
+  let vaultHubViewer: VaultHubViewerV1;
 
   let dashboard: Dashboard;
   let delegation: Delegation;
   let customOwnerContract: CustomOwner__MockForHubViewer;
 
-  let originalState: string;
-
-  let ethers: HardhatEthers;
+  // let originalState: string;
 
   before(async () => {
     const connection = await network.connect();
     ethers = connection.ethers;
+    provider = connection.provider;
 
     [, vaultOwner, manager, operator, stranger, factoryOwner, beaconOwner] = await ethers.getSigners();
 
@@ -233,23 +224,27 @@ describe("VaultHubViewer", () => {
     vaultCustom = customdResult.stakingVault;
     customOwnerContract = customdResult.customOwner;
 
-    vaultHubViewer = await ethers.deployContract("VaultHubViewer", [hub]);
+    vaultHubViewer = await ethers.deployContract("VaultHubViewerV1", [hub]);
     expect(await vaultHubViewer.vaultHub()).to.equal(hub);
 
-    hubSigner = await impersonate(await hub.getAddress(), ether("100"));
+    hubSigner = await impersonate(ethers, provider, await hub.getAddress(), ether("100"));
   });
 
-  beforeEach(async () => {
-    originalState = await Snapshot.take();
-  });
-
-  afterEach(async () => {
-    await Snapshot.restore(originalState);
-  });
+  // beforeEach(async () => {
+  //   // originalState = await Snapshot.take();
+  //   // TODO
+  //   originalState = provider.send("evm_snapshot", []);
+  // });
+  //
+  // afterEach(async () => {
+  //   // await Snapshot.restore(originalState);
+  //   // TODO
+  //   await provider.send("evm_revert", [originalState]);
+  // });
 
   context("constructor", () => {
     it("reverts if vault hub is zero address", async () => {
-      await expect(ethers.deployContract("VaultHubViewer", [ethers.ZeroAddress]))
+      await expect(ethers.deployContract("VaultHubViewerV1", [ethers.ZeroAddress]))
         .to.be.revertedWithCustomError(vaultHubViewer, "ZeroArgument")
         .withArgs("_vaultHubAddress");
     });
