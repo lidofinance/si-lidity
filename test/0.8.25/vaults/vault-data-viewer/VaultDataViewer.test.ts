@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { network } from "hardhat";
 import type { EthereumProvider } from "hardhat/types/providers";
 
-import { HardhatEthers, HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
+import type { HardhatEthers, HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
 
 import {
   CustomOwner__MockForHubViewer,
@@ -10,14 +10,14 @@ import {
   Delegation,
   DepositContract__MockForStakingVault,
   StakingVault,
-  // StakingVault__factory,
   StETHPermit__HarnessForDashboard,
   UpgradeableBeacon,
   VaultDataViewer,
   VaultHub__MockForHubViewer,
   WETH9__MockForVault,
   WstETH__HarnessForVault,
-  // VaultFactory,
+  // troubles with imports after generation
+  // StakingVault__factory,
 } from "typechain-types";
 import { StakingVault__factory } from "typechain-types/factories/submodules/lidofinance-core/contracts/0.8.25/vaults/index.ts";
 
@@ -25,6 +25,7 @@ import { ether, findEvents, impersonate } from "lib";
 
 import { Snapshot } from "test-utils/suite";
 
+// scope for tests and functions
 let ethers: HardhatEthers;
 let provider: EthereumProvider;
 let snapshot: Snapshot;
@@ -177,6 +178,7 @@ describe("VaultDataViewer", () => {
   let vaultDashboard: StakingVault;
   let vaultDelegation: StakingVault;
   let vaultCustom: StakingVault;
+  // TODO: rename vaultHubViewer ---> vaultDataViewer?
   let vaultHubViewer: VaultDataViewer;
 
   let dashboard: Dashboard;
