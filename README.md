@@ -20,7 +20,7 @@ Just run
 
 Just run
 
-`yarn cleanup`
+`git submodule update --remote --recursive`
 
 `yarn compile`
 
