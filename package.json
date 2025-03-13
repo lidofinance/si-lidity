@@ -4,7 +4,7 @@
   "scripts": {
     "compile": "hardhat compile",
     "cleanup": "hardhat clean",
-    "test": "hardhat test",
+    "test": "hardhat test mocha",
     "lint:sol": "solhint 'si-contracts/**/*.sol'",
     "lint:sol:fix": "yarn lint:sol --fix",
     "lint:ts": "eslint . --max-warnings=0",

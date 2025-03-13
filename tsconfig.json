@@ -11,7 +11,8 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "lib": ["./lib"],
+      // TODO
+      //      "lib": ["./lib"],
       "test/*": ["./test/*"],
       "typechain-types": ["./typechain-types"]
     }
@@ -19,6 +20,6 @@
   "ts-node": {
     "require": ["tsconfig-paths/register"]
   },
-  "include": ["./test", "./typechain-types", "./eslint.config.ts"],
+  "include": ["./lib", "./test", "./typechain-types", "./eslint.config.ts"],
   "files": ["./hardhat.config.ts", "./commitlint.config.ts", "./globals.d.ts"]
 }

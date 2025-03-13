@@ -9,6 +9,7 @@ import {
   Dashboard,
   Delegation,
   DepositContract__MockForStakingVault,
+  LidoLocator,
   StakingVault,
   StETHPermit__HarnessForDashboard,
   UpgradeableBeacon,
@@ -23,6 +24,7 @@ import { StakingVault__factory } from "typechain-types/factories/submodules/lido
 
 import { ether, findEvents, impersonate } from "lib";
 
+import { deployLidoLocator } from "test-deploy";
 import { Snapshot } from "test-utils/suite";
 
 // scope for tests and functions
@@ -48,13 +50,24 @@ const deployVaultDelegation = async (
   const vaultDelegationCreationTx = await factoryDelegation.connect(vaultOwner).createVaultWithDelegation(
     {
       defaultAdmin: vaultOwner,
-      curator: manager,
-      funderWithdrawer: vaultOwner,
-      minterBurner: vaultOwner,
       nodeOperatorManager: operator,
-      nodeOperatorFeeClaimer: operator,
+      // TODO
+      confirmExpiry: 2n * 24n * 60n * 60n, // days(2n),
       curatorFeeBP: 0n,
       nodeOperatorFeeBP: 0n,
+      funders: [vaultOwner],
+      withdrawers: [vaultOwner],
+      minters: [vaultOwner],
+      burners: [vaultOwner],
+      rebalancers: [vaultOwner],
+      depositPausers: [vaultOwner],
+      depositResumers: [vaultOwner],
+      validatorExitRequesters: [vaultOwner],
+      validatorWithdrawalTriggerers: [vaultOwner],
+      disconnecters: [vaultOwner],
+      curatorFeeSetters: [manager],
+      curatorFeeClaimers: [manager],
+      nodeOperatorFeeClaimers: [operator],
     },
     "0x",
   );
@@ -171,6 +184,7 @@ describe("VaultDataViewer", () => {
   let delegationImpl: Delegation;
 
   let beacon: UpgradeableBeacon;
+  let locator: LidoLocator;
 
   let hub: VaultHub__MockForHubViewer;
   let depositContract: DepositContract__MockForStakingVault;
@@ -201,6 +215,12 @@ describe("VaultDataViewer", () => {
     wsteth = await ethers.deployContract("WstETH__HarnessForVault", [steth]);
     hub = await ethers.deployContract("VaultHub__MockForHubViewer", [steth]);
 
+    locator = await deployLidoLocator(ethers, {
+      lido: steth,
+      weth: weth,
+      wstETH: wsteth,
+    });
+
     depositContract = await ethers.deployContract("DepositContract__MockForStakingVault");
     vaultImpl = await ethers.deployContract("StakingVault", [hub, depositContract]);
     expect(await vaultImpl.vaultHub()).to.equal(hub);
@@ -208,8 +228,8 @@ describe("VaultDataViewer", () => {
     // beacon
     beacon = await ethers.deployContract("UpgradeableBeacon", [vaultImpl, beaconOwner]);
 
-    dashboardImpl = await ethers.deployContract("Dashboard", [steth, weth, wsteth]);
-    delegationImpl = await ethers.deployContract("Delegation", [steth, weth, wsteth]);
+    dashboardImpl = await ethers.deployContract("Dashboard", [weth, locator]);
+    delegationImpl = await ethers.deployContract("Delegation", [weth, locator]);
 
     // Delegation controlled vault
     const delegationResult = await deployVaultDelegation(beacon, delegationImpl, vaultOwner, manager, operator);
@@ -358,10 +378,20 @@ describe("VaultDataViewer", () => {
     });
 
     it("returns all vaults with a given role on Delegation", async () => {
-      await delegation.connect(vaultOwner).grantRole(await delegation.FUND_WITHDRAW_ROLE(), stranger.getAddress());
+      // await delegation.connect(vaultOwner).grantRole(await delegation.FUND_WITHDRAW_ROLE(), stranger.getAddress());
+      await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
 
-      const vaults = await vaultHubViewer.vaultsByRole(await delegation.FUND_WITHDRAW_ROLE(), stranger.getAddress());
-      const curatorVaults = await vaultHubViewer.vaultsByRole(await delegation.CURATOR_ROLE(), manager.getAddress());
+      // const vaults = await vaultHubViewer.vaultsByRole(await delegation.FUND_WITHDRAW_ROLE(), stranger.getAddress());
+      const vaults = await vaultHubViewer.vaultsByRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
+      // const curatorVaults = await vaultHubViewer.vaultsByRole(await delegation.CURATOR_ROLE(), manager.getAddress());
+      const curatorVaults = await vaultHubViewer.vaultsByRole(
+        await delegation.CURATOR_FEE_SET_ROLE(),
+        manager.getAddress(),
+      );
+      // const operatorVaults = await vaultHubViewer.vaultsByRole(
+      //   await delegation.NODE_OPERATOR_MANAGER_ROLE(),
+      //   operator.getAddress(),
+      // );
       const operatorVaults = await vaultHubViewer.vaultsByRole(
         await delegation.NODE_OPERATOR_MANAGER_ROLE(),
         operator.getAddress(),
@@ -395,10 +425,12 @@ describe("VaultDataViewer", () => {
     });
 
     it("returns all vaults with a given role on Delegation", async () => {
-      await delegation.connect(vaultOwner).grantRole(await delegation.FUND_WITHDRAW_ROLE(), stranger.getAddress());
+      // await delegation.connect(vaultOwner).grantRole(await delegation.FUND_WITHDRAW_ROLE(), stranger.getAddress());
+      await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
 
       const vaults = await vaultHubViewer.vaultsByRoleBound(
-        await delegation.FUND_WITHDRAW_ROLE(),
+        // await delegation.FUND_WITHDRAW_ROLE(),
+        await delegation.WITHDRAW_ROLE(),
         stranger.getAddress(),
         0,
         4,

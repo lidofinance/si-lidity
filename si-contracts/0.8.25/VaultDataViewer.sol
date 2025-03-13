@@ -156,7 +156,7 @@ contract VaultDataViewer {
 
         uint256 valid = 0;
         for (uint256 i = 0; i < count; i++) {
-            if (!vaultHub.vaultSocket(i).isDisconnected) {
+            if (!vaultHub.vaultSocket(i).pendingDisconnect) {
                 vaults[valid] = IVault(vaultHub.vault(i));
                 valid++;
             }

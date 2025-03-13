@@ -1,4 +1,4 @@
 [submodule "submodules/lidofinance-core"]
 	path = submodules/lidofinance-core
 	url = https://github.com/lidofinance/core.git
-	branch = feat/hub-viewer
+	branch = feat/vaults

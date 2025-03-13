@@ -11,10 +11,19 @@ import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
 
 const config: HardhatUserConfig = {
   paths: {
+    // tests: "./test/mocha",
+    tests: {
+      mocha: "./test/mocha",
+    },
     sources: [
       "./si-contracts",
+      "./test",
+
       "./submodules/lidofinance-core/contracts/0.8.25",
       "./submodules/lidofinance-core/test/0.8.25",
+
+      "./submodules/lidofinance-core/contracts/0.8.9",
+      "./submodules/lidofinance-core/test/0.8.9",
     ],
   },
   plugins: [
@@ -96,6 +105,8 @@ const config: HardhatUserConfig = {
     ],
     remappings: [
       "contracts/=submodules/lidofinance-core/contracts/",
+      "test/0.8.9/contracts/=submodules/lidofinance-core/test/0.8.9/contracts/",
+
       // from hardhat v3 init command
       // can be deleted if we aren't planning to use
       "forge-std/=npm/forge-std@1.9.4/src/",
