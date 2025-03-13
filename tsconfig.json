@@ -20,6 +20,6 @@
   "ts-node": {
     "require": ["tsconfig-paths/register"]
   },
-  "include": ["./lib", "./test", "./typechain-types", "./eslint.config.ts"],
+  "include": ["./lib", "./test", "./tasks", "./typechain-types", "./eslint.config.ts"],
   "files": ["./hardhat.config.ts", "./commitlint.config.ts", "./globals.d.ts"]
 }

@@ -6,12 +6,13 @@ import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
 import HardhatMochaTestRunner from "@nomicfoundation/hardhat-mocha";
 import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
 import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
+
 // for deploying smart contracts on Ethereum
 // import HardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
+import { abisExtractTask } from "./tasks";
 
 const config: HardhatUserConfig = {
   paths: {
-    // tests: "./test/mocha",
     tests: {
       mocha: "./test/mocha",
     },
@@ -36,6 +37,7 @@ const config: HardhatUserConfig = {
     // for deploying smart contracts on Ethereum
     // HardhatIgnitionEthers,
   ],
+  tasks: [abisExtractTask],
   solidity: {
     compilers: [
       {
