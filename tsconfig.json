@@ -1,4 +1,5 @@
 {
+  // TODO: https://github.com/NomicFoundation/hardhat/tree/v-next/config-v-next
   "compilerOptions": {
     "target": "es2022",
     "module": "es2022",
@@ -10,13 +11,15 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "test/*": ["./src/test/*"],
+      // TODO
+      //      "lib": ["./lib"],
+      "test/*": ["./test/*"],
       "typechain-types": ["./typechain-types"]
     }
   },
   "ts-node": {
     "require": ["tsconfig-paths/register"]
   },
-  "include": ["./src/test", "./typechain-types", "./eslint.config.ts"],
+  "include": ["./lib", "./test", "./tasks", "./typechain-types", "./eslint.config.ts"],
   "files": ["./hardhat.config.ts", "./commitlint.config.ts", "./globals.d.ts"]
 }

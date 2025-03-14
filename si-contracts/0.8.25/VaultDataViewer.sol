@@ -3,8 +3,8 @@
 
 // See contracts/COMPILERS.md
 pragma solidity 0.8.25;
-import {IStakingVault} from "./interfaces/IStakingVault.sol";
-import {VaultHub} from "./VaultHub.sol";
+import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
+import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
 
 interface IDashboardACL {
     function getRoleMember(bytes32 role, uint256 index) external view returns (address);
@@ -156,7 +156,7 @@ contract VaultDataViewer {
 
         uint256 valid = 0;
         for (uint256 i = 0; i < count; i++) {
-            if (!vaultHub.vaultSocket(i).isDisconnected) {
+            if (!vaultHub.vaultSocket(i).pendingDisconnect) {
                 vaults[valid] = IVault(vaultHub.vault(i));
                 valid++;
             }

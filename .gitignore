@@ -12,12 +12,37 @@
 .pnp.js
 .yalc
 yalc.lock
+yarn-error.log
+
+# TS
 tsconfig.tsbuildinfo
 
-# production
-/build
+# Compilation output
 /dist
+
+# pnpm deploy output
+/bundle
+
+# Hardhat Build Artifacts
+/artifacts
+
+# Hardhat
+/cache
+/artifacts
+/cache_hardhat
+
+# Typechain output
+/types
+/typechain
+/typechain-types
+
+# foundry artifacts
+/foundry/cache
+/foundry/out
 
 #ide
 .vscode
 .idea
+
+# Extracted ABI files
+/abi

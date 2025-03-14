@@ -1,35 +1,126 @@
-import * as process from "node:process";
-
-import "@nomicfoundation/hardhat-chai-matchers";
-import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-verify";
-import "@typechain/hardhat";
-
-import "dotenv/config";
-import "solidity-coverage";
-import "tsconfig-paths/register";
-import "hardhat-tracer";
-import "hardhat-watcher";
-import "hardhat-ignore-warnings";
-import "hardhat-contract-sizer";
-import "hardhat-gas-reporter";
 import { HardhatUserConfig } from "hardhat/config";
 
-import { mochaRootHooks } from "test/hooks";
+import HardhatEthers from "@nomicfoundation/hardhat-ethers";
+import HardhatChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
+import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
+import HardhatMochaTestRunner from "@nomicfoundation/hardhat-mocha";
+import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
+import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
 
-import "./tasks";
-
-import { getHardhatForkingConfig, loadAccounts } from "./hardhat.helpers";
-
-const RPC_URL: string = process.env.RPC_URL || "";
+// for deploying smart contracts on Ethereum
+// import HardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
+import { abisExtractTask } from "./tasks";
 
 const config: HardhatUserConfig = {
-  defaultNetwork: "hardhat",
-  gasReporter: {
-    enabled: process.env.SKIP_GAS_REPORT ? false : true,
+  paths: {
+    tests: {
+      mocha: "./test/mocha",
+    },
+    sources: [
+      "./si-contracts",
+      "./test",
+
+      "./submodules/lidofinance-core/contracts/0.8.25",
+      "./submodules/lidofinance-core/test/0.8.25",
+
+      "./submodules/lidofinance-core/contracts/0.8.9",
+      "./submodules/lidofinance-core/test/0.8.9",
+    ],
+  },
+  plugins: [
+    HardhatEthers,
+    HardhatKeystore,
+    HardhatMochaTestRunner,
+    HardhatNetworkHelpers,
+    HardhatChaiMatchers,
+    HardhatTypechain,
+    // for deploying smart contracts on Ethereum
+    // HardhatIgnitionEthers,
+  ],
+  tasks: [abisExtractTask],
+  solidity: {
+    compilers: [
+      {
+        version: "0.4.24",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "constantinople",
+        },
+      },
+      {
+        version: "0.6.11",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "istanbul",
+        },
+      },
+      {
+        version: "0.6.12",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "istanbul",
+        },
+      },
+      {
+        version: "0.8.4",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "istanbul",
+        },
+      },
+      {
+        version: "0.8.9",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "istanbul",
+        },
+      },
+      {
+        version: "0.8.25",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "cancun",
+        },
+      },
+    ],
+    dependenciesToCompile: [
+      // for tests
+      "@openzeppelin/contracts-v5.2/proxy/beacon/UpgradeableBeacon.sol",
+    ],
+    remappings: [
+      "contracts/=submodules/lidofinance-core/contracts/",
+      "test/0.8.9/contracts/=submodules/lidofinance-core/test/0.8.9/contracts/",
+
+      // from hardhat v3 init command
+      // can be deleted if we aren't planning to use
+      "forge-std/=npm/forge-std@1.9.4/src/",
+    ],
+  },
+  typechain: {
+    outDir: "typechain-types",
+    alwaysGenerateOverloads: false,
+    dontOverrideCompile: false,
   },
   networks: {
-    "hardhat": {
+    hardhat: {
       // setting base fee to 0 to avoid extra calculations doesn't work :(
       // minimal base fee is 1 for EIP-1559
       // gasPrice: 0,
@@ -42,86 +133,12 @@ const config: HardhatUserConfig = {
         count: 30,
         accountsBalance: "100000000000000000000000",
       },
-      forking: getHardhatForkingConfig(),
-    },
-    "local": {
-      url: process.env.LOCAL_RPC_URL || RPC_URL,
-    },
-    "holesky": {
-      url: process.env.HOLESKY_RPC_URL || RPC_URL,
-      chainId: 17000,
-      accounts: loadAccounts("holesky"),
-    },
-    "sepolia": {
-      url: process.env.SEPOLIA_RPC_URL || RPC_URL,
-      chainId: 11155111,
-      accounts: loadAccounts("sepolia"),
-    },
-    "sepolia-fork": {
-      url: process.env.SEPOLIA_RPC_URL || RPC_URL,
-      chainId: 11155111,
-    },
-    "mainnet-fork": {
-      url: process.env.MAINNET_RPC_URL || RPC_URL,
-      timeout: 20 * 60 * 1000, // 20 minutes
     },
   },
-  etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY || "",
-  },
-  solidity: {
-    compilers: [
-      {
-        version: "0.8.25",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-          evmVersion: "cancun",
-        },
-      },
-    ],
-  },
-  tracer: {
-    tasks: ["watch"],
-  },
-  typechain: {
-    outDir: "typechain-types",
-    target: "ethers-v6",
-    alwaysGenerateOverloads: false,
-    externalArtifacts: ["externalArtifacts/*.json"],
-    dontOverrideCompile: false,
-  },
-  watcher: {
-    test: {
-      tasks: [
-        { command: "compile", params: { quiet: true } },
-        { command: "test", params: { noCompile: true, testFiles: ["{path}"] } },
-      ],
-      files: ["./src/test/**/*"],
-      clearOnStart: true,
-      start: "echo Running tests...",
-    },
-  },
+  // for tests
   mocha: {
-    rootHooks: mochaRootHooks,
+    parallel: true,
     timeout: 20 * 60 * 1000, // 20 minutes
-  },
-  warnings: {
-    "src/contracts/*/mocks/**/*": {
-      default: "off",
-    },
-    "src/test/*/contracts/**/*": {
-      default: "off",
-    },
-  },
-  contractSizer: {
-    alphaSort: false,
-    disambiguatePaths: false,
-    runOnCompile: process.env.SKIP_CONTRACT_SIZE ? false : true,
-    strict: true,
-    except: ["template", "mocks", "openzeppelin", "test"],
   },
 };
 
