@@ -45,4 +45,4 @@ tsconfig.tsbuildinfo
 .idea
 
 # Extracted ABI files
-abi/*.json
+/abi

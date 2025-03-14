@@ -22,7 +22,7 @@ import {
 } from "typechain-types";
 import { StakingVault__factory } from "typechain-types/factories/submodules/lidofinance-core/contracts/0.8.25/vaults/index.ts";
 
-import { ether, findEvents, impersonate } from "lib";
+import { days, ether, findEvents, impersonate } from "lib";
 
 import { deployLidoLocator } from "test-deploy";
 import { Snapshot } from "test-utils/suite";
@@ -51,8 +51,7 @@ const deployVaultDelegation = async (
     {
       defaultAdmin: vaultOwner,
       nodeOperatorManager: operator,
-      // TODO
-      confirmExpiry: 2n * 24n * 60n * 60n, // days(2n),
+      confirmExpiry: days(2n),
       curatorFeeBP: 0n,
       nodeOperatorFeeBP: 0n,
       funders: [vaultOwner],
@@ -378,20 +377,13 @@ describe("VaultDataViewer", () => {
     });
 
     it("returns all vaults with a given role on Delegation", async () => {
-      // await delegation.connect(vaultOwner).grantRole(await delegation.FUND_WITHDRAW_ROLE(), stranger.getAddress());
       await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
 
-      // const vaults = await vaultHubViewer.vaultsByRole(await delegation.FUND_WITHDRAW_ROLE(), stranger.getAddress());
       const vaults = await vaultHubViewer.vaultsByRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
-      // const curatorVaults = await vaultHubViewer.vaultsByRole(await delegation.CURATOR_ROLE(), manager.getAddress());
       const curatorVaults = await vaultHubViewer.vaultsByRole(
         await delegation.CURATOR_FEE_SET_ROLE(),
         manager.getAddress(),
       );
-      // const operatorVaults = await vaultHubViewer.vaultsByRole(
-      //   await delegation.NODE_OPERATOR_MANAGER_ROLE(),
-      //   operator.getAddress(),
-      // );
       const operatorVaults = await vaultHubViewer.vaultsByRole(
         await delegation.NODE_OPERATOR_MANAGER_ROLE(),
         operator.getAddress(),
@@ -425,11 +417,9 @@ describe("VaultDataViewer", () => {
     });
 
     it("returns all vaults with a given role on Delegation", async () => {
-      // await delegation.connect(vaultOwner).grantRole(await delegation.FUND_WITHDRAW_ROLE(), stranger.getAddress());
       await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
 
       const vaults = await vaultHubViewer.vaultsByRoleBound(
-        // await delegation.FUND_WITHDRAW_ROLE(),
         await delegation.WITHDRAW_ROLE(),
         stranger.getAddress(),
         0,

@@ -32,7 +32,6 @@ async function deployDummyLocator(
     withdrawalVault: certainAddress("dummy-locator:withdrawalVault"),
     accounting: certainAddress("dummy-locator:withdrawalVault"),
     wstETH: certainAddress("dummy-locator:wstETH"),
-    // TODO
     vaultHub: certainAddress("dummy-locator:vaultHub"),
     ...config,
   });
@@ -116,7 +115,6 @@ async function getLocatorConfig(ethers: HardhatEthers, locatorAddress: string) {
     "oracleDaemonConfig",
     "accounting",
     "wstETH",
-    // TODO
     "vaultHub",
   ] as Partial<keyof LidoLocator.ConfigStruct>[];
 

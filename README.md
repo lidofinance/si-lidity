@@ -30,6 +30,14 @@ Just run
 
 `yarn test`
 
+### ABI
+
+Just run
+
+`yarn compile`
+
+`yarn abis:extract`
+
 ### Submodules
 
 Just updates submodules with:
