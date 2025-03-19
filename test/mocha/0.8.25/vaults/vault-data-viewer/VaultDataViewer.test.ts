@@ -51,6 +51,7 @@ const deployVaultDelegation = async (
     {
       defaultAdmin: vaultOwner,
       nodeOperatorManager: operator,
+      assetRecoverer: vaultOwner,
       confirmExpiry: days(2n),
       curatorFeeBP: 0n,
       nodeOperatorFeeBP: 0n,
@@ -173,6 +174,7 @@ describe("VaultDataViewer", () => {
   let beaconOwner: HardhatEthersSigner;
   let factoryOwner: HardhatEthersSigner;
   let hubSigner: HardhatEthersSigner;
+  let depositor: HardhatEthersSigner;
 
   let steth: StETHPermit__HarnessForDashboard;
   let weth: WETH9__MockForVault;
@@ -207,7 +209,7 @@ describe("VaultDataViewer", () => {
 
     snapshot = new Snapshot(provider);
 
-    [, vaultOwner, manager, operator, stranger, factoryOwner, beaconOwner] = await ethers.getSigners();
+    [, vaultOwner, manager, operator, stranger, factoryOwner, beaconOwner, depositor] = await ethers.getSigners();
 
     steth = await ethers.deployContract("StETHPermit__HarnessForDashboard");
     weth = await ethers.deployContract("WETH9__MockForVault");
@@ -221,7 +223,7 @@ describe("VaultDataViewer", () => {
     });
 
     depositContract = await ethers.deployContract("DepositContract__MockForStakingVault");
-    vaultImpl = await ethers.deployContract("StakingVault", [hub, depositContract]);
+    vaultImpl = await ethers.deployContract("StakingVault", [hub, depositor, depositContract]);
     expect(await vaultImpl.vaultHub()).to.equal(hub);
 
     // beacon
