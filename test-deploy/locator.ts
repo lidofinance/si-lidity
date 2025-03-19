@@ -33,6 +33,7 @@ async function deployDummyLocator(
     accounting: certainAddress("dummy-locator:withdrawalVault"),
     wstETH: certainAddress("dummy-locator:wstETH"),
     vaultHub: certainAddress("dummy-locator:vaultHub"),
+    predepositGuarantee: certainAddress("dummy-locator:predepositGuarantee"),
     ...config,
   });
 
@@ -116,6 +117,7 @@ async function getLocatorConfig(ethers: HardhatEthers, locatorAddress: string) {
     "accounting",
     "wstETH",
     "vaultHub",
+    "predepositGuarantee",
   ] as Partial<keyof LidoLocator.ConfigStruct>[];
 
   const configPromises = addresses.map((name) => locator[name]());
