@@ -20,6 +20,8 @@ Just run
 
 Just run
 
+`git submodule init`
+
 `git submodule update --remote --recursive`
 
 `yarn compile`
@@ -41,6 +43,8 @@ Just run
 ### Submodules
 
 Just updates submodules with:
+
+`git submodule init`
 
 `git submodule update --remote --recursive`
 
