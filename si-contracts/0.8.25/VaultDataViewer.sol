@@ -3,8 +3,10 @@
 
 // See contracts/COMPILERS.md
 pragma solidity 0.8.25;
-import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
 import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
+
+import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
+import {ILido} from "contracts/0.8.25/interfaces/ILido.sol";
 
 interface IDashboardACL {
     function getRoleMember(bytes32 role, uint256 index) external view returns (address);
@@ -17,10 +19,20 @@ interface IVault is IStakingVault {
 }
 
 contract VaultDataViewer {
+    enum VaultState {
+        MintingAllowed, // Shares(inEth) <= 0.90
+        Healthy, // 0.90  < Shares(inEth) <= 0.92
+        Unhealthy, // 0.92 < Shares(inEth) < 1.00
+        BadDebt // Shares(inEth) >= 1.00
+    }
+
     bytes32 constant strictTrue = keccak256(hex"0000000000000000000000000000000000000000000000000000000000000001");
 
-    VaultHub public immutable vaultHub;
+    uint256 internal constant TOTAL_BASIS_POINTS = 100_00;
+
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
+
+    VaultHub public immutable vaultHub;
 
     constructor(address _vaultHubAddress) {
         if (_vaultHubAddress == address(0)) revert ZeroArgument("_vaultHubAddress");
@@ -36,6 +48,29 @@ contract VaultDataViewer {
             size := extcodesize(account)
         }
         return size > 0;
+    }
+
+    /// @notice Checks the health of the vault depending on the valuation and shares minted
+    /// @param _vault The address of the vault
+    /// @return VaultState the state of the vault health
+    function vaultState(IStakingVault _vault) public view returns (VaultState) {
+        ILido lido = vaultHub.LIDO();
+
+        VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(address(_vault));
+        uint256 valuation = _vault.valuation();
+        uint256 stethMinted = lido.getPooledEthByShares(socket.sharesMinted);
+
+        if (stethMinted <= (valuation * (TOTAL_BASIS_POINTS - socket.reserveRatioBP)) / TOTAL_BASIS_POINTS) {
+            return VaultState.MintingAllowed;
+        } else if (
+            stethMinted <= (valuation * (TOTAL_BASIS_POINTS - socket.rebalanceThresholdBP)) / TOTAL_BASIS_POINTS
+        ) {
+            return VaultState.Healthy;
+        } else if (stethMinted <= valuation) {
+            return VaultState.Unhealthy;
+        } else {
+            return VaultState.BadDebt;
+        }
     }
 
     /// @notice Checks if a given address is the owner of a vault
