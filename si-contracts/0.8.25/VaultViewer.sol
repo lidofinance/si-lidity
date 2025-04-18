@@ -16,7 +16,7 @@ interface IVault is IStakingVault {
     function owner() external view returns (address);
 }
 
-contract VaultDataViewer {
+contract VaultViewer {
     bytes32 constant strictTrue = keccak256(hex"0000000000000000000000000000000000000000000000000000000000000001");
 
     VaultHub public immutable vaultHub;
