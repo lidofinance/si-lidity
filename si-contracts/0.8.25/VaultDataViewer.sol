@@ -57,13 +57,13 @@ contract VaultDataViewer {
         ILido lido = vaultHub.LIDO();
 
         VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(address(_vault));
-        uint256 valuation = _vault.valuation();
-        uint256 stethMinted = lido.getPooledEthByShares(socket.sharesMinted);
+        uint256 valuation = _vault.totalValue();
+        uint256 stethMinted = lido.getPooledEthByShares(socket.liabilityShares);
 
         if (stethMinted <= (valuation * (TOTAL_BASIS_POINTS - socket.reserveRatioBP)) / TOTAL_BASIS_POINTS) {
             return VaultState.MintingAllowed;
         } else if (
-            stethMinted <= (valuation * (TOTAL_BASIS_POINTS - socket.rebalanceThresholdBP)) / TOTAL_BASIS_POINTS
+            stethMinted <= (valuation * (TOTAL_BASIS_POINTS - socket.forcedRebalanceThresholdBP)) / TOTAL_BASIS_POINTS
         ) {
             return VaultState.Healthy;
         } else if (stethMinted <= valuation) {

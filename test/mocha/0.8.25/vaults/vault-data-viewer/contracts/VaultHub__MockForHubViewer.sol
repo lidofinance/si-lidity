@@ -85,12 +85,13 @@ contract VaultHub__MockForHubViewer {
 
         VaultHub.VaultSocket memory vr = VaultHub.VaultSocket(
             _vault,
-            0, // sharesMinted
-            uint96(0),
-            uint16(0),
-            uint16(0),
-            uint16(0),
-            false // pendingDisconnect
+            0, // liabilityShares
+            uint96(0), // shareLimit,
+            uint16(0), // reserveRatioBP
+            uint16(0), // forcedRebalanceThresholdBP
+            uint16(0), // treasuryFeeBP
+            false, // pendingDisconnect
+            uint96(0) // feeSharesCharged
         );
 
         $.vaultIndex[_vault] = $.sockets.length;
