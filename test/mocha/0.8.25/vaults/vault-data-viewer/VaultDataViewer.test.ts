@@ -13,8 +13,8 @@ import {
   StakingVault,
   StETHPermit__HarnessForDashboard,
   UpgradeableBeacon,
-  VaultDataViewer,
   VaultHub__MockForHubViewer,
+  VaultViewer,
   WETH9__MockForVault,
   WstETH__HarnessForVault,
   // troubles with imports after generation
@@ -166,7 +166,7 @@ const deployStakingVault = async (
   return stakingVault;
 };
 
-describe("VaultDataViewer", () => {
+describe("VaultViewer", () => {
   let vaultOwner: HardhatEthersSigner;
   let manager: HardhatEthersSigner;
   let operator: HardhatEthersSigner;
@@ -193,8 +193,7 @@ describe("VaultDataViewer", () => {
   let vaultDashboard: StakingVault;
   let vaultDelegation: StakingVault;
   let vaultCustom: StakingVault;
-  // TODO: rename vaultHubViewer ---> vaultDataViewer?
-  let vaultHubViewer: VaultDataViewer;
+  let vaultViewer: VaultViewer;
 
   let dashboard: Dashboard;
   let delegation: Delegation;
@@ -250,8 +249,8 @@ describe("VaultDataViewer", () => {
     vaultCustom = customdResult.stakingVault;
     customOwnerContract = customdResult.customOwner;
 
-    vaultHubViewer = await ethers.deployContract("VaultDataViewer", [hub]);
-    expect(await vaultHubViewer.vaultHub()).to.equal(hub);
+    vaultViewer = await ethers.deployContract("VaultViewer", [hub]);
+    expect(await vaultViewer.vaultHub()).to.equal(hub);
 
     hubSigner = await impersonate(ethers, provider, await hub.getAddress(), ether("100"));
   });
@@ -266,8 +265,8 @@ describe("VaultDataViewer", () => {
 
   context("constructor", () => {
     it("reverts if vault hub is zero address", async () => {
-      await expect(ethers.deployContract("VaultDataViewer", [ethers.ZeroAddress]))
-        .to.be.revertedWithCustomError(vaultHubViewer, "ZeroArgument")
+      await expect(ethers.deployContract("VaultViewer", [ethers.ZeroAddress]))
+        .to.be.revertedWithCustomError(vaultViewer, "ZeroArgument")
         .withArgs("_vaultHubAddress");
     });
   });
@@ -281,7 +280,7 @@ describe("VaultDataViewer", () => {
     });
 
     it("returns all connected vaults", async () => {
-      const vaults = await vaultHubViewer.vaultsConnected();
+      const vaults = await vaultViewer.vaultsConnected();
       expect(vaults.length).to.equal(4);
       expect(vaults[0]).to.equal(vaultDelegation);
       expect(vaults[1]).to.equal(vaultDashboard);
@@ -299,18 +298,18 @@ describe("VaultDataViewer", () => {
     });
 
     it("returns all connected vaults", async () => {
-      const vaults = await vaultHubViewer.vaultsConnectedBound(0, 4);
+      const vaults = await vaultViewer.vaultsConnectedBound(0, 4);
       expect(vaults[0].length).to.equal(4);
     });
 
     it("returns all connected vaults in a given range", async () => {
-      const vaults = await vaultHubViewer.vaultsConnectedBound(1, 3);
+      const vaults = await vaultViewer.vaultsConnectedBound(1, 3);
       expect(vaults[0].length).to.equal(2);
     });
 
     it("reverts if from is greater than to", async () => {
-      await expect(vaultHubViewer.vaultsConnectedBound(3, 1)).to.be.revertedWithCustomError(
-        vaultHubViewer,
+      await expect(vaultViewer.vaultsConnectedBound(3, 1)).to.be.revertedWithCustomError(
+        vaultViewer,
         "WrongPaginationRange",
       );
     });
@@ -325,7 +324,7 @@ describe("VaultDataViewer", () => {
     });
 
     it("returns all vaults owned by a given address", async () => {
-      const vaults = await vaultHubViewer.vaultsByOwner(vaultOwner.getAddress());
+      const vaults = await vaultViewer.vaultsByOwner(vaultOwner.getAddress());
       expect(vaults.length).to.equal(3);
       expect(vaults[0]).to.equal(vaultDelegation);
       expect(vaults[1]).to.equal(vaultDashboard);
@@ -333,7 +332,7 @@ describe("VaultDataViewer", () => {
     });
 
     it("returns correct owner for custom vault", async () => {
-      const vaults = await vaultHubViewer.vaultsByOwner(customOwnerContract.getAddress());
+      const vaults = await vaultViewer.vaultsByOwner(customOwnerContract.getAddress());
       expect(vaults.length).to.equal(1);
       expect(vaults[0]).to.equal(vaultCustom);
     });
@@ -348,23 +347,23 @@ describe("VaultDataViewer", () => {
     });
 
     it("returns all connected vaults", async () => {
-      const vaults = await vaultHubViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 0, 4);
+      const vaults = await vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 0, 4);
       expect(vaults[0].length).to.equal(3);
     });
 
     it("returns all vaults owned by a given address in a given range - [0, 2]", async () => {
-      const vaults = await vaultHubViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 0, 2);
+      const vaults = await vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 0, 2);
       expect(vaults[0].length).to.equal(2);
     });
 
     it("returns all vaults owned by a given address in a given range - [2, 4]", async () => {
-      const vaults = await vaultHubViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 2, 4);
+      const vaults = await vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 2, 4);
       expect(vaults[0].length).to.equal(1);
     });
 
     it("reverts if from is greater than to", async () => {
-      await expect(vaultHubViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 3, 1)).to.be.revertedWithCustomError(
-        vaultHubViewer,
+      await expect(vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 3, 1)).to.be.revertedWithCustomError(
+        vaultViewer,
         "WrongPaginationRange",
       );
     });
@@ -381,12 +380,12 @@ describe("VaultDataViewer", () => {
     it("returns all vaults with a given role on Delegation", async () => {
       await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
 
-      const vaults = await vaultHubViewer.vaultsByRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
-      const curatorVaults = await vaultHubViewer.vaultsByRole(
+      const vaults = await vaultViewer.vaultsByRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
+      const curatorVaults = await vaultViewer.vaultsByRole(
         await delegation.CURATOR_FEE_SET_ROLE(),
         manager.getAddress(),
       );
-      const operatorVaults = await vaultHubViewer.vaultsByRole(
+      const operatorVaults = await vaultViewer.vaultsByRole(
         await delegation.NODE_OPERATOR_MANAGER_ROLE(),
         operator.getAddress(),
       );
@@ -404,7 +403,7 @@ describe("VaultDataViewer", () => {
     it("returns all vaults with a given role on Dashboard", async () => {
       await dashboard.connect(vaultOwner).grantRole(await dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
 
-      const vaults = await vaultHubViewer.vaultsByRole(await dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
+      const vaults = await vaultViewer.vaultsByRole(await dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
       expect(vaults.length).to.equal(1);
       expect(vaults[0]).to.equal(vaultDashboard);
     });
@@ -421,12 +420,7 @@ describe("VaultDataViewer", () => {
     it("returns all vaults with a given role on Delegation", async () => {
       await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
 
-      const vaults = await vaultHubViewer.vaultsByRoleBound(
-        await delegation.WITHDRAW_ROLE(),
-        stranger.getAddress(),
-        0,
-        4,
-      );
+      const vaults = await vaultViewer.vaultsByRoleBound(await delegation.WITHDRAW_ROLE(), stranger.getAddress(), 0, 4);
       expect(vaults[0].length).to.equal(1);
     });
   });
