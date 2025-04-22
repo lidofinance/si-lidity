@@ -18,14 +18,13 @@ interface IVault is IStakingVault {
     function owner() external view returns (address);
 }
 
-contract VaultDataViewer {
+contract VaultViewer {
     enum VaultState {
         MintingAllowed, // Shares(inEth) <= 0.90
         Healthy, // 0.90  < Shares(inEth) <= 0.92
         Unhealthy, // 0.92 < Shares(inEth) < 1.00
         BadDebt // Shares(inEth) >= 1.00
     }
-
     bytes32 constant strictTrue = keccak256(hex"0000000000000000000000000000000000000000000000000000000000000001");
 
     uint256 internal constant TOTAL_BASIS_POINTS = 100_00;
