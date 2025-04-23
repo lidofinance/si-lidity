@@ -26,6 +26,12 @@ Just run
 
 `yarn compile`
 
+### Deploy
+
+`cp .env.example .env.local`
+
+`npx hardhat ignition deploy ignition/modules/VaultViewer.ts --network sepolia`
+
 ### Tests
 
 Just run
