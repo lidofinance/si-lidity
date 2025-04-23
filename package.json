@@ -5,6 +5,8 @@
     "compile": "hardhat compile",
     "cleanup": "hardhat clean",
     "test": "hardhat test mocha",
+    "deploy:sepolia": "hardhat ignition deploy ignition/modules/VaultViewer.ts --network sepolia",
+    "deploy:hoodi": "hardhat ignition deploy ignition/modules/VaultViewer.ts --network hoodi",
     "lint:sol": "solhint 'si-contracts/**/*.sol'",
     "lint:sol:fix": "yarn lint:sol --fix",
     "lint:ts": "eslint . --max-warnings=0",

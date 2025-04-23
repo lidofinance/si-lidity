@@ -136,7 +136,12 @@ const config: HardhatUserConfig = {
     },
     sepolia: {
       type: "http",
-      url: process.env.RPC_URLS_11155111,
+      url: process.env.RPC_URL_11155111,
+      accounts: [process.env.PRIVATE_KEY],
+    },
+    hoodi: {
+      type: "http",
+      url: process.env.RPC_URL_560048,
       accounts: [process.env.PRIVATE_KEY],
     },
   },

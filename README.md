@@ -28,9 +28,11 @@ Just run
 
 ### Deploy
 
+Set ENVs
 `cp .env.example .env.local`
 
-`npx hardhat ignition deploy ignition/modules/VaultViewer.ts --network sepolia`
+Deploy with
+`deploy:hoodi`
 
 ### Tests
 
