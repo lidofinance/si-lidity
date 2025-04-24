@@ -1,15 +1,18 @@
+import { config as dotenvConfig } from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
+dotenvConfig({ path: ".env.local" });
 
 import HardhatEthers from "@nomicfoundation/hardhat-ethers";
 import HardhatChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
+import HardhatIgnition from "@nomicfoundation/hardhat-ignition";
 import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
 import HardhatMochaTestRunner from "@nomicfoundation/hardhat-mocha";
 import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
 import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
 
-// for deploying smart contracts on Ethereum
-// import HardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
-import { abisExtractTask } from "./tasks";
+// The HardhatVerify haven't been ported to Hardhat 3 yet
+// import HardhatVerify from "@nomicfoundation/hardhat-verify";
+import { abisExtractTask, verifyDeployedContracts } from "./tasks";
 
 const config: HardhatUserConfig = {
   paths: {
@@ -34,10 +37,9 @@ const config: HardhatUserConfig = {
     HardhatNetworkHelpers,
     HardhatChaiMatchers,
     HardhatTypechain,
-    // for deploying smart contracts on Ethereum
-    // HardhatIgnitionEthers,
+    HardhatIgnition,
   ],
-  tasks: [abisExtractTask],
+  tasks: [abisExtractTask, verifyDeployedContracts],
   solidity: {
     compilers: [
       {
@@ -133,6 +135,16 @@ const config: HardhatUserConfig = {
         count: 30,
         accountsBalance: "100000000000000000000000",
       },
+    },
+    sepolia: {
+      type: "http",
+      url: process.env.RPC_URL_11155111,
+      accounts: [process.env.PRIVATE_KEY],
+    },
+    hoodi: {
+      type: "http",
+      url: process.env.RPC_URL_560048,
+      accounts: [process.env.PRIVATE_KEY],
     },
   },
   // for tests

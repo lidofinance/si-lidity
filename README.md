@@ -26,6 +26,32 @@ Just run
 
 `yarn compile`
 
+### Deploy
+
+Set ENVs
+`cp .env.example .env.local`
+
+Deploy with
+`yarn deploy:<network_name>`
+
+#### Hoodi example
+
+`yarn deploy:hoodi`
+
+### Verify
+
+Deploy with
+`yarn deploy:<network_name>`
+
+Verify with
+`yarn verify:deployed-contracts --chainId <chainId> --contractName <contractName>`
+
+#### Hoodi example
+
+`yarn deploy:hoodi`
+
+`yarn verify:deployed-contracts --chainId 560048 --contractName VaultViewer`
+
 ### Tests
 
 Just run

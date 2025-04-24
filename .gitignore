@@ -46,3 +46,4 @@ tsconfig.tsbuildinfo
 
 # Extracted ABI files
 /abi
+/ignition/deployments/
