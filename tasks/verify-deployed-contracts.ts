@@ -233,6 +233,6 @@ const checkVerificationStatus = async (guid: string): Promise<void> => {
       throw new Error(`[checkVerificationStatus] Failed: ${data.result}`);
     }
   } catch (err) {
-    throw new Error(`[checkVerificationStatus] Error: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`[checkVerificationStatus] Error: ${err}`);
   }
 };
