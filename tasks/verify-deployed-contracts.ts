@@ -30,7 +30,7 @@ export const verifyDeployedContracts = task(
   })
   .setAction(async ({ chainId, contractName }) => {
     try {
-      log(`Starting to verify the ${contractName} contract for chainId:`, chainId);
+      log(`🚀 Starting to verify the ${contractName} contract for chainId:`, chainId);
 
       const deployedFilePath = path.resolve(`./ignition/deployments/chain-${chainId}/deployed_addresses.json`);
       const journalFilePath = path.resolve(`./ignition/deployments/chain-${chainId}/journal.jsonl`);
@@ -52,7 +52,7 @@ export const verifyDeployedContracts = task(
         constructorArguments,
       );
 
-      await verifyOnEtherscan(
+      const verificationStatusGuid = await verifyOnEtherscan(
         chainId as number,
         artifactData.buildInfoId,
         contractAddress,
@@ -61,9 +61,10 @@ export const verifyDeployedContracts = task(
         encodedConstructorArgs,
       );
 
-      // TODO: check status with &action=checkverifystatus
+      log("⏱ Waiting 5 seconds before checking verification status...");
+      await new Promise((resolve) => setTimeout(resolve, 5000));
 
-      log("✅ Verification complete!");
+      await checkVerificationStatus(verificationStatusGuid);
     } catch (error) {
       log.error(`Error verifying the ${contractName} contract:`, error);
       throw error;
@@ -164,7 +165,7 @@ const verifyOnEtherscan = async (
   contractName: string,
   contractInputSourceName: string,
   encodedConstructorArgs: string,
-): Promise<void> => {
+): Promise<string> => {
   try {
     const buildInfoFilePath = path.resolve(`./ignition/deployments/chain-${chainId}/build-info/${buildInfoId}.json`);
 
@@ -195,8 +196,43 @@ const verifyOnEtherscan = async (
       throw Error(`[verifyOnEtherscan] Bad response: ${data}`);
     }
 
-    log("Etherscan response:", data);
+    log("⏳ Etherscan has queued the verification. Response:", data);
+
+    return data.result; // guid for check a verification status
   } catch (err) {
     throw new Error(`[verifyOnEtherscan] Error: ${err}`);
+  }
+};
+
+const checkVerificationStatus = async (guid: string): Promise<void> => {
+  try {
+    const params = new URLSearchParams({
+      apikey: process.env.ETHERSCAN_API_KEY,
+      module: "contract",
+      action: "checkverifystatus",
+      guid,
+    });
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+
+    const data = await response.json();
+
+    if (data.status === "1") {
+      log("✅ Verification complete:", data.result);
+    } else if (typeof data.result === "string" && data.result.includes("Already Verified")) {
+      log("✅ Already verified:", data.result);
+    } else if (typeof data.result === "string" && data.result.includes("Pending")) {
+      log("⏳ Verification still pending:", data.result);
+    } else {
+      throw new Error(`[checkVerificationStatus] Failed: ${data.result}`);
+    }
+  } catch (err) {
+    throw new Error(`[checkVerificationStatus] Error: ${err instanceof Error ? err.message : String(err)}`);
   }
 };
