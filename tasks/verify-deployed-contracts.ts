@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { AbiCoder } from "ethers";
+import { AbiCoder, Interface, type ParamType } from "ethers";
 import * as fs from "fs";
 import { task } from "hardhat/config";
 import { ArgumentType } from "hardhat/types/arguments";
@@ -8,44 +8,58 @@ import readline from "readline";
 
 import { log } from "lib/log";
 
+const API_URL = "https://api.etherscan.io/api";
+
 // The HardhatVerify haven't been ported to Hardhat 3 yet
 // This is a temporary solution until HardhatVerify is migrated to Hardhat 3.
 export const verifyDeployedContracts = task(
   "verify:deployed-contracts",
   "Verifies deployed contracts based on state file",
 )
-  // TODO: contractName as option
+  .addOption({
+    name: "contractName",
+    description: "Contract name (e.g., VaultViewer)",
+    type: ArgumentType.STRING,
+    defaultValue: "VaultViewer",
+  })
   .addOption({
     name: "chainId",
     description: "Chain ID (e.g., 560048)",
     type: ArgumentType.INT,
     defaultValue: 560048,
   })
-  .setAction(async ({ chainId }) => {
-    const contractName = "VaultViewer";
-
+  .setAction(async ({ chainId, contractName }) => {
     try {
       log(`Starting to verify the ${contractName} contract for chainId:`, chainId);
 
-      const deployedFile = path.resolve(`./ignition/deployments/chain-${chainId}/deployed_addresses.json`);
-      const journalFile = path.resolve(`./ignition/deployments/chain-${chainId}/journal.jsonl`);
-      const artifactFile = path.resolve(
+      const deployedFilePath = path.resolve(`./ignition/deployments/chain-${chainId}/deployed_addresses.json`);
+      const journalFilePath = path.resolve(`./ignition/deployments/chain-${chainId}/journal.jsonl`);
+      const artifactFilePath = path.resolve(
         `./ignition/deployments/chain-${chainId}/artifacts/${contractName}#${contractName}.json`,
       );
 
-      const contractAddress = await getDeployedAddress(contractName, deployedFile);
-      const constructorArguments = await getConstructorArgs(contractName, journalFile);
-      const buildInfoId = await getBuildInfoId(contractName, artifactFile);
-      console.log("contractAddress:", contractAddress);
-      console.log("constructorArguments:", constructorArguments);
-      console.log("buildInfoId:", buildInfoId);
-
-      log(
-        `🔍 Verifying the ${contractName} [buildInfoId: ${buildInfoId}] at ${contractAddress} with args:`,
+      const contractAddress = await getDeployedAddress(contractName as string, deployedFilePath);
+      const artifactData = await getArtifactData(contractName as string, artifactFilePath);
+      const constructorArguments = (await getConstructorArgs(contractName as string, journalFilePath)) as string[];
+      const encodedConstructorArgs = await encodeConstructorArgs(
+        contractName as string,
+        artifactFilePath,
         constructorArguments,
       );
 
-      await verifyOnEtherscan(chainId, buildInfoId, contractAddress, contractName, constructorArguments);
+      log(
+        `🔍 Verifying the ${artifactData.inputSourceName} [buildInfoId: ${artifactData.buildInfoId}] at ${contractAddress} with args:`,
+        constructorArguments,
+      );
+
+      await verifyOnEtherscan(
+        chainId as number,
+        artifactData.buildInfoId,
+        contractAddress,
+        contractName as string,
+        artifactData.inputSourceName,
+        encodedConstructorArgs,
+      );
 
       // TODO: check status with &action=checkverifystatus
 
@@ -86,18 +100,61 @@ const getConstructorArgs = async (contractName: string, journalFilePath: string)
   throw new Error(`[getConstructorArgs] Constructor args for ${contractName} not found in ${journalFilePath}`);
 };
 
-const getBuildInfoId = async (contractName: string, artifactFilePath: string): Promise<string> => {
+const getArtifactData = async (
+  contractName: string,
+  artifactFilePath: string,
+): Promise<{ buildInfoId: string; inputSourceName: string }> => {
   if (!fs.existsSync(artifactFilePath)) {
-    throw new Error(`[getBuildInfoId] Artifact not found for contract: ${contractName} in ${artifactFilePath}`);
+    throw new Error(`[getArtifactData] Artifact not found for contract: ${contractName} in ${artifactFilePath}`);
   }
 
-  const json = JSON.parse(fs.readFileSync(artifactFilePath, "utf-8"));
-  const buildInfoId = json.buildInfoId;
+  const jsoned = JSON.parse(fs.readFileSync(artifactFilePath, "utf-8"));
+
+  const buildInfoId = jsoned.buildInfoId;
   if (!buildInfoId) {
-    throw new Error(`[getBuildInfoId] The buildInfoId not found in artifact for contract: ${contractName}`);
+    throw new Error(`[getArtifactData] The buildInfoId not found in artifact for contract: ${contractName}`);
   }
 
-  return buildInfoId;
+  const inputSourceName = jsoned.inputSourceName;
+  if (!inputSourceName) {
+    throw new Error(`[getArtifactData] The inputSourceName not found in artifact for contract: ${contractName}`);
+  }
+
+  return { buildInfoId, inputSourceName };
+};
+
+const encodeConstructorArgs = async (
+  contractName: string,
+  artifactFilePath: string,
+  constructorArguments: unknown[],
+): Promise<string> => {
+  if (!fs.existsSync(artifactFilePath)) {
+    throw new Error(`[encodeConstructorArgs] Artifact not found for contract: ${contractName} in ${artifactFilePath}`);
+  }
+
+  const artifact = JSON.parse(fs.readFileSync(artifactFilePath, "utf-8"));
+
+  const abi = artifact.abi;
+  if (!abi) {
+    throw new Error(`[encodeConstructorArgs] ABI not found in artifact for ${contractName} in ${artifactFilePath}`);
+  }
+
+  const interfaceOfAbi = new Interface(abi);
+  const constructor = interfaceOfAbi.deploy;
+
+  if (!constructor || constructor.inputs.length === 0) {
+    if (constructorArguments.length > 0) {
+      throw new Error(
+        `[encodeConstructorArgs] Contract ${contractName} has no constructor args, but some were provided.`,
+      );
+    }
+    return ""; // no args - no encoding
+  }
+
+  const types = (constructor.inputs as ParamType[]).map((input) => input.type);
+
+  const abiEncoded = new AbiCoder().encode(types, constructorArguments);
+  return abiEncoded.slice(2); // remove "0x"
 };
 
 const verifyOnEtherscan = async (
@@ -105,21 +162,13 @@ const verifyOnEtherscan = async (
   buildInfoId: string,
   contractAddress: string,
   contractName: string,
-  constructorArguments: string[],
+  contractInputSourceName: string,
+  encodedConstructorArgs: string,
 ): Promise<void> => {
-  const API_URL = "https://api.etherscan.io/api";
-
   try {
     const buildInfoFilePath = path.resolve(`./ignition/deployments/chain-${chainId}/build-info/${buildInfoId}.json`);
 
     const jsoned = JSON.parse(fs.readFileSync(buildInfoFilePath, "utf-8"));
-
-    // TODO:
-    const abi = new AbiCoder();
-    const types = ["address"];
-    const abiEncoded = abi.encode(types, constructorArguments);
-    const encodedWithout0x = abiEncoded.slice(2); // remove "0x"
-    //
 
     const formData = new FormData();
     formData.append("apikey", process.env.ETHERSCAN_API_KEY);
@@ -128,23 +177,24 @@ const verifyOnEtherscan = async (
     formData.append("chainId", chainId.toString());
     formData.append("codeformat", "solidity-standard-json-input");
     formData.append("contractaddress", contractAddress);
-    // TODO
-    // "sourceName": "si-contracts/0.8.25/VaultViewer.sol",
-    formData.append("contractname", `si-contracts/0.8.25/${contractName}.sol:${contractName}`);
+    // Make as "si-contracts/0.8.25/VaultViewer.sol:VaultViewer"
+    formData.append("contractname", `${contractInputSourceName}:${contractName}`);
     // https://etherscan.io/solcversions
     formData.append("compilerversion", `v${jsoned.solcLongVersion}`);
-    formData.append("constructorArguements", encodedWithout0x);
+    formData.append("constructorArguements", encodedConstructorArgs);
     formData.append("sourceCode", JSON.stringify(jsoned.input));
-
-    console.log("formData:", formData);
 
     const response = await fetch(API_URL, {
       method: "POST",
       body: formData,
-      headers: formData.getHeaders?.(),
     });
-    //
+
     const data = await response.json();
+
+    if (!data || data.status === "0") {
+      throw Error(`[verifyOnEtherscan] Bad response: ${data}`);
+    }
+
     log("Etherscan response:", data);
   } catch (err) {
     throw new Error(`[verifyOnEtherscan] Error: ${err}`);
