@@ -10,7 +10,9 @@ import HardhatMochaTestRunner from "@nomicfoundation/hardhat-mocha";
 import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
 import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
 
-import { abisExtractTask } from "./tasks";
+// The HardhatVerify haven't been ported to Hardhat 3 yet
+// import HardhatVerify from "@nomicfoundation/hardhat-verify";
+import { abisExtractTask, verifyDeployedContracts } from "./tasks";
 
 const config: HardhatUserConfig = {
   paths: {
@@ -37,7 +39,7 @@ const config: HardhatUserConfig = {
     HardhatTypechain,
     HardhatIgnition,
   ],
-  tasks: [abisExtractTask],
+  tasks: [abisExtractTask, verifyDeployedContracts],
   solidity: {
     compilers: [
       {
