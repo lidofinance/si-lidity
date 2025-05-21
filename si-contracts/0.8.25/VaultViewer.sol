@@ -4,14 +4,11 @@
 // See contracts/COMPILERS.md
 pragma solidity 0.8.25;
 import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
-
 import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
 import {ILido} from "contracts/0.8.25/interfaces/ILido.sol";
 
-interface IDashboardACL {
-    function getRoleMember(bytes32 role, uint256 index) external view returns (address);
-
-    function hasRole(bytes32 role, address account) external view returns (bool);
+interface IDashboard {
+    function nodeOperatorFeeBP() external view returns (uint256);
 }
 
 interface IVault is IStakingVault {
@@ -25,6 +22,17 @@ contract VaultViewer {
         Unhealthy, // 0.92 < Shares(inEth) < 1.00
         BadDebt // Shares(inEth) >= 1.00
     }
+
+    struct VaultData {
+        address vault;
+        uint256 totalValue;
+        uint256 forcedRebalanceThreshold;
+        uint256 liabilityShares;
+        uint256 stEthLiability;
+        uint256 lidoTreasuryFee;
+        uint256 nodeOperatorFee;
+    }
+
     bytes32 constant strictTrue = keccak256(hex"0000000000000000000000000000000000000000000000000000000000000001");
 
     uint256 internal constant TOTAL_BASIS_POINTS = 100_00;
@@ -178,6 +186,35 @@ contract VaultViewer {
         uint256 leftover = valid > _to ? valid - _to : 0;
 
         return (_filterNonZeroVaults(vaults, _from, count), leftover);
+    }
+
+    /// @notice Returns aggregated data for a batch of connected vaults
+    /// @param _from Index to start from inclusive
+    /// @param _to Index to end at non-inclusive
+    /// @return vaultsData Array of aggregated vault data
+    function getVaultsDataBatch(uint256 _from, uint256 _to) external view returns (VaultData[] memory vaultsData) {
+        (IVault[] memory vaults, uint256 valid) = _vaultsConnected();
+
+        uint256 count = valid > _to ? _to : valid;
+        vaultsData = new VaultData[](count);
+
+        ILido lido = vaultHub.LIDO();
+
+        for (uint256 i = 0; i < count; i++) {
+            IVault vault = vaults[_from + i];
+
+            VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(address(vault));
+
+            vaultsData[i] = VaultData({
+                vault: address(vault),
+                totalValue: vault.totalValue(),
+                forcedRebalanceThreshold: socket.forcedRebalanceThresholdBP,
+                liabilityShares: socket.liabilityShares,
+                stEthLiability: lido.getPooledEthByShares(socket.liabilityShares),
+                lidoTreasuryFee: socket.treasuryFeeBP,
+                nodeOperatorFee: IDashboard(vault.owner()).nodeOperatorFeeBP()
+            });
+        }
     }
 
     // ==================== Internal Functions ====================
