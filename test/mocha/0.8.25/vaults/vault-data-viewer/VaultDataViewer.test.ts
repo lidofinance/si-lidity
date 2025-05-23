@@ -7,22 +7,20 @@ import type { HardhatEthers, HardhatEthersSigner } from "@nomicfoundation/hardha
 import {
   CustomOwner__MockForHubViewer,
   Dashboard,
-  Delegation,
   DepositContract__MockForStakingVault,
   LidoLocator,
+  PredepositGuarantee,
   StakingVault,
+  StakingVault__factory,
   StETHPermit__HarnessForDashboard,
-  UpgradeableBeacon,
+  // UpgradeableBeacon,
   VaultHub__MockForHubViewer,
   VaultViewer,
   WETH9__MockForVault,
   WstETH__HarnessForVault,
-  // troubles with imports after generation
-  // StakingVault__factory,
 } from "typechain-types";
-import { StakingVault__factory } from "typechain-types/factories/submodules/lidofinance-core/contracts/0.8.25/vaults/index.ts";
 
-import { days, ether, findEvents, impersonate } from "lib";
+import { ether, findEvents, impersonate } from "lib";
 
 import { deployLidoLocator } from "test-deploy";
 import { Snapshot } from "test-utils/suite";
@@ -32,65 +30,10 @@ let ethers: HardhatEthers;
 let provider: EthereumProvider;
 let snapshot: Snapshot;
 
-const deployVaultDelegation = async (
-  beacon: UpgradeableBeacon,
-  delegationImpl: Delegation,
-  vaultOwner: HardhatEthersSigner,
-  manager: HardhatEthersSigner,
-  operator: HardhatEthersSigner,
-) => {
-  const factoryDelegation = await ethers.deployContract("VaultFactory", [
-    beacon.getAddress(),
-    delegationImpl.getAddress(),
-  ]);
-
-  expect(await factoryDelegation.BEACON()).to.equal(beacon);
-  expect(await factoryDelegation.DELEGATION_IMPL()).to.equal(delegationImpl);
-
-  const vaultDelegationCreationTx = await factoryDelegation.connect(vaultOwner).createVaultWithDelegation(
-    {
-      defaultAdmin: vaultOwner,
-      nodeOperatorManager: operator,
-      assetRecoverer: vaultOwner,
-      confirmExpiry: days(2n),
-      curatorFeeBP: 0n,
-      nodeOperatorFeeBP: 0n,
-      funders: [vaultOwner],
-      withdrawers: [vaultOwner],
-      minters: [vaultOwner],
-      burners: [vaultOwner],
-      rebalancers: [vaultOwner],
-      depositPausers: [vaultOwner],
-      depositResumers: [vaultOwner],
-      validatorExitRequesters: [vaultOwner],
-      validatorWithdrawalTriggerers: [vaultOwner],
-      disconnecters: [vaultOwner],
-      curatorFeeSetters: [manager],
-      curatorFeeClaimers: [manager],
-      nodeOperatorFeeClaimers: [operator],
-    },
-    "0x",
-  );
-
-  const vaultDelegationCreationReceipt = await vaultDelegationCreationTx.wait();
-  if (!vaultDelegationCreationReceipt) throw new Error("Vault creation receipt not found");
-
-  const vaultDelegationCreatedEvents = findEvents(vaultDelegationCreationReceipt, "VaultCreated");
-  expect(vaultDelegationCreatedEvents.length).to.equal(1);
-  const stakingVaultAddress = vaultDelegationCreatedEvents[0].args.vault;
-  const vaultDelegation = await ethers.getContractAt("StakingVault", stakingVaultAddress, vaultOwner);
-
-  const delegationCreatedEvents = findEvents(vaultDelegationCreationReceipt, "DelegationCreated");
-  expect(delegationCreatedEvents.length).to.equal(1);
-  const delegationAddress = delegationCreatedEvents[0].args.delegation;
-  const delegation = await ethers.getContractAt("Delegation", delegationAddress, vaultOwner);
-
-  return { vaultDelegation, delegation };
-};
-
 const deployVaultDashboard = async (
   vaultImpl: StakingVault,
   dashboardImpl: Dashboard,
+  pdgStub: PredepositGuarantee,
   factoryOwner: HardhatEthersSigner,
   vaultOwner: HardhatEthersSigner,
   operator: HardhatEthersSigner,
@@ -100,10 +43,12 @@ const deployVaultDashboard = async (
     factoryOwner,
     vaultImpl,
     dashboardImpl,
+    pdgStub,
   ]);
   expect(await factoryDashboard.owner()).to.equal(factoryOwner);
   expect(await factoryDashboard.implementation()).to.equal(vaultImpl);
-  expect(await factoryDashboard.dashboardImpl()).to.equal(dashboardImpl);
+  expect(await factoryDashboard.DASHBOARD_IMPL()).to.equal(dashboardImpl);
+  expect(await factoryDashboard.PREDEPOSIT_GUARANTEE()).to.equal(pdgStub);
 
   // Dashboard Vault
   const vaultDashboardCreationTx = await factoryDashboard.connect(vaultOwner).createVault(operator);
@@ -123,14 +68,18 @@ const deployVaultDashboard = async (
   return { vaultDashboard, dashboard };
 };
 
-const deployCustomOwner = async (vaultImpl: StakingVault, operator: HardhatEthersSigner) => {
+const deployCustomOwner = async (
+  vaultImpl: StakingVault,
+  operator: HardhatEthersSigner,
+  pdgStub: PredepositGuarantee,
+) => {
   const customOwner = await ethers.deployContract("CustomOwner__MockForHubViewer");
   // deploying factory/beacon
   const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
     await vaultImpl.getAddress(),
   ]);
   const vaultCreation = await factoryStakingVault
-    .createVault(await customOwner.getAddress(), await operator.getAddress())
+    .createVault(await customOwner.getAddress(), await operator.getAddress(), await pdgStub.getAddress())
     .then((tx) => tx.wait());
   if (!vaultCreation) throw new Error("Vault creation failed");
   const events = findEvents(vaultCreation, "VaultCreated");
@@ -145,6 +94,7 @@ const deployStakingVault = async (
   vaultImpl: StakingVault,
   vaultOwner: HardhatEthersSigner,
   operator: HardhatEthersSigner,
+  pdgStub: PredepositGuarantee,
 ) => {
   // deploying factory/beacon
   const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
@@ -153,7 +103,7 @@ const deployStakingVault = async (
 
   // deploying beacon proxy
   const vaultCreation = await factoryStakingVault
-    .createVault(await vaultOwner.getAddress(), await operator.getAddress())
+    .createVault(await vaultOwner.getAddress(), await operator.getAddress(), await pdgStub.getAddress())
     .then((tx) => tx.wait());
   if (!vaultCreation) throw new Error("Vault creation failed");
   const events = findEvents(vaultCreation, "VaultCreated");
@@ -168,13 +118,11 @@ const deployStakingVault = async (
 
 describe("VaultViewer", () => {
   let vaultOwner: HardhatEthersSigner;
-  let manager: HardhatEthersSigner;
   let operator: HardhatEthersSigner;
   let stranger: HardhatEthersSigner;
-  let beaconOwner: HardhatEthersSigner;
   let factoryOwner: HardhatEthersSigner;
   let hubSigner: HardhatEthersSigner;
-  let depositor: HardhatEthersSigner;
+  let deployerPDG: HardhatEthersSigner;
 
   let steth: StETHPermit__HarnessForDashboard;
   let weth: WETH9__MockForVault;
@@ -182,21 +130,19 @@ describe("VaultViewer", () => {
 
   let vaultImpl: StakingVault;
   let dashboardImpl: Dashboard;
-  let delegationImpl: Delegation;
+  let pdgStub: PredepositGuarantee;
 
-  let beacon: UpgradeableBeacon;
+  // let beacon: UpgradeableBeacon;
   let locator: LidoLocator;
 
   let hub: VaultHub__MockForHubViewer;
   let depositContract: DepositContract__MockForStakingVault;
   let stakingVault: StakingVault;
   let vaultDashboard: StakingVault;
-  let vaultDelegation: StakingVault;
   let vaultCustom: StakingVault;
   let vaultViewer: VaultViewer;
 
   let dashboard: Dashboard;
-  let delegation: Delegation;
   let customOwnerContract: CustomOwner__MockForHubViewer;
 
   let originalState: string;
@@ -208,44 +154,58 @@ describe("VaultViewer", () => {
 
     snapshot = new Snapshot(provider);
 
-    [, vaultOwner, manager, operator, stranger, factoryOwner, beaconOwner, depositor] = await ethers.getSigners();
+    [, vaultOwner, operator, stranger, factoryOwner, deployerPDG] = await ethers.getSigners();
 
     steth = await ethers.deployContract("StETHPermit__HarnessForDashboard");
     weth = await ethers.deployContract("WETH9__MockForVault");
     wsteth = await ethers.deployContract("WstETH__HarnessForVault", [steth]);
-    hub = await ethers.deployContract("VaultHub__MockForHubViewer", [steth]);
+
+    // PDG
+    const GENESIS_FORK_VERSION = "0x00000000";
+    const gIFirstValidator = "0x" + "11".padStart(64, "0");
+    const gIFirstValidatorAfterChange = "0x" + "22".padStart(64, "0");
+    const changeSlot = BigInt(0);
+    pdgStub = await ethers.deployContract(
+      "PredepositGuarantee",
+      [GENESIS_FORK_VERSION, gIFirstValidator, gIFirstValidatorAfterChange, changeSlot],
+      [deployerPDG],
+    );
 
     locator = await deployLidoLocator(ethers, {
       lido: steth,
       weth: weth,
       wstETH: wsteth,
+      predepositGuarantee: pdgStub,
     });
 
+    hub = await ethers.deployContract("VaultHub__MockForHubViewer", [steth, locator]);
+
     depositContract = await ethers.deployContract("DepositContract__MockForStakingVault");
-    vaultImpl = await ethers.deployContract("StakingVault", [hub, depositor, depositContract]);
+    vaultImpl = await ethers.deployContract("StakingVault", [hub, depositContract]);
     expect(await vaultImpl.vaultHub()).to.equal(hub);
 
     // beacon
-    beacon = await ethers.deployContract("UpgradeableBeacon", [vaultImpl, beaconOwner]);
+    // beacon = await ethers.deployContract("UpgradeableBeacon", [vaultImpl, beaconOwner]);
 
-    dashboardImpl = await ethers.deployContract("Dashboard", [weth, locator]);
-    delegationImpl = await ethers.deployContract("Delegation", [weth, locator]);
-
-    // Delegation controlled vault
-    const delegationResult = await deployVaultDelegation(beacon, delegationImpl, vaultOwner, manager, operator);
-    vaultDelegation = delegationResult.vaultDelegation;
-    delegation = delegationResult.delegation;
+    dashboardImpl = await ethers.deployContract("Dashboard", [steth, wsteth, hub]);
 
     // Dashboard controlled vault
-    const dashboardResult = await deployVaultDashboard(vaultImpl, dashboardImpl, factoryOwner, vaultOwner, operator);
+    const dashboardResult = await deployVaultDashboard(
+      vaultImpl,
+      dashboardImpl,
+      pdgStub,
+      factoryOwner,
+      vaultOwner,
+      operator,
+    );
     vaultDashboard = dashboardResult.vaultDashboard;
     dashboard = dashboardResult.dashboard;
 
     // EOA controlled vault
-    stakingVault = await deployStakingVault(vaultImpl, vaultOwner, operator);
+    stakingVault = await deployStakingVault(vaultImpl, vaultOwner, operator, pdgStub);
 
     // Custom owner controlled vault
-    const customdResult = await deployCustomOwner(vaultImpl, operator);
+    const customdResult = await deployCustomOwner(vaultImpl, operator, pdgStub);
     vaultCustom = customdResult.stakingVault;
     customOwnerContract = customdResult.customOwner;
 
@@ -273,7 +233,7 @@ describe("VaultViewer", () => {
 
   context("vaultsConnected", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
+      // await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
       await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
@@ -282,16 +242,39 @@ describe("VaultViewer", () => {
     it("returns all connected vaults", async () => {
       const vaults = await vaultViewer.vaultsConnected();
       expect(vaults.length).to.equal(4);
-      expect(vaults[0]).to.equal(vaultDelegation);
+      // expect(vaults[0]).to.equal(vaultDelegation);
       expect(vaults[1]).to.equal(vaultDashboard);
       expect(vaults[2]).to.equal(stakingVault);
       expect(vaults[3]).to.equal(vaultCustom);
     });
   });
 
+  // context("getVaultsDataBatch", () => {
+  //   beforeEach(async () => {
+  //     await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
+  //     await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
+  //     await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
+  //     await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
+  //   });
+  //
+  //   it("returns data for a batch of connected vaults", async () => {
+  //     const result = await vaultViewer.getVaultsDataBatch(0, 2);
+  //
+  //     expect(result.length).to.equal(2);
+  //     expect(result[0].vault).to.equal(await vaultDelegation.getAddress());
+  //     expect(result[1].vault).to.equal(await vaultDashboard.getAddress());
+  //
+  //     // Sanity check: values are returned and types match
+  //     expect(result[0].totalValue).to.be.a("bigint");
+  //     expect(result[0].stEthLiability).to.be.a("bigint");
+  //     expect(result[0].nodeOperatorFee).to.be.a("bigint");
+  //     expect(result[0].lidoTreasuryFee).to.be.a("bigint");
+  //   });
+  // });
+
   context("vaultsConnectedBound", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
+      // await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
       await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
@@ -317,7 +300,7 @@ describe("VaultViewer", () => {
 
   context("vaultsByOwner", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
+      // await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
       await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
@@ -326,7 +309,7 @@ describe("VaultViewer", () => {
     it("returns all vaults owned by a given address", async () => {
       const vaults = await vaultViewer.vaultsByOwner(vaultOwner.getAddress());
       expect(vaults.length).to.equal(3);
-      expect(vaults[0]).to.equal(vaultDelegation);
+      // expect(vaults[0]).to.equal(vaultDelegation);
       expect(vaults[1]).to.equal(vaultDashboard);
       expect(vaults[2]).to.equal(stakingVault);
     });
@@ -340,7 +323,7 @@ describe("VaultViewer", () => {
 
   context("vaultsByOwnerBound", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
+      // await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
       await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
@@ -371,34 +354,34 @@ describe("VaultViewer", () => {
 
   context("vaultsByRole", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
+      // await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
       await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
     });
 
-    it("returns all vaults with a given role on Delegation", async () => {
-      await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
-
-      const vaults = await vaultViewer.vaultsByRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
-      const curatorVaults = await vaultViewer.vaultsByRole(
-        await delegation.CURATOR_FEE_SET_ROLE(),
-        manager.getAddress(),
-      );
-      const operatorVaults = await vaultViewer.vaultsByRole(
-        await delegation.NODE_OPERATOR_MANAGER_ROLE(),
-        operator.getAddress(),
-      );
-
-      expect(vaults.length).to.equal(1);
-      expect(vaults[0]).to.equal(vaultDelegation);
-
-      expect(curatorVaults.length).to.equal(1);
-      expect(curatorVaults[0]).to.equal(vaultDelegation);
-
-      expect(operatorVaults.length).to.equal(1);
-      expect(operatorVaults[0]).to.equal(vaultDelegation);
-    });
+    // it("returns all vaults with a given role on Delegation", async () => {
+    //   await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
+    //
+    //   const vaults = await vaultViewer.vaultsByRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
+    //   const curatorVaults = await vaultViewer.vaultsByRole(
+    //     await delegation.CURATOR_FEE_SET_ROLE(),
+    //     manager.getAddress(),
+    //   );
+    //   const operatorVaults = await vaultViewer.vaultsByRole(
+    //     await delegation.NODE_OPERATOR_MANAGER_ROLE(),
+    //     operator.getAddress(),
+    //   );
+    //
+    //   expect(vaults.length).to.equal(1);
+    //   expect(vaults[0]).to.equal(vaultDelegation);
+    //
+    //   expect(curatorVaults.length).to.equal(1);
+    //   expect(curatorVaults[0]).to.equal(vaultDelegation);
+    //
+    //   expect(operatorVaults.length).to.equal(1);
+    //   expect(operatorVaults[0]).to.equal(vaultDelegation);
+    // });
 
     it("returns all vaults with a given role on Dashboard", async () => {
       await dashboard.connect(vaultOwner).grantRole(await dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
@@ -411,17 +394,17 @@ describe("VaultViewer", () => {
 
   context("vaultsByRoleBound", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
+      // await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
       await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
     });
 
-    it("returns all vaults with a given role on Delegation", async () => {
-      await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
-
-      const vaults = await vaultViewer.vaultsByRoleBound(await delegation.WITHDRAW_ROLE(), stranger.getAddress(), 0, 4);
-      expect(vaults[0].length).to.equal(1);
-    });
+    // it("returns all vaults with a given role on Delegation", async () => {
+    //   await delegation.connect(vaultOwner).grantRole(await delegation.WITHDRAW_ROLE(), stranger.getAddress());
+    //
+    //   const vaults = await vaultViewer.vaultsByRoleBound(await delegation.WITHDRAW_ROLE(), stranger.getAddress(), 0, 4);
+    //   expect(vaults[0].length).to.equal(1);
+    // });
   });
 });

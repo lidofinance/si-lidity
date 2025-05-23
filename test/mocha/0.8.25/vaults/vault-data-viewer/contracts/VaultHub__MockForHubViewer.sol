@@ -13,14 +13,16 @@ contract IStETH {
 }
 
 contract VaultHub__MockForHubViewer {
+    address public immutable LIDO_LOCATOR;
     uint256 internal constant BPS_BASE = 100_00;
     IStETH public immutable steth;
     // keccak256(abi.encode(uint256(keccak256("VaultHub")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant VAULT_HUB_STORAGE_LOCATION =
         0xb158a1a9015c52036ff69e7937a7bb424e82a8c4cbec5c5309994af06d825300;
 
-    constructor(IStETH _steth) {
+    constructor(IStETH _steth, address _lidoLocator) {
         steth = _steth;
+        LIDO_LOCATOR = _lidoLocator;
     }
 
     event Mock__VaultDisconnected(address vault);
