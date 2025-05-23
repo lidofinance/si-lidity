@@ -365,5 +365,16 @@ describe("VaultViewer", () => {
       await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
       await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
     });
+
+    it("returns all vaults with a given role on Dashboard", async () => {
+      await dashboard.connect(vaultOwner).grantRole(await dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
+      const vaults = await vaultViewer.vaultsByRoleBound(
+        await dashboard.DEFAULT_ADMIN_ROLE(),
+        stranger.getAddress(),
+        0,
+        3,
+      );
+      expect(vaults[0].length).to.equal(1);
+    });
   });
 });
