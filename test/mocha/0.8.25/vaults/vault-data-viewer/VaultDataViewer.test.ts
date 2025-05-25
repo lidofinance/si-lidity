@@ -233,6 +233,15 @@ describe("VaultViewer", () => {
       expect(vaultsDataBatch[0].nodeOperatorFee).to.be.a("bigint");
       expect(vaultsDataBatch[0].lidoTreasuryFee).to.be.a("bigint");
     });
+
+    it(`checks gas estimation for getVaultsDataBatch`, async () => {
+      const gasEstimate = await ethers.provider.estimateGas({
+        to: await vaultViewer.getAddress(),
+        data: vaultViewer.interface.encodeFunctionData("getVaultsDataBatch", [0, 3]),
+      });
+      // console.log('gasEstimate:', gasEstimate);
+      expect(gasEstimate).to.lte(2_000_000n);
+    });
   });
 
   context("vaultsConnectedBound", () => {
@@ -245,6 +254,15 @@ describe("VaultViewer", () => {
     it("returns all connected vaults", async () => {
       const vaults = await vaultViewer.vaultsConnectedBound(0, 3);
       expect(vaults[0].length).to.equal(3);
+    });
+
+    it(`checks gas estimation for vaultsConnected`, async () => {
+      const gasEstimate = await ethers.provider.estimateGas({
+        to: await vaultViewer.getAddress(),
+        data: vaultViewer.interface.encodeFunctionData("vaultsConnected"),
+      });
+      // console.log('gasEstimate:', gasEstimate);
+      expect(gasEstimate).to.lte(2_000_000n);
     });
 
     it("returns all connected vaults in a given range", async () => {
@@ -274,12 +292,6 @@ describe("VaultViewer", () => {
       expect(vaults[1]).to.equal(vaultDashboard2);
       expect(vaults[2]).to.equal(vaultDashboard3);
     });
-
-    // it("returns correct owner for custom vault", async () => {
-    //   const vaults = await vaultViewer.vaultsByOwner(customOwnerContract.getAddress());
-    //   expect(vaults.length).to.equal(1);
-    //   expect(vaults[0]).to.equal(vaultDashboard1);
-    // });
   });
 
   context("vaultsByOwnerBound", () => {
