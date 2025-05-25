@@ -94,6 +94,9 @@ describe("VaultViewer", () => {
   // let dashboard2: Dashboard;
   // let dashboard3: Dashboard;
 
+  const vaultDashboardArray: StakingVault[] = [];
+  const vaultDashboardArrayCount = 50; // 1_992_392n
+
   let originalState: string;
 
   before(async () => {
@@ -170,6 +173,13 @@ describe("VaultViewer", () => {
     );
     vaultDashboard3 = dashboard3Result.vaultDashboard;
     // dashboard3 = dashboard3Result.dashboard;
+
+    // For "highload" testing
+    for (let i = 0; i < vaultDashboardArrayCount; i++) {
+      const result = await deployVaultDashboard(vaultImpl, dashboardImpl, pdgStub, factoryOwner, vaultOwner, operator);
+
+      vaultDashboardArray.push(result.vaultDashboard);
+    }
 
     vaultViewer = await ethers.deployContract("VaultViewer", [hub]);
     expect(await vaultViewer.vaultHub()).to.equal(hub);
@@ -355,6 +365,26 @@ describe("VaultViewer", () => {
         3,
       );
       expect(vaults[0].length).to.equal(1);
+    });
+  });
+
+  context("getVaultsDataBatch 'highload'", () => {
+    beforeEach(async () => {
+      await steth.mock__setTotalPooledEther(100n);
+      await steth.mock__setTotalShares(100n);
+
+      for (const vault of vaultDashboardArray) {
+        await hub.connect(hubSigner).mock_connectVault(vault.getAddress());
+      }
+    });
+
+    it(`checks gas estimation for getVaultsDataBatch`, async () => {
+      const gasEstimate = await ethers.provider.estimateGas({
+        to: await vaultViewer.getAddress(),
+        data: vaultViewer.interface.encodeFunctionData("getVaultsDataBatch", [0, vaultDashboardArrayCount]),
+      });
+      // console.log('gasEstimate:', gasEstimate);
+      expect(gasEstimate).to.lte(2_000_000n);
     });
   });
 });
