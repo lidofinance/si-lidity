@@ -176,17 +176,15 @@ describe("VaultViewer", () => {
       predepositGuarantee: pdgStub,
     });
 
-    hub = await ethers.deployContract("VaultHub__MockForHubViewer", [steth, locator]);
+    hub = await ethers.deployContract("VaultHub__MockForHubViewer", [locator, steth]);
 
     depositContract = await ethers.deployContract("DepositContract__MockForStakingVault");
     vaultImpl = await ethers.deployContract("StakingVault", [hub, depositContract]);
     expect(await vaultImpl.vaultHub()).to.equal(hub);
 
-    // beacon
-    // beacon = await ethers.deployContract("UpgradeableBeacon", [vaultImpl, beaconOwner]);
-
     dashboardImpl = await ethers.deployContract("Dashboard", [steth, wsteth, hub]);
 
+    // TODO: make all vaults are owned by the dashboard
     // Dashboard controlled vault
     const dashboardResult = await deployVaultDashboard(
       vaultImpl,
@@ -199,9 +197,11 @@ describe("VaultViewer", () => {
     vaultDashboard = dashboardResult.vaultDashboard;
     dashboard = dashboardResult.dashboard;
 
+    // TODO: remove
     // EOA controlled vault
     stakingVault = await deployStakingVault(vaultImpl, vaultOwner, operator, pdgStub);
 
+    // TODO: remove
     // Custom owner controlled vault
     const customdResult = await deployCustomOwner(vaultImpl, operator, pdgStub);
     vaultCustom = customdResult.stakingVault;
@@ -245,28 +245,31 @@ describe("VaultViewer", () => {
     });
   });
 
-  // context("getVaultsDataBatch", () => {
-  //   beforeEach(async () => {
-  //     await hub.connect(hubSigner).mock_connectVault(vaultDelegation.getAddress());
-  //     await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
-  //     await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
-  //     await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
-  //   });
-  //
-  //   it("returns data for a batch of connected vaults", async () => {
-  //     const result = await vaultViewer.getVaultsDataBatch(0, 2);
-  //
-  //     expect(result.length).to.equal(2);
-  //     expect(result[0].vault).to.equal(await vaultDelegation.getAddress());
-  //     expect(result[1].vault).to.equal(await vaultDashboard.getAddress());
-  //
-  //     // Sanity check: values are returned and types match
-  //     expect(result[0].totalValue).to.be.a("bigint");
-  //     expect(result[0].stEthLiability).to.be.a("bigint");
-  //     expect(result[0].nodeOperatorFee).to.be.a("bigint");
-  //     expect(result[0].lidoTreasuryFee).to.be.a("bigint");
-  //   });
-  // });
+  context("getVaultsDataBatch", () => {
+    beforeEach(async () => {
+      await steth.mock__setTotalPooledEther(100n);
+      await steth.mock__setTotalShares(100n);
+
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
+    });
+
+    it("returns data for a batch of connected vaults", async () => {
+      const vaultsDataBatch = await vaultViewer.getVaultsDataBatch(0, 1);
+
+      expect(vaultsDataBatch.length).to.equal(1);
+      expect(vaultsDataBatch[0].vault).to.equal(await vaultDashboard.getAddress());
+
+      // Sanity check: values are returned and types match
+      expect(vaultsDataBatch[0].totalValue).to.be.a("bigint");
+      expect(vaultsDataBatch[0].forcedRebalanceThreshold).to.be.a("bigint");
+      expect(vaultsDataBatch[0].liabilityShares).to.be.a("bigint");
+      expect(vaultsDataBatch[0].stEthLiability).to.be.a("bigint");
+      expect(vaultsDataBatch[0].nodeOperatorFee).to.be.a("bigint");
+      expect(vaultsDataBatch[0].lidoTreasuryFee).to.be.a("bigint");
+    });
+  });
 
   context("vaultsConnectedBound", () => {
     beforeEach(async () => {
