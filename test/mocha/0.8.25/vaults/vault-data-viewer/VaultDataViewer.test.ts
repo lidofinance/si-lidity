@@ -5,13 +5,11 @@ import type { EthereumProvider } from "hardhat/types/providers";
 import type { HardhatEthers, HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
 
 import {
-  CustomOwner__MockForHubViewer,
   Dashboard,
   DepositContract__MockForStakingVault,
   LidoLocator,
   PredepositGuarantee,
   StakingVault,
-  StakingVault__factory,
   StETHPermit__HarnessForDashboard,
   VaultHub__MockForHubViewer,
   VaultViewer,
@@ -67,54 +65,6 @@ const deployVaultDashboard = async (
   return { vaultDashboard, dashboard };
 };
 
-const deployCustomOwner = async (
-  vaultImpl: StakingVault,
-  operator: HardhatEthersSigner,
-  pdgStub: PredepositGuarantee,
-) => {
-  const customOwner = await ethers.deployContract("CustomOwner__MockForHubViewer");
-  // deploying factory/beacon
-  const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
-    await vaultImpl.getAddress(),
-  ]);
-  const vaultCreation = await factoryStakingVault
-    .createVault(await customOwner.getAddress(), await operator.getAddress(), await pdgStub.getAddress())
-    .then((tx) => tx.wait());
-  if (!vaultCreation) throw new Error("Vault creation failed");
-  const events = findEvents(vaultCreation, "VaultCreated");
-  if (events.length != 1) throw new Error("There should be exactly one VaultCreated event");
-  const vaultCreatedEvent = events[0];
-
-  const stakingVault = StakingVault__factory.connect(vaultCreatedEvent.args.vault);
-  return { stakingVault, customOwner };
-};
-
-const deployStakingVault = async (
-  vaultImpl: StakingVault,
-  vaultOwner: HardhatEthersSigner,
-  operator: HardhatEthersSigner,
-  pdgStub: PredepositGuarantee,
-) => {
-  // deploying factory/beacon
-  const factoryStakingVault = await ethers.deployContract("VaultFactory__MockForStakingVault", [
-    await vaultImpl.getAddress(),
-  ]);
-
-  // deploying beacon proxy
-  const vaultCreation = await factoryStakingVault
-    .createVault(await vaultOwner.getAddress(), await operator.getAddress(), await pdgStub.getAddress())
-    .then((tx) => tx.wait());
-  if (!vaultCreation) throw new Error("Vault creation failed");
-  const events = findEvents(vaultCreation, "VaultCreated");
-  if (events.length != 1) throw new Error("There should be exactly one VaultCreated event");
-  const vaultCreatedEvent = events[0];
-
-  const stakingVault = StakingVault__factory.connect(vaultCreatedEvent.args.vault, vaultOwner);
-  expect(await stakingVault.owner()).to.equal(await vaultOwner.getAddress());
-
-  return stakingVault;
-};
-
 describe("VaultViewer", () => {
   let vaultOwner: HardhatEthersSigner;
   let operator: HardhatEthersSigner;
@@ -135,13 +85,14 @@ describe("VaultViewer", () => {
 
   let hub: VaultHub__MockForHubViewer;
   let depositContract: DepositContract__MockForStakingVault;
-  let stakingVault: StakingVault;
-  let vaultDashboard: StakingVault;
-  let vaultCustom: StakingVault;
+  let vaultDashboard1: StakingVault;
+  let vaultDashboard2: StakingVault;
+  let vaultDashboard3: StakingVault;
   let vaultViewer: VaultViewer;
 
-  let dashboard: Dashboard;
-  let customOwnerContract: CustomOwner__MockForHubViewer;
+  let dashboard1: Dashboard;
+  // let dashboard2: Dashboard;
+  // let dashboard3: Dashboard;
 
   let originalState: string;
 
@@ -184,9 +135,8 @@ describe("VaultViewer", () => {
 
     dashboardImpl = await ethers.deployContract("Dashboard", [steth, wsteth, hub]);
 
-    // TODO: make all vaults are owned by the dashboard
-    // Dashboard controlled vault
-    const dashboardResult = await deployVaultDashboard(
+    // Dashboard 1 controlled vault
+    const dashboard1Result = await deployVaultDashboard(
       vaultImpl,
       dashboardImpl,
       pdgStub,
@@ -194,18 +144,32 @@ describe("VaultViewer", () => {
       vaultOwner,
       operator,
     );
-    vaultDashboard = dashboardResult.vaultDashboard;
-    dashboard = dashboardResult.dashboard;
+    vaultDashboard1 = dashboard1Result.vaultDashboard;
+    dashboard1 = dashboard1Result.dashboard;
 
-    // TODO: remove
-    // EOA controlled vault
-    stakingVault = await deployStakingVault(vaultImpl, vaultOwner, operator, pdgStub);
+    // Dashboard 2 controlled vault
+    const dashboard2Result = await deployVaultDashboard(
+      vaultImpl,
+      dashboardImpl,
+      pdgStub,
+      factoryOwner,
+      vaultOwner, // TODO: vaultOwner2
+      operator, // TODO: operator2
+    );
+    vaultDashboard2 = dashboard2Result.vaultDashboard;
+    // dashboard2 = dashboard2Result.dashboard;
 
-    // TODO: remove
-    // Custom owner controlled vault
-    const customdResult = await deployCustomOwner(vaultImpl, operator, pdgStub);
-    vaultCustom = customdResult.stakingVault;
-    customOwnerContract = customdResult.customOwner;
+    // Dashboard 3 controlled vault
+    const dashboard3Result = await deployVaultDashboard(
+      vaultImpl,
+      dashboardImpl,
+      pdgStub,
+      factoryOwner,
+      vaultOwner, // TODO: vaultOwner3
+      operator, // TODO: operator3
+    );
+    vaultDashboard3 = dashboard3Result.vaultDashboard;
+    // dashboard3 = dashboard3Result.dashboard;
 
     vaultViewer = await ethers.deployContract("VaultViewer", [hub]);
     expect(await vaultViewer.vaultHub()).to.equal(hub);
@@ -231,17 +195,17 @@ describe("VaultViewer", () => {
 
   context("vaultsConnected", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
     });
 
     it("returns all connected vaults", async () => {
       const vaults = await vaultViewer.vaultsConnected();
       expect(vaults.length).to.equal(3);
-      expect(vaults[0]).to.equal(vaultDashboard);
-      expect(vaults[1]).to.equal(stakingVault);
-      expect(vaults[2]).to.equal(vaultCustom);
+      expect(vaults[0]).to.equal(vaultDashboard1);
+      expect(vaults[1]).to.equal(vaultDashboard2);
+      expect(vaults[2]).to.equal(vaultDashboard3);
     });
   });
 
@@ -250,16 +214,16 @@ describe("VaultViewer", () => {
       await steth.mock__setTotalPooledEther(100n);
       await steth.mock__setTotalShares(100n);
 
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
     });
 
     it("returns data for a batch of connected vaults", async () => {
       const vaultsDataBatch = await vaultViewer.getVaultsDataBatch(0, 1);
 
       expect(vaultsDataBatch.length).to.equal(1);
-      expect(vaultsDataBatch[0].vault).to.equal(await vaultDashboard.getAddress());
+      expect(vaultsDataBatch[0].vault).to.equal(await vaultDashboard1.getAddress());
 
       // Sanity check: values are returned and types match
       expect(vaultsDataBatch[0].totalValue).to.be.a("bigint");
@@ -273,9 +237,9 @@ describe("VaultViewer", () => {
 
   context("vaultsConnectedBound", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
     });
 
     it("returns all connected vaults", async () => {
@@ -298,35 +262,36 @@ describe("VaultViewer", () => {
 
   context("vaultsByOwner", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
     });
 
     it("returns all vaults owned by a given address", async () => {
       const vaults = await vaultViewer.vaultsByOwner(vaultOwner.getAddress());
-      expect(vaults.length).to.equal(2);
-      expect(vaults[0]).to.equal(vaultDashboard);
-      expect(vaults[1]).to.equal(stakingVault);
+      expect(vaults.length).to.equal(3);
+      expect(vaults[0]).to.equal(vaultDashboard1);
+      expect(vaults[1]).to.equal(vaultDashboard2);
+      expect(vaults[2]).to.equal(vaultDashboard3);
     });
 
-    it("returns correct owner for custom vault", async () => {
-      const vaults = await vaultViewer.vaultsByOwner(customOwnerContract.getAddress());
-      expect(vaults.length).to.equal(1);
-      expect(vaults[0]).to.equal(vaultCustom);
-    });
+    // it("returns correct owner for custom vault", async () => {
+    //   const vaults = await vaultViewer.vaultsByOwner(customOwnerContract.getAddress());
+    //   expect(vaults.length).to.equal(1);
+    //   expect(vaults[0]).to.equal(vaultDashboard1);
+    // });
   });
 
   context("vaultsByOwnerBound", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
     });
 
     it("returns all connected vaults", async () => {
       const vaults = await vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 0, 3);
-      expect(vaults[0].length).to.equal(2);
+      expect(vaults[0].length).to.equal(3);
     });
 
     it("returns all vaults owned by a given address in a given range - [0, 2]", async () => {
@@ -336,7 +301,7 @@ describe("VaultViewer", () => {
 
     it("returns all vaults owned by a given address in a given range - [1, 3]", async () => {
       const vaults = await vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 1, 3);
-      expect(vaults[0].length).to.equal(1);
+      expect(vaults[0].length).to.equal(2);
     });
 
     it("reverts if from is greater than to", async () => {
@@ -349,30 +314,30 @@ describe("VaultViewer", () => {
 
   context("vaultsByRole", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
     });
 
     it("returns all vaults with a given role on Dashboard", async () => {
-      await dashboard.connect(vaultOwner).grantRole(await dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
-      const vaults = await vaultViewer.vaultsByRole(await dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
+      await dashboard1.connect(vaultOwner).grantRole(await dashboard1.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
+      const vaults = await vaultViewer.vaultsByRole(await dashboard1.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
       expect(vaults.length).to.equal(1);
-      expect(vaults[0]).to.equal(vaultDashboard);
+      expect(vaults[0]).to.equal(vaultDashboard1);
     });
   });
 
   context("vaultsByRoleBound", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(stakingVault.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultCustom.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
     });
 
     it("returns all vaults with a given role on Dashboard", async () => {
-      await dashboard.connect(vaultOwner).grantRole(await dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
+      await dashboard1.connect(vaultOwner).grantRole(await dashboard1.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
       const vaults = await vaultViewer.vaultsByRoleBound(
-        await dashboard.DEFAULT_ADMIN_ROLE(),
+        await dashboard1.DEFAULT_ADMIN_ROLE(),
         stranger.getAddress(),
         0,
         3,
