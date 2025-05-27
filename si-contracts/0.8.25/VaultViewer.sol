@@ -7,10 +7,6 @@ import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
 import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
 import {ILido} from "contracts/0.8.25/interfaces/ILido.sol";
 
-interface IDashboard {
-    function nodeOperatorFeeBP() external view returns (uint256);
-}
-
 interface IVault is IStakingVault {
     function owner() external view returns (address);
 }
