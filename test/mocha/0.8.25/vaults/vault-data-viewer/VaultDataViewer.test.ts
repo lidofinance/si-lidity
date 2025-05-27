@@ -95,7 +95,9 @@ describe("VaultViewer", () => {
   // let dashboard3: Dashboard;
 
   const vaultDashboardArray: StakingVault[] = [];
-  const vaultDashboardArrayCount = 50; // 1_992_392n
+  // 3_039_932 gas for 75 vaults
+  // 2_020_400 gas for 50 vaults
+  const vaultDashboardArrayCount = 75;
 
   let originalState: string;
 
@@ -376,6 +378,30 @@ describe("VaultViewer", () => {
       for (const vault of vaultDashboardArray) {
         await hub.connect(hubSigner).mock_connectVault(vault.getAddress());
       }
+    });
+
+    it("returns data for a batch of connected vaults bounded [0, 50]", async () => {
+      const vaultsDataBatch1 = await vaultViewer.getVaultsDataBatch(0, 50);
+      expect(vaultsDataBatch1.length).to.equal(50);
+      expect(vaultsDataBatch1[0].vault).to.equal(await vaultDashboardArray[0].getAddress());
+      expect(vaultsDataBatch1[49].vault).to.equal(await vaultDashboardArray[49].getAddress());
+    });
+
+    it("returns data for a batch of connected vaults bounded [50, 75]", async () => {
+      const vaultsDataBatch3 = await vaultViewer.getVaultsDataBatch(50, 75);
+      expect(vaultsDataBatch3.length).to.equal(25);
+      expect(vaultsDataBatch3[0].vault).to.equal(await vaultDashboardArray[50].getAddress());
+    });
+
+    it("returns data for a batch of connected vaults bounded [50, 100]", async () => {
+      const vaultsDataBatch3 = await vaultViewer.getVaultsDataBatch(50, 100);
+      expect(vaultsDataBatch3.length).to.equal(25);
+      expect(vaultsDataBatch3[0].vault).to.equal(await vaultDashboardArray[50].getAddress());
+    });
+
+    it("returns data for a batch of connected vaults bounded [1000, 0]", async () => {
+      const vaultsDataBatch4 = await vaultViewer.getVaultsDataBatch(10000, 0);
+      expect(vaultsDataBatch4.length).to.equal(0);
     });
 
     it(`checks gas estimation for getVaultsDataBatch`, async () => {

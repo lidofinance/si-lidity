@@ -31,6 +31,7 @@ contract VaultViewer {
         uint256 stEthLiability;
         uint256 lidoTreasuryFee;
         uint256 nodeOperatorFee;
+        bool isOwnerDashboard;
     }
 
     bytes32 constant strictTrue = keccak256(hex"0000000000000000000000000000000000000000000000000000000000000001");
@@ -195,7 +196,9 @@ contract VaultViewer {
     function getVaultsDataBatch(uint256 _from, uint256 _to) external view returns (VaultData[] memory vaultsData) {
         (IVault[] memory vaults, uint256 valid) = _vaultsConnected();
 
-        uint256 count = valid > _to ? _to : valid;
+        uint256 end = _to > valid ? valid : _to;
+        uint256 count = end > _from ? end - _from : 0;
+
         vaultsData = new VaultData[](count);
 
         ILido lido = vaultHub.LIDO();
@@ -205,6 +208,9 @@ contract VaultViewer {
 
             VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(address(vault));
 
+            address owner = vault.owner();
+            (uint16 nodeOperatorFee, bool isDashboard) = _getNodeOperatorFeeIfDashboard(owner);
+
             vaultsData[i] = VaultData({
                 vault: address(vault),
                 totalValue: vault.totalValue(),
@@ -212,7 +218,8 @@ contract VaultViewer {
                 liabilityShares: socket.liabilityShares,
                 stEthLiability: lido.getPooledEthByShares(socket.liabilityShares),
                 lidoTreasuryFee: socket.treasuryFeeBP,
-                nodeOperatorFee: IDashboard(vault.owner()).nodeOperatorFeeBP()
+                nodeOperatorFee: nodeOperatorFee,
+                isOwnerDashboard: isDashboard
             });
         }
     }
@@ -304,6 +311,23 @@ contract VaultViewer {
         filtered = new IVault[](count);
         for (uint256 i = 0; i < count; i++) {
             filtered[i] = _vaults[_from + i];
+        }
+    }
+
+    /// @notice Tries to fetch nodeOperatorFeeBP() from the vault owner if it's a dashboard contract
+    /// @dev Uses low-level staticcall to avoid reverting when the method is missing or the address is an EOA
+    /// @param owner The address of the vault owner (can be either a contract or an EOA)
+    /// @return fee The decoded fee value if present, otherwise 0
+    /// @return isDashboard True if the method exists and returned a valid value, false otherwise
+    function _getNodeOperatorFeeIfDashboard(address owner) internal view returns (uint16 fee, bool isDashboard) {
+        if (owner.code.length > 0) {
+            (bool ok, bytes memory result) = owner.staticcall(
+                abi.encodeWithSignature("nodeOperatorFeeBP()")
+            );
+            if (ok && result.length >= 32) {
+                fee = abi.decode(result, (uint16));
+                isDashboard = true;
+            }
         }
     }
 
