@@ -231,7 +231,7 @@ describe("VaultViewer", () => {
       await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
     });
 
-    it("returns data for a batch of connected vaults", async () => {
+    it("returns data for a batch of connected vaults with getVaultsDataBatch", async () => {
       const vaultsDataBatch = await vaultViewer.getVaultsDataBatch(0, 1);
 
       expect(vaultsDataBatch.length).to.equal(1);
@@ -244,6 +244,20 @@ describe("VaultViewer", () => {
       expect(vaultsDataBatch[0].stEthLiability).to.be.a("bigint");
       expect(vaultsDataBatch[0].nodeOperatorFee).to.be.a("bigint");
       expect(vaultsDataBatch[0].lidoTreasuryFee).to.be.a("bigint");
+      expect(vaultsDataBatch[0].isOwnerDashboard).to.be.a("boolean");
+    });
+
+    it("returns data for one connected vault with getVaultsDataByAddress", async () => {
+      const vaultData = await vaultViewer.getVaultsDataByAddress(await vaultDashboard1.getAddress());
+
+      // Sanity check: values are returned and types match
+      expect(vaultData.totalValue).to.be.a("bigint");
+      expect(vaultData.forcedRebalanceThreshold).to.be.a("bigint");
+      expect(vaultData.liabilityShares).to.be.a("bigint");
+      expect(vaultData.stEthLiability).to.be.a("bigint");
+      expect(vaultData.nodeOperatorFee).to.be.a("bigint");
+      expect(vaultData.lidoTreasuryFee).to.be.a("bigint");
+      expect(vaultData.isOwnerDashboard).to.be.a("boolean");
     });
 
     it(`checks gas estimation for getVaultsDataBatch`, async () => {

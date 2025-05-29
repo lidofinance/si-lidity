@@ -197,27 +197,32 @@ contract VaultViewer {
 
         vaultsData = new VaultData[](count);
 
+        for (uint256 i = 0; i < count; i++) {
+            vaultsData[i] = getVaultsDataByAddress(address(vaults[_from + i]));
+        }
+    }
+
+    /// @notice Returns aggregated data for a single vault
+    /// @param vault Address of the vault
+    /// @return data Aggregated vault data
+    function getVaultsDataByAddress(address vault) public view returns (VaultData memory data) {
+        VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(vault);
         ILido lido = vaultHub.LIDO();
 
-        for (uint256 i = 0; i < count; i++) {
-            IVault vault = vaults[_from + i];
+        IVault vaultContract = IVault(vault);
+        address owner = vaultContract.owner();
+        (uint16 nodeOperatorFee, bool isDashboard) = _getNodeOperatorFeeIfDashboard(owner);
 
-            VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(address(vault));
-
-            address owner = vault.owner();
-            (uint16 nodeOperatorFee, bool isDashboard) = _getNodeOperatorFeeIfDashboard(owner);
-
-            vaultsData[i] = VaultData({
-                vault: address(vault),
-                totalValue: vault.totalValue(),
-                forcedRebalanceThreshold: socket.forcedRebalanceThresholdBP,
-                liabilityShares: socket.liabilityShares,
-                stEthLiability: lido.getPooledEthByShares(socket.liabilityShares),
-                lidoTreasuryFee: socket.treasuryFeeBP,
-                nodeOperatorFee: nodeOperatorFee,
-                isOwnerDashboard: isDashboard
-            });
-        }
+        data = VaultData({
+            vault: vault,
+            totalValue: vaultContract.totalValue(),
+            forcedRebalanceThreshold: socket.forcedRebalanceThresholdBP,
+            liabilityShares: socket.liabilityShares,
+            stEthLiability: lido.getPooledEthByShares(socket.liabilityShares),
+            lidoTreasuryFee: socket.treasuryFeeBP,
+            nodeOperatorFee: nodeOperatorFee,
+            isOwnerDashboard: isDashboard
+        });
     }
 
     // ==================== Internal Functions ====================
