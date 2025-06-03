@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { keccak256, toUtf8Bytes } from "ethers";
 import { network } from "hardhat";
 import type { EthereumProvider } from "hardhat/types/providers";
 
@@ -21,6 +22,9 @@ import { ether, findEvents, impersonate } from "lib";
 
 import { deployLidoLocator } from "test-deploy";
 import { Snapshot } from "test-utils/suite";
+
+const NODE_OPERATOR_MANAGER_ROLE = keccak256(toUtf8Bytes("vaults.NodeOperatorFee.NodeOperatorManagerRole"));
+const PDG_COMPENSATE_PREDEPOSIT_ROLE = keccak256(toUtf8Bytes("vaults.Permissions.PDGCompensatePredeposit"));
 
 // scope for tests and functions
 let ethers: HardhatEthers;
@@ -425,6 +429,56 @@ describe("VaultViewer", () => {
       });
       // console.log('gasEstimate:', gasEstimate);
       expect(gasEstimate).to.lte(2_000_000n);
+    });
+  });
+
+  context("getRoleMembers & getRoleMembersBatch", () => {
+    beforeEach(async () => {
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
+    });
+
+    it("returns role members for a single vault", async () => {
+      const ADMIN_ROLE = await dashboard1.DEFAULT_ADMIN_ROLE();
+      // Grant the role
+      await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
+
+      const members = await vaultViewer.getRoleMembers(await vaultDashboard1.getAddress(), [
+        ADMIN_ROLE,
+        NODE_OPERATOR_MANAGER_ROLE,
+        PDG_COMPENSATE_PREDEPOSIT_ROLE,
+      ]);
+
+      expect(members.length).to.equal(3);
+      expect(members[0].length).to.equal(1);
+      expect(members[0][0]).to.equal(await vaultOwner.getAddress());
+      expect(members[1][0]).to.equal(await operator.getAddress());
+      expect(members[2][0]).to.equal(await stranger.getAddress());
+    });
+
+    it("returns role members for multiple vaults", async () => {
+      const ADMIN_ROLE = await dashboard1.DEFAULT_ADMIN_ROLE();
+      // Grant the role only for vaultDashboard1
+      await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
+
+      const membersBatch = await vaultViewer.getRoleMembersBatch(
+        [await vaultDashboard1.getAddress(), await vaultDashboard2.getAddress()],
+        [ADMIN_ROLE, NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE],
+      );
+
+      expect(membersBatch.length).to.equal(2);
+      expect(membersBatch[0].length).to.equal(2);
+      expect(membersBatch[1].length).to.equal(2);
+
+      // vaultDashboard1
+      expect(membersBatch[0][1][0][0]).to.equal(await vaultOwner.getAddress());
+      expect(membersBatch[0][1][1][0]).to.equal(await operator.getAddress());
+      expect(membersBatch[0][1][2][0]).to.equal(await stranger.getAddress());
+
+      // vaultDashboard2
+      expect(membersBatch[1][1][0][0]).to.equal(await vaultOwner.getAddress());
+      expect(membersBatch[1][1][1][0]).to.equal(await operator.getAddress());
+      // vaultDashboard2 don't have granted PDG_COMPENSATE_PREDEPOSIT_ROLE
+      expect(membersBatch[1][1][2].length).to.equal(0);
     });
   });
 });

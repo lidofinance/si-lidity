@@ -30,6 +30,11 @@ contract VaultViewer {
         bool isOwnerDashboard;
     }
 
+    struct VaultRoleMembers {
+        address vault;
+        address[][] members;
+    }
+
     bytes32 constant strictTrue = keccak256(hex"0000000000000000000000000000000000000000000000000000000000000001");
 
     uint256 internal constant TOTAL_BASIS_POINTS = 100_00;
@@ -223,6 +228,50 @@ contract VaultViewer {
             nodeOperatorFee: nodeOperatorFee,
             isOwnerDashboard: isDashboard
         });
+    }
+
+    /// @notice Returns members for each role on a single vault
+    /// @param vaultAddress The address of the vault
+    /// @param roles An array of role identifiers
+    /// @return members A 2D array where members[i] contains all accounts with roles[i] on the vault's owner
+    function getRoleMembers(address vaultAddress, bytes32[] calldata roles) public view returns (address[][] memory members) {
+        IVault vaultContract = IVault(vaultAddress);
+        address owner = vaultContract.owner();
+        members = new address[][](roles.length);
+
+        for (uint256 i = 0; i < roles.length; i++) {
+            bytes32 role = roles[i];
+
+            (bool success, bytes memory data) = owner.staticcall(
+                abi.encodeWithSignature("getRoleMembers(bytes32)", role)
+            );
+
+            address[] memory roleMembers;
+            if (success) {
+                roleMembers = abi.decode(data, (address[]));
+            }
+            members[i] = roleMembers;
+        }
+        return members;
+    }
+
+    /// @notice Returns members for each role on multiple vaults
+    /// @param vaultAddresses Array of vault addresses to query
+    /// @param roles Array of roles to check for each vault
+    /// @return result Array of VaultRoleMembers containing vault address and corresponding role members
+    function getRoleMembersBatch(address[] calldata vaultAddresses, bytes32[] calldata roles) external view returns (VaultRoleMembers[] memory result) {
+        result = new VaultRoleMembers[](vaultAddresses.length);
+
+        for (uint256 i = 0; i < vaultAddresses.length; i++) {
+            address vaultAddr = vaultAddresses[i];
+            address[][] memory members = getRoleMembers(vaultAddr, roles);
+
+            result[i] = VaultRoleMembers({
+                vault: vaultAddr,
+                members: members
+            });
+        }
+        return result;
     }
 
     // ==================== Internal Functions ====================
