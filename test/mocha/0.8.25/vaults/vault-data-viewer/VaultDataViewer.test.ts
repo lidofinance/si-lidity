@@ -444,18 +444,40 @@ describe("VaultViewer", () => {
       await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
       await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger2.getAddress());
 
-      const members = await vaultViewer.getRoleMembers(await vaultDashboard1.getAddress(), [
+      const roleMembers = await vaultViewer.getRoleMembers(await vaultDashboard1.getAddress(), [
         ADMIN_ROLE,
         NODE_OPERATOR_MANAGER_ROLE,
         PDG_COMPENSATE_PREDEPOSIT_ROLE,
       ]);
 
-      expect(members.length).to.equal(3);
-      expect(members[0].length).to.equal(1);
-      expect(members[0][0]).to.equal(await vaultOwner.getAddress());
-      expect(members[1][0]).to.equal(await operator.getAddress());
-      expect(members[2][0]).to.equal(await stranger.getAddress());
-      expect(members[2][1]).to.equal(await stranger2.getAddress());
+      // The returned tuple is [owner, nodeOperator, depositor, membersArray]
+      expect(roleMembers.length).to.equal(4);
+
+      // 0: owner
+      expect(roleMembers[0]).to.equal(await dashboard1.getAddress());
+
+      // 1: nodeOperator
+      expect(roleMembers[1]).to.equal(await operator.getAddress());
+
+      // 2: depositor (if set; otherwise you can omit or adjust as needed)
+      // expect(roleMembers[2]).to.equal(await someDepositor.getAddress());
+
+      // 3: membersArray => an array of arrays, one per requested role
+      const membersArray = roleMembers[3] as string[][];
+      expect(membersArray.length).to.equal(3);
+
+      // Role 0 (ADMIN_ROLE) should contain only the vaultOwner
+      expect(membersArray[0].length).to.equal(1);
+      expect(membersArray[0][0]).to.equal(await vaultOwner.getAddress());
+
+      // Role 1 (NODE_OPERATOR_MANAGER_ROLE) should contain only the operator
+      expect(membersArray[1].length).to.equal(1);
+      expect(membersArray[1][0]).to.equal(await operator.getAddress());
+
+      // Role 2 (PDG_COMPENSATE_PREDEPOSIT_ROLE) should contain both strangers
+      expect(membersArray[2].length).to.equal(2);
+      expect(membersArray[2][0]).to.equal(await stranger.getAddress());
+      expect(membersArray[2][1]).to.equal(await stranger2.getAddress());
     });
 
     it("returns role members for multiple vaults", async () => {
@@ -468,20 +490,22 @@ describe("VaultViewer", () => {
         [ADMIN_ROLE, NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE],
       );
 
+      // TODO: [owner, nodeOperator, depositor, membersArray]
       expect(membersBatch.length).to.equal(2);
-      expect(membersBatch[0].length).to.equal(2);
-      expect(membersBatch[1].length).to.equal(2);
+      expect(membersBatch[0].length).to.equal(5);
+      expect(membersBatch[1].length).to.equal(5);
 
       // vaultDashboard1
-      expect(membersBatch[0][1][0][0]).to.equal(await vaultOwner.getAddress());
-      expect(membersBatch[0][1][1][0]).to.equal(await operator.getAddress());
-      expect(membersBatch[0][1][2][0]).to.equal(await stranger.getAddress());
+      console.log("membersBatch[0]:", membersBatch[0]);
+      expect(membersBatch[0][4][0][0]).to.equal(await vaultOwner.getAddress());
+      expect(membersBatch[0][4][1][0]).to.equal(await operator.getAddress());
+      expect(membersBatch[0][4][2][0]).to.equal(await stranger.getAddress());
 
       // vaultDashboard2
-      expect(membersBatch[1][1][0][0]).to.equal(await vaultOwner.getAddress());
-      expect(membersBatch[1][1][1][0]).to.equal(await operator.getAddress());
+      expect(membersBatch[1][4][0][0]).to.equal(await vaultOwner.getAddress());
+      expect(membersBatch[1][4][1][0]).to.equal(await operator.getAddress());
       // vaultDashboard2 don't have granted PDG_COMPENSATE_PREDEPOSIT_ROLE
-      expect(membersBatch[1][1][2].length).to.equal(0);
+      expect(membersBatch[1][4][2].length).to.equal(0);
     });
   });
 });

@@ -32,6 +32,9 @@ contract VaultViewer {
 
     struct VaultRoleMembers {
         address vault;
+        address owner;
+        address nodeOperator;
+        address depositor;
         address[][] members;
     }
 
@@ -230,13 +233,24 @@ contract VaultViewer {
         });
     }
 
-    /// @notice Returns members for each role on a single vault
+    /// @notice Returns the owner, nodeOperator, depositor, and members for each specified role on a single vault
     /// @param vaultAddress The address of the vault
-    /// @param roles An array of role identifiers
-    /// @return members A 2D array where members[i] contains all accounts with roles[i] on the vault's owner
-    function getRoleMembers(address vaultAddress, bytes32[] calldata roles) public view returns (address[][] memory members) {
+    /// @param roles An array of role identifiers (bytes32) to query on the vault’s owner contract
+    /// @return owner The owner address of the vault
+    /// @return nodeOperator The nodeOperator address of the vault
+    /// @return depositor The depositor address of the vault
+    /// @return members A 2D array where members[i] contains all accounts that hold roles[i] on the vault’s owner contract
+    function getRoleMembers(address vaultAddress, bytes32[] calldata roles) public view returns (
+        address owner,
+        address nodeOperator,
+        address depositor,
+        address[][] memory members
+    ) {
         IVault vaultContract = IVault(vaultAddress);
         address owner = vaultContract.owner();
+        address nodeOperator = vaultContract.nodeOperator();
+        address depositor = vaultContract.depositor();
+
         members = new address[][](roles.length);
 
         for (uint256 i = 0; i < roles.length; i++) {
@@ -252,7 +266,7 @@ contract VaultViewer {
             }
             members[i] = roleMembers;
         }
-        return members;
+        return (owner, nodeOperator, depositor, members);
     }
 
     /// @notice Returns members for each role on multiple vaults
@@ -264,10 +278,18 @@ contract VaultViewer {
 
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
             address vaultAddr = vaultAddresses[i];
-            address[][] memory members = getRoleMembers(vaultAddr, roles);
+            (
+                address owner,
+                address nodeOperator,
+                address depositor,
+                address[][] memory members
+            ) = getRoleMembers(vaultAddr, roles);
 
             result[i] = VaultRoleMembers({
                 vault: vaultAddr,
+                owner: owner,
+                nodeOperator: nodeOperator,
+                depositor: depositor,
                 members: members
             });
         }
