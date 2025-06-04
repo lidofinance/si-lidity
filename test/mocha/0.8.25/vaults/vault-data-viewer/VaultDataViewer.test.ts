@@ -73,6 +73,7 @@ describe("VaultViewer", () => {
   let vaultOwner: HardhatEthersSigner;
   let operator: HardhatEthersSigner;
   let stranger: HardhatEthersSigner;
+  let stranger2: HardhatEthersSigner;
   let factoryOwner: HardhatEthersSigner;
   let hubSigner: HardhatEthersSigner;
   let deployerPDG: HardhatEthersSigner;
@@ -112,7 +113,7 @@ describe("VaultViewer", () => {
 
     snapshot = new Snapshot(provider);
 
-    [, vaultOwner, operator, stranger, factoryOwner, deployerPDG] = await ethers.getSigners();
+    [, vaultOwner, operator, stranger, factoryOwner, deployerPDG, stranger2] = await ethers.getSigners();
 
     steth = await ethers.deployContract("StETHPermit__HarnessForDashboard");
     weth = await ethers.deployContract("WETH9__MockForVault");
@@ -441,6 +442,7 @@ describe("VaultViewer", () => {
       const ADMIN_ROLE = await dashboard1.DEFAULT_ADMIN_ROLE();
       // Grant the role
       await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
+      await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger2.getAddress());
 
       const members = await vaultViewer.getRoleMembers(await vaultDashboard1.getAddress(), [
         ADMIN_ROLE,
@@ -453,6 +455,7 @@ describe("VaultViewer", () => {
       expect(members[0][0]).to.equal(await vaultOwner.getAddress());
       expect(members[1][0]).to.equal(await operator.getAddress());
       expect(members[2][0]).to.equal(await stranger.getAddress());
+      expect(members[2][1]).to.equal(await stranger2.getAddress());
     });
 
     it("returns role members for multiple vaults", async () => {
