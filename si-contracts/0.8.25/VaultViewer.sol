@@ -193,27 +193,10 @@ contract VaultViewer {
         return (_filterNonZeroVaults(vaults, _from, count), leftover);
     }
 
-    /// @notice Returns aggregated data for a batch of connected vaults
-    /// @param _from Index to start from inclusive
-    /// @param _to Index to end at non-inclusive
-    /// @return vaultsData Array of aggregated vault data
-    function getVaultsDataBatch(uint256 _from, uint256 _to) external view returns (VaultData[] memory vaultsData) {
-        (IVault[] memory vaults, uint256 valid) = _vaultsConnected();
-
-        uint256 end = _to > valid ? valid : _to;
-        uint256 count = end > _from ? end - _from : 0;
-
-        vaultsData = new VaultData[](count);
-
-        for (uint256 i = 0; i < count; i++) {
-            vaultsData[i] = getVaultsDataByAddress(address(vaults[_from + i]));
-        }
-    }
-
     /// @notice Returns aggregated data for a single vault
     /// @param vault Address of the vault
     /// @return data Aggregated vault data
-    function getVaultsDataByAddress(address vault) public view returns (VaultData memory data) {
+    function getVaultData(address vault) public view returns (VaultData memory data) {
         VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(vault);
         ILido lido = vaultHub.LIDO();
 
@@ -233,6 +216,23 @@ contract VaultViewer {
         });
     }
 
+    /// @notice Returns aggregated data for a batch of connected vaults
+    /// @param _from Index to start from inclusive
+    /// @param _to Index to end at non-inclusive
+    /// @return vaultsData Array of aggregated vault data
+    function getVaultsDataBound(uint256 _from, uint256 _to) external view returns (VaultData[] memory vaultsData) {
+        (IVault[] memory vaults, uint256 valid) = _vaultsConnected();
+
+        uint256 end = _to > valid ? valid : _to;
+        uint256 count = end > _from ? end - _from : 0;
+
+        vaultsData = new VaultData[](count);
+
+        for (uint256 i = 0; i < count; i++) {
+            vaultsData[i] = getVaultData(address(vaults[_from + i]));
+        }
+    }
+
     /// @notice Returns the owner, nodeOperator, depositor, and members for each specified role on a single vault
     /// @param vaultAddress The address of the vault
     /// @param roles An array of role identifiers (bytes32) to query on the vault’s owner contract
@@ -247,24 +247,19 @@ contract VaultViewer {
         address[][] memory members
     ) {
         IVault vaultContract = IVault(vaultAddress);
-        address owner = vaultContract.owner();
-        address nodeOperator = vaultContract.nodeOperator();
-        address depositor = vaultContract.depositor();
+        owner = vaultContract.owner();
+        nodeOperator = vaultContract.nodeOperator();
+        depositor = vaultContract.depositor();
 
         members = new address[][](roles.length);
 
+        // owner may be an EOA wallet
+        if (!isContract(owner)) {
+            return (owner, nodeOperator, depositor, members);
+        }
+
         for (uint256 i = 0; i < roles.length; i++) {
-            bytes32 role = roles[i];
-
-            (bool success, bytes memory data) = owner.staticcall(
-                abi.encodeWithSignature("getRoleMembers(bytes32)", role)
-            );
-
-            address[] memory roleMembers;
-            if (success) {
-                roleMembers = abi.decode(data, (address[]));
-            }
-            members[i] = roleMembers;
+            members[i] = _getRoleMember(owner, roles[i]);
         }
         return (owner, nodeOperator, depositor, members);
     }
@@ -277,16 +272,15 @@ contract VaultViewer {
         result = new VaultRoleMembers[](vaultAddresses.length);
 
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
-            address vaultAddr = vaultAddresses[i];
             (
                 address owner,
                 address nodeOperator,
                 address depositor,
                 address[][] memory members
-            ) = getRoleMembers(vaultAddr, roles);
+            ) = getRoleMembers(vaultAddresses[i], roles);
 
             result[i] = VaultRoleMembers({
-                vault: vaultAddr,
+                vault: vaultAddresses[i],
                 owner: owner,
                 nodeOperator: nodeOperator,
                 depositor: depositor,
@@ -350,6 +344,21 @@ contract VaultViewer {
             }
         }
         return (vaults, valid);
+    }
+
+    /// @notice Safely attempt a staticcall to `getRoleMembers(bytes32)` on the owner address.
+    /// @dev More gas-efficient to do any `isContract(owner)` check in the caller.
+    /// @param owner The address to call (may be a contract or an EOA).
+    /// @param role The role identifier.
+    /// @return members Array of addresses if the call succeeds; empty array otherwise.
+    function _getRoleMember(address owner, bytes32 role) internal view returns (address[] memory members) {
+        (bool success, bytes memory data) = owner.staticcall(
+            abi.encodeWithSignature("getRoleMembers(bytes32)", role)
+        );
+
+        if (success) {
+            members = abi.decode(data, (address[]));
+        }
     }
 
     /// @notice safely returns if role member has given role

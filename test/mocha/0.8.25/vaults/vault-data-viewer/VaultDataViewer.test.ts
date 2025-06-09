@@ -226,7 +226,7 @@ describe("VaultViewer", () => {
     });
   });
 
-  context("getVaultsDataBatch", () => {
+  context("getVaultsDataBound", () => {
     beforeEach(async () => {
       await steth.mock__setTotalPooledEther(100n);
       await steth.mock__setTotalShares(100n);
@@ -236,8 +236,8 @@ describe("VaultViewer", () => {
       await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
     });
 
-    it("returns data for a batch of connected vaults with getVaultsDataBatch", async () => {
-      const vaultsDataBatch = await vaultViewer.getVaultsDataBatch(0, 1);
+    it("returns data for a batch of connected vaults with getVaultsDataBound", async () => {
+      const vaultsDataBatch = await vaultViewer.getVaultsDataBound(0, 1);
 
       expect(vaultsDataBatch.length).to.equal(1);
       expect(vaultsDataBatch[0].vault).to.equal(await vaultDashboard1.getAddress());
@@ -252,8 +252,8 @@ describe("VaultViewer", () => {
       expect(vaultsDataBatch[0].isOwnerDashboard).to.be.a("boolean");
     });
 
-    it("returns data for one connected vault with getVaultsDataByAddress", async () => {
-      const vaultData = await vaultViewer.getVaultsDataByAddress(await vaultDashboard1.getAddress());
+    it("returns data for one connected vault with getVaultData", async () => {
+      const vaultData = await vaultViewer.getVaultData(await vaultDashboard1.getAddress());
 
       // Sanity check: values are returned and types match
       expect(vaultData.totalValue).to.be.a("bigint");
@@ -265,10 +265,10 @@ describe("VaultViewer", () => {
       expect(vaultData.isOwnerDashboard).to.be.a("boolean");
     });
 
-    it(`checks gas estimation for getVaultsDataBatch`, async () => {
+    it(`checks gas estimation for getVaultsDataBound`, async () => {
       const gasEstimate = await ethers.provider.estimateGas({
         to: await vaultViewer.getAddress(),
-        data: vaultViewer.interface.encodeFunctionData("getVaultsDataBatch", [0, 3]),
+        data: vaultViewer.interface.encodeFunctionData("getVaultsDataBound", [0, 3]),
       });
       // console.log('gasEstimate:', gasEstimate);
       expect(gasEstimate).to.lte(2_000_000n);
@@ -389,7 +389,7 @@ describe("VaultViewer", () => {
     });
   });
 
-  context("getVaultsDataBatch 'highload'", () => {
+  context("getVaultsDataBound 'highload'", () => {
     beforeEach(async () => {
       await steth.mock__setTotalPooledEther(100n);
       await steth.mock__setTotalShares(100n);
@@ -400,33 +400,33 @@ describe("VaultViewer", () => {
     });
 
     it("returns data for a batch of connected vaults bounded [0, 50]", async () => {
-      const vaultsDataBatch1 = await vaultViewer.getVaultsDataBatch(0, 50);
+      const vaultsDataBatch1 = await vaultViewer.getVaultsDataBound(0, 50);
       expect(vaultsDataBatch1.length).to.equal(50);
       expect(vaultsDataBatch1[0].vault).to.equal(await vaultDashboardArray[0].getAddress());
       expect(vaultsDataBatch1[49].vault).to.equal(await vaultDashboardArray[49].getAddress());
     });
 
     it("returns data for a batch of connected vaults bounded [50, 75]", async () => {
-      const vaultsDataBatch3 = await vaultViewer.getVaultsDataBatch(50, 75);
+      const vaultsDataBatch3 = await vaultViewer.getVaultsDataBound(50, 75);
       expect(vaultsDataBatch3.length).to.equal(25);
       expect(vaultsDataBatch3[0].vault).to.equal(await vaultDashboardArray[50].getAddress());
     });
 
     it("returns data for a batch of connected vaults bounded [50, 100]", async () => {
-      const vaultsDataBatch3 = await vaultViewer.getVaultsDataBatch(50, 100);
+      const vaultsDataBatch3 = await vaultViewer.getVaultsDataBound(50, 100);
       expect(vaultsDataBatch3.length).to.equal(25);
       expect(vaultsDataBatch3[0].vault).to.equal(await vaultDashboardArray[50].getAddress());
     });
 
     it("returns data for a batch of connected vaults bounded [1000, 0]", async () => {
-      const vaultsDataBatch4 = await vaultViewer.getVaultsDataBatch(10000, 0);
+      const vaultsDataBatch4 = await vaultViewer.getVaultsDataBound(10000, 0);
       expect(vaultsDataBatch4.length).to.equal(0);
     });
 
-    it(`checks gas estimation for getVaultsDataBatch`, async () => {
+    it(`checks gas estimation for getVaultsDataBound`, async () => {
       const gasEstimate = await ethers.provider.estimateGas({
         to: await vaultViewer.getAddress(),
-        data: vaultViewer.interface.encodeFunctionData("getVaultsDataBatch", [0, vaultDashboardArrayCount]),
+        data: vaultViewer.interface.encodeFunctionData("getVaultsDataBound", [0, vaultDashboardArrayCount]),
       });
       // console.log('gasEstimate:', gasEstimate);
       expect(gasEstimate).to.lte(2_000_000n);
@@ -496,7 +496,6 @@ describe("VaultViewer", () => {
       expect(membersBatch[1].length).to.equal(5);
 
       // vaultDashboard1
-      console.log("membersBatch[0]:", membersBatch[0]);
       expect(membersBatch[0][4][0][0]).to.equal(await vaultOwner.getAddress());
       expect(membersBatch[0][4][1][0]).to.equal(await operator.getAddress());
       expect(membersBatch[0][4][2][0]).to.equal(await stranger.getAddress());
