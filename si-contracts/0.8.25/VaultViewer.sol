@@ -20,12 +20,9 @@ contract VaultViewer {
     }
 
     struct VaultData {
-        address vault;
+        VaultHub.VaultSocket socket;
         uint256 totalValue;
-        uint256 forcedRebalanceThreshold;
-        uint256 liabilityShares;
         uint256 stEthLiability;
-        uint256 lidoTreasuryFee;
         uint256 nodeOperatorFee;
         bool isOwnerDashboard;
     }
@@ -199,18 +196,14 @@ contract VaultViewer {
     function getVaultData(address vault) public view returns (VaultData memory data) {
         VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(vault);
         ILido lido = vaultHub.LIDO();
-
         IVault vaultContract = IVault(vault);
-        address owner = vaultContract.owner();
-        (uint16 nodeOperatorFee, bool isDashboard) = _getNodeOperatorFeeIfDashboard(owner);
+
+        (uint16 nodeOperatorFee, bool isDashboard) = _getNodeOperatorFeeIfDashboard(vaultContract.owner());
 
         data = VaultData({
-            vault: vault,
+            socket: socket,
             totalValue: vaultContract.totalValue(),
-            forcedRebalanceThreshold: socket.forcedRebalanceThresholdBP,
-            liabilityShares: socket.liabilityShares,
             stEthLiability: lido.getPooledEthByShares(socket.liabilityShares),
-            lidoTreasuryFee: socket.treasuryFeeBP,
             nodeOperatorFee: nodeOperatorFee,
             isOwnerDashboard: isDashboard
         });
