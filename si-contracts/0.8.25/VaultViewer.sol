@@ -20,7 +20,8 @@ contract VaultViewer {
     }
 
     struct VaultData {
-        VaultHub.VaultSocket socket;
+        VaultHub.VaultConnection connection;
+        VaultHub.VaultRecord record;
         uint256 totalValue;
         uint256 stEthLiability;
         uint256 nodeOperatorFee;
@@ -43,7 +44,7 @@ contract VaultViewer {
 
     VaultHub public immutable vaultHub;
 
-    constructor(address _vaultHubAddress) {
+    constructor(address payable _vaultHubAddress) {
         if (_vaultHubAddress == address(0)) revert ZeroArgument("_vaultHubAddress");
         vaultHub = VaultHub(_vaultHubAddress);
     }
@@ -62,17 +63,18 @@ contract VaultViewer {
     /// @notice Checks the health of the vault depending on the valuation and shares minted
     /// @param _vault The address of the vault
     /// @return VaultState the state of the vault health
+    ///  @custom:todo use  VaultHub.isVaultHealthy???
     function vaultState(IStakingVault _vault) public view returns (VaultState) {
         ILido lido = vaultHub.LIDO();
 
-        VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(address(_vault));
-        uint256 valuation = _vault.totalValue();
-        uint256 stethMinted = lido.getPooledEthByShares(socket.liabilityShares);
+        VaultHub.VaultConnection memory connection = vaultHub.vaultConnection(address(_vault));
+        uint256 valuation = vaultHub.totalValue(address(_vault));
+        uint256 stethMinted = lido.getPooledEthByShares(vaultHub.vaultRecord(address(_vault)).liabilityShares);
 
-        if (stethMinted <= (valuation * (TOTAL_BASIS_POINTS - socket.reserveRatioBP)) / TOTAL_BASIS_POINTS) {
+        if (stethMinted <= (valuation * (TOTAL_BASIS_POINTS - connection.reserveRatioBP)) / TOTAL_BASIS_POINTS) {
             return VaultState.MintingAllowed;
         } else if (
-            stethMinted <= (valuation * (TOTAL_BASIS_POINTS - socket.forcedRebalanceThresholdBP)) / TOTAL_BASIS_POINTS
+            stethMinted <= (valuation * (TOTAL_BASIS_POINTS - connection.forcedRebalanceThresholdBP)) / TOTAL_BASIS_POINTS
         ) {
             return VaultState.Healthy;
         } else if (stethMinted <= valuation) {
@@ -194,16 +196,17 @@ contract VaultViewer {
     /// @param vault Address of the vault
     /// @return data Aggregated vault data
     function getVaultData(address vault) public view returns (VaultData memory data) {
-        VaultHub.VaultSocket memory socket = vaultHub.vaultSocket(vault);
         ILido lido = vaultHub.LIDO();
         IVault vaultContract = IVault(vault);
+        VaultHub.VaultRecord memory record = vaultHub.vaultRecord(vault);
 
         (uint16 nodeOperatorFee, bool isDashboard) = _getNodeOperatorFeeIfDashboard(vaultContract.owner());
 
         data = VaultData({
-            socket: socket,
-            totalValue: vaultContract.totalValue(),
-            stEthLiability: lido.getPooledEthByShares(socket.liabilityShares),
+            connection: vaultHub.vaultConnection(vault),
+            record: record,
+            totalValue:  vaultHub.totalValue(vault),
+            stEthLiability: lido.getPooledEthByShares(record.liabilityShares),
             nodeOperatorFee: nodeOperatorFee,
             isOwnerDashboard: isDashboard
         });
@@ -286,32 +289,38 @@ contract VaultViewer {
     // ==================== Internal Functions ====================
 
     /// @dev common logic for vaultsConnected and vaultsConnectedBound
+    /// @custom:todo get vaults by pages, not all vaults
     function _vaultsConnected() internal view returns (IVault[] memory, uint256) {
-        // TODO: get vaults by pages, not all vaults
         uint256 count = vaultHub.vaultsCount();
         IVault[] memory vaults = new IVault[](count);
+        uint256 connectedCount = 0;
 
-        uint256 valid = 0;
-        for (uint256 i = 0; i < count; i++) {
-            if (!vaultHub.vaultSocket(i).pendingDisconnect) {
-                vaults[valid] = IVault(vaultHub.vault(i));
-                valid++;
+        // The `vaultByIndex` is 1-based list
+        for (uint256 i = 1; i <= count; i++) {
+            // variable declaration inside the loop doesn’t affect gas costs
+            address vaultAddress = vaultHub.vaultByIndex(i);
+            if (vaultHub.isVaultConnected(vaultAddress)) {
+                vaults[connectedCount] = IVault(vaultAddress);
+                connectedCount++;
             }
         }
 
-        return (vaults, valid);
+        return (vaults, connectedCount);
     }
 
     /// @dev common logic for vaultsByRole and vaultsByRoleBound
+    /// @custom:todo get vaults by pages, not all vaults
     function _vaultsByRole(bytes32 _role, address _member) internal view returns (IVault[] memory, uint256) {
-        // TODO: get vaults by pages, not all vaults
         uint256 count = vaultHub.vaultsCount();
         IVault[] memory vaults = new IVault[](count);
-
         uint256 valid = 0;
-        for (uint256 i = 0; i < count; i++) {
-            if (hasRole(IVault(vaultHub.vault(i)), _member, _role)) {
-                vaults[valid] = IVault(vaultHub.vault(i));
+
+        // The `vaultByIndex` is 1-based list
+        for (uint256 i = 1; i <= count; i++) {
+            // variable declaration inside the loop doesn’t affect gas costs
+            IVault candidateVault = IVault(vaultHub.vaultByIndex(i));
+            if (hasRole(candidateVault, _member, _role)) {
+                vaults[valid] = candidateVault;
                 valid++;
             }
         }
@@ -320,30 +329,29 @@ contract VaultViewer {
     }
 
     /// @dev common logic for vaultsByOwner and vaultsByOwnerBound
+    /// @custom:todo get vaults by pages, not all vaults
     function _vaultsByOwner(address _owner) internal view returns (IVault[] memory, uint256) {
-        // TODO: get vaults by pages, not all vaults
         uint256 count = vaultHub.vaultsCount();
         IVault[] memory vaults = new IVault[](count);
-
-        // Populate the array with the owner's vaults
         uint256 valid = 0;
 
-        // Populate the array with the owner's vaults
-        for (uint256 i = 0; i < count; i++) {
-            IVault vaultInstance = IVault(vaultHub.vault(i));
-            if (isOwner(vaultInstance, _owner)) {
-                vaults[valid] = IVault(vaultHub.vault(i));
+        // The `vaultByIndex` is 1-based list
+        for (uint256 i = 1; i <= count; i++) {
+            IVault candidateVault = IVault(vaultHub.vaultByIndex(i));
+            if (isOwner(candidateVault, _owner)) {
+                vaults[valid] = candidateVault;
                 valid++;
             }
         }
         return (vaults, valid);
     }
 
-    /// @notice Safely attempt a staticcall to `getRoleMembers(bytes32)` on the owner address.
-    /// @dev More gas-efficient to do any `isContract(owner)` check in the caller.
-    /// @param owner The address to call (may be a contract or an EOA).
-    /// @param role The role identifier.
-    /// @return members Array of addresses if the call succeeds; empty array otherwise.
+    /// @notice Safely attempt a staticcall to `getRoleMembers(bytes32)` on the owner address
+    /// @dev common logic for getRoleMembers
+    /// @dev More gas-efficient to do any `isContract(owner)` check in the caller
+    /// @param owner The address to call (may be a contract or an EOA)
+    /// @param role The role identifier
+    /// @return members Array of addresses if the call succeeds; empty array otherwise
     function _getRoleMember(address owner, bytes32 role) internal view returns (address[] memory members) {
         (bool success, bytes memory data) = owner.staticcall(
             abi.encodeWithSignature("getRoleMembers(bytes32)", role)
