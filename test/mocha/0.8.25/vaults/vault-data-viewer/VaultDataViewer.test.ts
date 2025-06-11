@@ -245,7 +245,7 @@ describe("VaultViewer", () => {
       expect(vaultsDataBatch[0].totalValue).to.be.a("bigint");
       expect(vaultsDataBatch[0].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
       expect(vaultsDataBatch[0].record.liabilityShares).to.be.a("bigint");
-      expect(vaultsDataBatch[0].stEthLiability).to.be.a("bigint");
+      expect(vaultsDataBatch[0].liabilityStETH).to.be.a("bigint");
       expect(vaultsDataBatch[0].nodeOperatorFee).to.be.a("bigint");
       expect(vaultsDataBatch[0].connection.infraFeeBP).to.be.a("bigint");
       expect(vaultsDataBatch[0].connection.liquidityFeeBP).to.be.a("bigint");
@@ -259,7 +259,7 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.be.a("bigint");
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
       expect(vaultData.record.liabilityShares).to.be.a("bigint");
-      expect(vaultData.stEthLiability).to.be.a("bigint");
+      expect(vaultData.liabilityStETH).to.be.a("bigint");
       expect(vaultData.nodeOperatorFee).to.be.a("bigint");
       expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
       expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");

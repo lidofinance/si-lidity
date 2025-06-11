@@ -23,7 +23,7 @@ contract VaultViewer {
         VaultHub.VaultConnection connection;
         VaultHub.VaultRecord record;
         uint256 totalValue;
-        uint256 stEthLiability;
+        uint256 liabilityStETH;
         uint256 nodeOperatorFee;
         bool isOwnerDashboard;
     }
@@ -206,7 +206,7 @@ contract VaultViewer {
             connection: vaultHub.vaultConnection(vault),
             record: record,
             totalValue:  vaultHub.totalValue(vault),
-            stEthLiability: lido.getPooledEthByShares(record.liabilityShares),
+            liabilityStETH: lido.getPooledEthByShares(record.liabilityShares),
             nodeOperatorFee: nodeOperatorFee,
             isOwnerDashboard: isDashboard
         });
