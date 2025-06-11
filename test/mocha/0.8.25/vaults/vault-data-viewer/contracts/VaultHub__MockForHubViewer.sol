@@ -20,10 +20,17 @@ contract VaultHub__MockForHubViewer {
     constructor(ILidoLocator _locator, ILido _lido) {
         LIDO_LOCATOR = _locator;
         LIDO = _lido;
+
+        _getVaultHubStorage().vaults.push(address(0));
     }
 
     event Mock__VaultDisconnected(address vault);
     event Mock__Rebalanced(uint256 amount);
+
+    //    function initialize(address _admin) external initializer {
+    //        // the stone in the elevator. index 0 is reserved for not connected vaults
+    //        _getVaultHubStorage().vaults.push(address(0));
+    //    }
 
     function vaultConnection(address _vault) external view returns (VaultHub.VaultConnection memory) {
         return _getVaultHubStorage().connections[_vault];
@@ -31,6 +38,10 @@ contract VaultHub__MockForHubViewer {
 
     function vaultByIndex(uint256 _index) external view returns (address) {
         return _getVaultHubStorage().vaults[_index];
+    }
+
+    function isVaultConnected(address _vault) external view returns (bool) {
+        return _getVaultHubStorage().connections[_vault].vaultIndex != 0;
     }
 
     function vaultRecord(address _vault) external view returns (VaultHub.VaultRecord memory) {
@@ -45,9 +56,18 @@ contract VaultHub__MockForHubViewer {
         return _getVaultHubStorage().vaults[_index];
     }
 
-    //    function mock_vaultSocket() public view returns (VaultHub.VaultSocket[] memory) {
-    //        return _getVaultHubStorage().connections;
-    //    }
+    function totalValue(address _vault) external view returns (uint256) {
+        return _totalValue(_vaultRecord(_vault));
+    }
+
+    function _vaultRecord(address _vault) internal view returns (VaultHub.VaultRecord storage) {
+        return _getVaultHubStorage().records[_vault];
+    }
+
+    function _totalValue(VaultHub.VaultRecord storage _record) internal view returns (uint256) {
+        VaultHub.Report memory report = _record.report;
+        return uint256(int256(uint256(report.totalValue)) + _record.inOutDelta - report.inOutDelta);
+    }
 
     function disconnect(address _vault) external {
         emit Mock__VaultDisconnected(_vault);

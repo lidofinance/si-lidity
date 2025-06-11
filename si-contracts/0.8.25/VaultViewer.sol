@@ -296,7 +296,7 @@ contract VaultViewer {
         uint256 connectedCount = 0;
 
         // The `vaultByIndex` is 1-based list
-        for (uint256 i = 1; i <= count; i++) {
+        for (uint256 i = 1; i < count; i++) {
             // variable declaration inside the loop doesn’t affect gas costs
             address vaultAddress = vaultHub.vaultByIndex(i);
             if (vaultHub.isVaultConnected(vaultAddress)) {
@@ -316,7 +316,7 @@ contract VaultViewer {
         uint256 valid = 0;
 
         // The `vaultByIndex` is 1-based list
-        for (uint256 i = 1; i <= count; i++) {
+        for (uint256 i = 1; i < count; i++) {
             // variable declaration inside the loop doesn’t affect gas costs
             IVault candidateVault = IVault(vaultHub.vaultByIndex(i));
             if (hasRole(candidateVault, _member, _role)) {
@@ -336,7 +336,7 @@ contract VaultViewer {
         uint256 valid = 0;
 
         // The `vaultByIndex` is 1-based list
-        for (uint256 i = 1; i <= count; i++) {
+        for (uint256 i = 1; i < count; i++) {
             IVault candidateVault = IVault(vaultHub.vaultByIndex(i));
             if (isOwner(candidateVault, _owner)) {
                 vaults[valid] = candidateVault;
