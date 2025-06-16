@@ -33,6 +33,8 @@ async function deployDummyLocator(
     accounting: certainAddress("dummy-locator:withdrawalVault"),
     wstETH: certainAddress("dummy-locator:wstETH"),
     vaultHub: certainAddress("dummy-locator:vaultHub"),
+    vaultFactory: certainAddress("dummy-locator:vaultFactory"),
+    lazyOracle: certainAddress("dummy-locator:lazyOracle"),
     predepositGuarantee: certainAddress("dummy-locator:predepositGuarantee"),
     operatorGrid: certainAddress("dummy-locator:operatorGrid"),
     ...config,
