@@ -37,6 +37,8 @@ async function deployDummyLocator(
     lazyOracle: certainAddress("dummy-locator:lazyOracle"),
     predepositGuarantee: certainAddress("dummy-locator:predepositGuarantee"),
     operatorGrid: certainAddress("dummy-locator:operatorGrid"),
+    validatorExitDelayVerifier: certainAddress("dummy-locator:validatorExitDelayVerifier"),
+    triggerableWithdrawalsGateway: certainAddress("dummy-locator:triggerableWithdrawalsGateway"),
     ...config,
   });
 

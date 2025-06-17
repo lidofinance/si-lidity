@@ -5,10 +5,14 @@ pragma solidity 0.8.25;
 
 import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
 import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
-import {ILido} from "contracts/0.8.25/interfaces/ILido.sol";
+import {RefSlotCache} from "contracts/0.8.25/vaults/lib/RefSlotCache.sol";
+import {ILido} from "contracts/common/interfaces/ILido.sol";
 import {ILidoLocator} from "contracts/common/interfaces/ILidoLocator.sol";
 
 contract VaultHub__MockForHubViewer {
+    using RefSlotCache for RefSlotCache.Uint112WithRefSlotCache;
+    using RefSlotCache for RefSlotCache.Int112WithRefSlotCache;
+
     ILido public immutable LIDO;
     ILidoLocator public immutable LIDO_LOCATOR;
 
@@ -66,7 +70,7 @@ contract VaultHub__MockForHubViewer {
 
     function _totalValue(VaultHub.VaultRecord storage _record) internal view returns (uint256) {
         VaultHub.Report memory report = _record.report;
-        return uint256(int256(uint256(report.totalValue)) + _record.inOutDelta - report.inOutDelta);
+        return uint256(int256(uint256(report.totalValue)) + _record.inOutDelta.value - report.inOutDelta);
     }
 
     function disconnect(address _vault) external {
@@ -85,17 +89,16 @@ contract VaultHub__MockForHubViewer {
         VaultHub.Storage storage $ = _getVaultHubStorage();
 
         VaultHub.Report memory report = VaultHub.Report(
-            uint128(10), // totalValue
-            int128(10) // inOutDelta
+            uint112(10), // totalValue
+            int112(10), // inOutDelta
+            uint32(1749550671) // timestamp
         );
 
         VaultHub.VaultRecord memory vr = VaultHub.VaultRecord(
             report,
             uint128(0), // locked
             uint96(1), // liabilityShares
-            uint64(1749550671), // reportTimestamp
-            int128(1), // inOutDelta
-            uint96(1) // feeSharesCharged
+            RefSlotCache.Int112WithRefSlotCache({value: int112(1), valueOnRefSlot: int112(1), refSlot: uint32(0)}) // inOutDelta
         );
 
         VaultHub.VaultConnection memory vc = VaultHub.VaultConnection(
@@ -107,7 +110,8 @@ contract VaultHub__MockForHubViewer {
             uint16(1), // forcedRebalanceThresholdBP
             uint16(1), // infraFeeBP
             uint16(1), // liquidityFeeBP
-            uint16(1) // reservationFeeBP
+            uint16(1), // reservationFeeBP
+            false // isBeaconDepositsManuallyPaused
         );
 
         $.vaults.push(_vault);

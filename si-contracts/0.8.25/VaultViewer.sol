@@ -5,7 +5,7 @@
 pragma solidity 0.8.25;
 import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
 import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
-import {ILido} from "contracts/0.8.25/interfaces/ILido.sol";
+import {ILido} from "contracts/common/interfaces/ILido.sol";
 
 interface IVault is IStakingVault {
     function owner() external view returns (address);
