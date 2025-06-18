@@ -20,9 +20,11 @@ contract VaultViewer {
     }
 
     struct VaultData {
+        address vaultAddress;
         VaultHub.VaultConnection connection;
         VaultHub.VaultRecord record;
         uint256 totalValue;
+        uint256 liabilityShares;
         uint256 liabilityStETH;
         uint256 nodeOperatorFee;
         bool isOwnerDashboard;
@@ -89,7 +91,9 @@ contract VaultViewer {
     /// @param _owner The address to check
     /// @return True if the address is the owner, false otherwise
     function isOwner(IVault vault, address _owner) public view returns (bool) {
-        address vaultOwner = vault.owner();
+        // For connected vaults the `vault.owner()` is VaultHub
+        VaultHub.VaultConnection memory connection = vaultHub.vaultConnection(address(vault));
+        address vaultOwner = connection.owner;
         if (vaultOwner == _owner) {
             return true;
         }
@@ -203,10 +207,12 @@ contract VaultViewer {
         (uint16 nodeOperatorFee, bool isDashboard) = _getNodeOperatorFeeIfDashboard(vaultContract.owner());
 
         data = VaultData({
+            vaultAddress: vault,
             connection: vaultHub.vaultConnection(vault),
             record: record,
             totalValue:  vaultHub.totalValue(vault),
-            liabilityStETH: lido.getPooledEthByShares(record.liabilityShares),
+            liabilityShares: record.liabilityShares,
+            liabilityStETH: lido.getPooledEthBySharesRoundUp(record.liabilityShares),
             nodeOperatorFee: nodeOperatorFee,
             isOwnerDashboard: isDashboard
         });
@@ -243,19 +249,25 @@ contract VaultViewer {
         address[][] memory members
     ) {
         IVault vaultContract = IVault(vaultAddress);
-        owner = vaultContract.owner();
+        VaultHub.VaultConnection memory connection = vaultHub.vaultConnection(vaultAddress);
+        // For connected vaults the `vaultContract.owner()` is VaultHub
+        owner = connection.owner;
         nodeOperator = vaultContract.nodeOperator();
         depositor = vaultContract.depositor();
 
-        members = new address[][](roles.length);
+        // TODO: check function for unconnected vault and EOA
 
-        // owner may be an EOA wallet
-        if (!isContract(owner)) {
+        members = new address[][](roles.length);
+        // thisContractOwnerAddress != `vault owner` connected vaults
+        address thisContractOwnerAddress = vaultContract.owner();
+
+        // thisContractOwnerAddress may be an EOA wallet
+        if (!isContract(thisContractOwnerAddress)) {
             return (owner, nodeOperator, depositor, members);
         }
 
         for (uint256 i = 0; i < roles.length; i++) {
-            members[i] = _getRoleMember(owner, roles[i]);
+            members[i] = _getRoleMember(thisContractOwnerAddress, roles[i]);
         }
         return (owner, nodeOperator, depositor, members);
     }

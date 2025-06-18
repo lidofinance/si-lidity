@@ -85,7 +85,7 @@ contract VaultHub__MockForHubViewer {
         emit Mock__Rebalanced(msg.value);
     }
 
-    function mock_connectVault(address _vault) external {
+    function mock_connectVault(address _vault, address _owner) external {
         VaultHub.Storage storage $ = _getVaultHubStorage();
 
         VaultHub.Report memory report = VaultHub.Report(
@@ -102,7 +102,7 @@ contract VaultHub__MockForHubViewer {
         );
 
         VaultHub.VaultConnection memory vc = VaultHub.VaultConnection(
-            _vault,
+            _owner,
             uint96(1), // shareLimit,
             uint96($.vaults.length), // vaultIndex
             false, // pendingDisconnect

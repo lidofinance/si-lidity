@@ -211,9 +211,9 @@ describe("VaultViewer", () => {
 
   context("vaultsConnected", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress(), vaultOwner.getAddress());
     });
 
     it("returns all connected vaults", async () => {
@@ -230,16 +230,16 @@ describe("VaultViewer", () => {
       await steth.mock__setTotalPooledEther(100n);
       await steth.mock__setTotalShares(100n);
 
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress(), vaultOwner.getAddress());
     });
 
     it("returns data for a batch of connected vaults with getVaultsDataBound", async () => {
       const vaultsDataBatch = await vaultViewer.getVaultsDataBound(0, 1);
 
       expect(vaultsDataBatch.length).to.equal(1);
-      expect(vaultsDataBatch[0].connection.owner).to.equal(await vaultDashboard1.getAddress());
+      expect(vaultsDataBatch[0].vaultAddress).to.equal(await vaultDashboard1.getAddress());
 
       // Sanity check: values are returned and types match
       expect(vaultsDataBatch[0].totalValue).to.be.a("bigint");
@@ -278,9 +278,9 @@ describe("VaultViewer", () => {
 
   context("vaultsConnectedBound", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress(), vaultOwner.getAddress());
     });
 
     it("returns all connected vaults", async () => {
@@ -312,9 +312,9 @@ describe("VaultViewer", () => {
 
   context("vaultsByOwner", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress(), vaultOwner.getAddress());
     });
 
     it("returns all vaults owned by a given address", async () => {
@@ -328,9 +328,9 @@ describe("VaultViewer", () => {
 
   context("vaultsByOwnerBound", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress(), vaultOwner.getAddress());
     });
 
     it("returns all connected vaults", async () => {
@@ -358,9 +358,9 @@ describe("VaultViewer", () => {
 
   context("vaultsByRole", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress(), vaultOwner.getAddress());
     });
 
     it("returns all vaults with a given role on Dashboard", async () => {
@@ -373,9 +373,9 @@ describe("VaultViewer", () => {
 
   context("vaultsByRoleBound", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress());
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress(), vaultOwner.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress(), vaultOwner.getAddress());
     });
 
     it("returns all vaults with a given role on Dashboard", async () => {
@@ -396,27 +396,27 @@ describe("VaultViewer", () => {
       await steth.mock__setTotalShares(100n);
 
       for (const vault of vaultDashboardArray) {
-        await hub.connect(hubSigner).mock_connectVault(vault.getAddress());
+        await hub.connect(hubSigner).mock_connectVault(vault.getAddress(), vaultOwner.getAddress());
       }
     });
 
     it("returns data for a batch of connected vaults bounded [0, 50]", async () => {
       const vaultsDataBatch1 = await vaultViewer.getVaultsDataBound(0, 50);
       expect(vaultsDataBatch1.length).to.equal(50);
-      expect(vaultsDataBatch1[0].connection.owner).to.equal(await vaultDashboardArray[0].getAddress());
-      expect(vaultsDataBatch1[49].connection.owner).to.equal(await vaultDashboardArray[49].getAddress());
+      expect(vaultsDataBatch1[0].vaultAddress).to.equal(await vaultDashboardArray[0].getAddress());
+      expect(vaultsDataBatch1[49].vaultAddress).to.equal(await vaultDashboardArray[49].getAddress());
     });
 
     it("returns data for a batch of connected vaults bounded [50, 75]", async () => {
       const vaultsDataBatch3 = await vaultViewer.getVaultsDataBound(50, 75);
       expect(vaultsDataBatch3.length).to.equal(25);
-      expect(vaultsDataBatch3[0].connection.owner).to.equal(await vaultDashboardArray[50].getAddress());
+      expect(vaultsDataBatch3[0].vaultAddress).to.equal(await vaultDashboardArray[50].getAddress());
     });
 
     it("returns data for a batch of connected vaults bounded [50, 100]", async () => {
       const vaultsDataBatch3 = await vaultViewer.getVaultsDataBound(50, 100);
       expect(vaultsDataBatch3.length).to.equal(25);
-      expect(vaultsDataBatch3[0].connection.owner).to.equal(await vaultDashboardArray[50].getAddress());
+      expect(vaultsDataBatch3[0].vaultAddress).to.equal(await vaultDashboardArray[50].getAddress());
     });
 
     it("returns data for a batch of connected vaults bounded [1000, 0]", async () => {
@@ -436,12 +436,11 @@ describe("VaultViewer", () => {
 
   context("getRoleMembers & getRoleMembersBatch", () => {
     beforeEach(async () => {
-      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress());
+      await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
     });
 
     it("returns role members for a single vault", async () => {
       const ADMIN_ROLE = await dashboard1.DEFAULT_ADMIN_ROLE();
-      // Grant the role
       await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
       await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger2.getAddress());
 
@@ -455,7 +454,7 @@ describe("VaultViewer", () => {
       expect(roleMembers.length).to.equal(4);
 
       // 0: owner
-      expect(roleMembers[0]).to.equal(await dashboard1.getAddress());
+      expect(roleMembers[0]).to.equal(await vaultOwner.getAddress());
 
       // 1: nodeOperator
       expect(roleMembers[1]).to.equal(await operator.getAddress());
@@ -491,7 +490,6 @@ describe("VaultViewer", () => {
         [ADMIN_ROLE, NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE],
       );
 
-      // TODO: [owner, nodeOperator, depositor, membersArray]
       expect(membersBatch.length).to.equal(2);
       expect(membersBatch[0].length).to.equal(5);
       expect(membersBatch[1].length).to.equal(5);
