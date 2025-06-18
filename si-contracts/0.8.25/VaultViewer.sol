@@ -177,13 +177,14 @@ contract VaultViewer {
     function getVaultData(address vault) public view returns (VaultData memory data) {
         ILido lido = vaultHub.LIDO();
         IVault vaultContract = IVault(vault);
+        VaultHub.VaultConnection memory connection = vaultHub.vaultConnection(vault);
         VaultHub.VaultRecord memory record = vaultHub.vaultRecord(vault);
 
-        (uint256 nodeOperatorFeeRate, bool isDashboard) = _getNodeOperatorFeeRate(vaultContract.owner());
+        (uint256 nodeOperatorFeeRate, bool isDashboard) = _getNodeOperatorFeeRate(connection.owner);
 
         data = VaultData({
             vaultAddress: vault,
-            connection: vaultHub.vaultConnection(vault),
+            connection: connection,
             record: record,
             totalValue: vaultHub.totalValue(vault),
             liabilityStETH: lido.getPooledEthBySharesRoundUp(record.liabilityShares),
