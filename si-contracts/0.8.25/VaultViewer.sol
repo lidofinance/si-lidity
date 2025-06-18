@@ -180,7 +180,7 @@ contract VaultViewer {
         IVault vaultContract = IVault(vault);
         VaultHub.VaultRecord memory record = vaultHub.vaultRecord(vault);
 
-        (uint16 nodeOperatorFeeRate, bool isDashboard) = _getNodeOperatorFeeRate(vaultContract.owner());
+        (uint256 nodeOperatorFeeRate, bool isDashboard) = _getNodeOperatorFeeRate(vaultContract.owner());
 
         data = VaultData({
             vaultAddress: vault,
