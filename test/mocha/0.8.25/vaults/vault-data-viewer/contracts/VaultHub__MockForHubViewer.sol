@@ -53,7 +53,7 @@ contract VaultHub__MockForHubViewer {
     }
 
     function vaultsCount() public view returns (uint256) {
-        return _getVaultHubStorage().vaults.length;
+        return _getVaultHubStorage().vaults.length - 1;
     }
 
     function vault(uint256 _index) public view returns (address) {
