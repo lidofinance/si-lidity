@@ -5,71 +5,76 @@ pragma solidity 0.8.25;
 
 import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
 import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
-
-contract IStETH {
-    function mintExternalShares(address _receiver, uint256 _amountOfShares) external {}
-
-    function burnExternalShares(uint256 _amountOfShares) external {}
-}
+import {RefSlotCache} from "contracts/0.8.25/vaults/lib/RefSlotCache.sol";
+import {ILido} from "contracts/common/interfaces/ILido.sol";
+import {ILidoLocator} from "contracts/common/interfaces/ILidoLocator.sol";
 
 contract VaultHub__MockForHubViewer {
+    using RefSlotCache for RefSlotCache.Uint112WithRefSlotCache;
+    using RefSlotCache for RefSlotCache.Int112WithRefSlotCache;
+
+    ILido public immutable LIDO;
+    ILidoLocator public immutable LIDO_LOCATOR;
+
     uint256 internal constant BPS_BASE = 100_00;
-    IStETH public immutable steth;
     // keccak256(abi.encode(uint256(keccak256("VaultHub")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant VAULT_HUB_STORAGE_LOCATION =
         0xb158a1a9015c52036ff69e7937a7bb424e82a8c4cbec5c5309994af06d825300;
 
-    constructor(IStETH _steth) {
-        steth = _steth;
+    constructor(ILidoLocator _locator, ILido _lido) {
+        LIDO_LOCATOR = _locator;
+        LIDO = _lido;
+
+        _getVaultHubStorage().vaults.push(address(0));
     }
 
     event Mock__VaultDisconnected(address vault);
     event Mock__Rebalanced(uint256 amount);
 
-    mapping(address => VaultHub.VaultSocket) public vaultSockets;
+    //    function initialize(address _admin) external initializer {
+    //        // the stone in the elevator. index 0 is reserved for not connected vaults
+    //        _getVaultHubStorage().vaults.push(address(0));
+    //    }
 
-    function mock__setVaultSocket(address _vault, VaultHub.VaultSocket memory socket) external {
-        vaultSockets[_vault] = socket;
+    function vaultConnection(address _vault) external view returns (VaultHub.VaultConnection memory) {
+        return _getVaultHubStorage().connections[_vault];
     }
 
-    function mock_vaultLock(address _vault, uint256 amount) external {
-        IStakingVault(_vault).lock(amount);
+    function vaultByIndex(uint256 _index) external view returns (address) {
+        return _getVaultHubStorage().vaults[_index];
     }
 
-    function vaultSocket(address _vault) external view returns (VaultHub.VaultSocket memory) {
-        return vaultSockets[_vault];
+    function isVaultConnected(address _vault) external view returns (bool) {
+        return _getVaultHubStorage().connections[_vault].vaultIndex != 0;
     }
 
-    function vaultSocket(uint256 _index) external view returns (VaultHub.VaultSocket memory) {
-        return _getVaultHubStorage().sockets[_index];
-    }
-
-    function vaultSocketIndex(address _vault) public view returns (uint256) {
-        return _getVaultHubStorage().vaultIndex[_vault];
+    function vaultRecord(address _vault) external view returns (VaultHub.VaultRecord memory) {
+        return _getVaultHubStorage().records[_vault];
     }
 
     function vaultsCount() public view returns (uint256) {
-        return _getVaultHubStorage().sockets.length;
+        return _getVaultHubStorage().vaults.length - 1;
     }
 
     function vault(uint256 _index) public view returns (address) {
-        return _getVaultHubStorage().sockets[_index].vault;
+        return _getVaultHubStorage().vaults[_index];
     }
 
-    function mock_vaultSocket() public view returns (VaultHub.VaultSocket[] memory) {
-        return _getVaultHubStorage().sockets;
+    function totalValue(address _vault) external view returns (uint256) {
+        return _totalValue(_vaultRecord(_vault));
     }
 
-    function disconnectVault(address _vault) external {
+    function _vaultRecord(address _vault) internal view returns (VaultHub.VaultRecord storage) {
+        return _getVaultHubStorage().records[_vault];
+    }
+
+    function _totalValue(VaultHub.VaultRecord storage _record) internal view returns (uint256) {
+        VaultHub.Report memory report = _record.report;
+        return uint256(int256(uint256(report.totalValue)) + _record.inOutDelta.value - report.inOutDelta);
+    }
+
+    function disconnect(address _vault) external {
         emit Mock__VaultDisconnected(_vault);
-    }
-
-    function mintSharesBackedByVault(address /* vault */, address recipient, uint256 amount) external {
-        steth.mintExternalShares(recipient, amount);
-    }
-
-    function burnSharesBackedByVault(address /* vault */, uint256 amount) external {
-        steth.burnExternalShares(amount);
     }
 
     function voluntaryDisconnect(address _vault) external {
@@ -80,25 +85,41 @@ contract VaultHub__MockForHubViewer {
         emit Mock__Rebalanced(msg.value);
     }
 
-    function mock_connectVault(address _vault) external {
-        VaultHub.VaultHubStorage storage $ = _getVaultHubStorage();
+    function mock_connectVault(address _vault, address _owner) external {
+        VaultHub.Storage storage $ = _getVaultHubStorage();
 
-        VaultHub.VaultSocket memory vr = VaultHub.VaultSocket(
-            _vault,
-            0, // liabilityShares
-            uint96(0), // shareLimit,
-            uint16(0), // reserveRatioBP
-            uint16(0), // forcedRebalanceThresholdBP
-            uint16(0), // treasuryFeeBP
-            false, // pendingDisconnect
-            uint96(0) // feeSharesCharged
+        VaultHub.Report memory report = VaultHub.Report(
+            uint112(10), // totalValue
+            int112(10), // inOutDelta
+            uint32(1749550671) // timestamp
         );
 
-        $.vaultIndex[_vault] = $.sockets.length;
-        $.sockets.push(vr);
+        VaultHub.VaultRecord memory vr = VaultHub.VaultRecord(
+            report,
+            uint128(0), // locked
+            uint96(1), // liabilityShares
+            RefSlotCache.Int112WithRefSlotCache({value: int112(1), valueOnRefSlot: int112(1), refSlot: uint32(0)}) // inOutDelta
+        );
+
+        VaultHub.VaultConnection memory vc = VaultHub.VaultConnection(
+            _owner,
+            uint96(1), // shareLimit,
+            uint96($.vaults.length), // vaultIndex
+            false, // pendingDisconnect
+            uint16(1), // reserveRatioBP
+            uint16(1), // forcedRebalanceThresholdBP
+            uint16(1), // infraFeeBP
+            uint16(1), // liquidityFeeBP
+            uint16(1), // reservationFeeBP
+            false // isBeaconDepositsManuallyPaused
+        );
+
+        $.vaults.push(_vault);
+        $.connections[_vault] = vc;
+        $.records[_vault] = vr;
     }
 
-    function _getVaultHubStorage() private pure returns (VaultHub.VaultHubStorage storage $) {
+    function _getVaultHubStorage() private pure returns (VaultHub.Storage storage $) {
         assembly {
             $.slot := VAULT_HUB_STORAGE_LOCATION
         }

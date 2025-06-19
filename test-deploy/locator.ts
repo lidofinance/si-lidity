@@ -33,7 +33,12 @@ async function deployDummyLocator(
     accounting: certainAddress("dummy-locator:withdrawalVault"),
     wstETH: certainAddress("dummy-locator:wstETH"),
     vaultHub: certainAddress("dummy-locator:vaultHub"),
+    vaultFactory: certainAddress("dummy-locator:vaultFactory"),
+    lazyOracle: certainAddress("dummy-locator:lazyOracle"),
     predepositGuarantee: certainAddress("dummy-locator:predepositGuarantee"),
+    operatorGrid: certainAddress("dummy-locator:operatorGrid"),
+    validatorExitDelayVerifier: certainAddress("dummy-locator:validatorExitDelayVerifier"),
+    triggerableWithdrawalsGateway: certainAddress("dummy-locator:triggerableWithdrawalsGateway"),
     ...config,
   });
 
@@ -118,6 +123,7 @@ async function getLocatorConfig(ethers: HardhatEthers, locatorAddress: string) {
     "wstETH",
     "vaultHub",
     "predepositGuarantee",
+    "operatorGrid",
   ] as Partial<keyof LidoLocator.ConfigStruct>[];
 
   const configPromises = addresses.map((name) => locator[name]());
