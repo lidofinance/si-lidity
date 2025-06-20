@@ -188,7 +188,7 @@ describe("VaultViewer", () => {
     }
 
     vaultViewer = await ethers.deployContract("VaultViewer", [hub]);
-    expect(await vaultViewer.vaultHub()).to.equal(hub);
+    expect(await vaultViewer.VAULT_HUB()).to.equal(hub);
 
     hubSigner = await impersonate(ethers, provider, await hub.getAddress(), ether("100"));
   });

@@ -7,18 +7,7 @@ import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
 import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
 import {ILido} from "contracts/common/interfaces/ILido.sol";
 
-interface IVault is IStakingVault {
-    function owner() external view returns (address);
-}
-
 contract VaultViewer {
-    enum VaultState {
-        MintingAllowed, // Shares(inEth) <= 0.90
-        Healthy, // 0.90  < Shares(inEth) <= 0.92
-        Unhealthy, // 0.92 < Shares(inEth) < 1.00
-        BadDebt // Shares(inEth) >= 1.00
-    }
-
     struct VaultData {
         address vaultAddress;
         VaultHub.VaultConnection connection;
@@ -26,28 +15,33 @@ contract VaultViewer {
         uint256 totalValue;
         uint256 liabilityStETH;
         uint256 nodeOperatorFeeRate;
-        bool isOwnerDashboard;
     }
 
-    struct VaultRoleMembers {
+    struct VaultMembers {
+        // TODO: check
         address vault;
         address owner;
         address nodeOperator;
-        address depositor;
         address[][] members;
     }
 
+    /**
+     * @notice Strict true value for checking role membership
+     */
     bytes32 constant strictTrue = keccak256(hex"0000000000000000000000000000000000000000000000000000000000000001");
 
-    uint256 internal constant TOTAL_BASIS_POINTS = 100_00;
-
+    /**
+     * @notice Default admin role for checking roles
+     */
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    VaultHub public immutable vaultHub;
+    VaultHub public immutable VAULT_HUB;
 
-    constructor(address payable _vaultHubAddress) {
-        if (_vaultHubAddress == address(0)) revert ZeroArgument("_vaultHubAddress");
-        vaultHub = VaultHub(_vaultHubAddress);
+    /// @notice Constructor
+    /// @param _vaultHub Address of the vault hub
+    constructor(address _vaultHub) {
+        if (_vaultHub == address(0)) revert ZeroArgument("_vaultHub");
+        VAULT_HUB = VaultHub(payable(_vaultHub));
     }
 
     /// @notice Checks if a given address is a contract
@@ -61,42 +55,43 @@ contract VaultViewer {
         return size > 0;
     }
 
-    /// @notice Checks if a given address is the owner of a vault
+    /// @notice Checks if a given address is the owner of a connection vault
     /// @param vault The vault to check
     /// @param _owner The address to check
     /// @return True if the address is the owner, false otherwise
-    function isOwner(IVault vault, address _owner) public view returns (bool) {
+    function isOwner(IStakingVault vault, address _owner) public view returns (bool) {
         // For connected vaults the `vault.owner()` is VaultHub
-        VaultHub.VaultConnection memory connection = vaultHub.vaultConnection(address(vault));
-        address vaultOwner = connection.owner;
-        if (vaultOwner == _owner) {
+        VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(address(vault));
+        if (connection.owner == _owner) {
             return true;
         }
 
-        return _checkHasRole(vaultOwner, _owner, DEFAULT_ADMIN_ROLE);
+        return _checkHasRole(connection.owner, _owner, DEFAULT_ADMIN_ROLE);
     }
 
-    /// @notice Checks if a given address has a given role on a vault owner contract
+    /// @notice Checks if a given address has a given role on a connection vault owner contract
     /// @param vault The vault to check
     /// @param _member The address to check
     /// @param _role The role to check
     /// @return True if the address has the role, false otherwise
-    function hasRole(IVault vault, address _member, bytes32 _role) public view returns (bool) {
-        address vaultOwner = vault.owner();
-        if (vaultOwner == address(0)) {
+    /// @dev Return roles only for connection vault owner - dashboard contract
+    function hasRole(IStakingVault vault, address _member, bytes32 _role) public view returns (bool) {
+        // For connected vaults the `vault.owner()` is VaultHub
+        VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(address(vault));
+        if (connection.owner == address(0)) {
             return false;
         }
 
-        return _checkHasRole(vaultOwner, _member, _role);
+        return _checkHasRole(connection.owner, _member, _role);
     }
 
     /// @notice Returns all vaults owned by a given address
     /// @param _owner Address of the owner
     /// @return An array of vaults owned by the given address
-    function vaultsByOwner(address _owner) public view returns (IVault[] memory) {
-        (IVault[] memory vaults, uint256 valid) = _vaultsByOwner(_owner);
+    function vaultsByOwner(address _owner) public view returns (IStakingVault[] memory) {
+        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsByOwner(_owner);
 
-        return _filterNonZeroVaults(vaults, 0, valid);
+        return _filterNonZeroVaults(vaults, 0, validCount);
     }
 
     /// @notice Returns all vaults owned by a given address
@@ -109,11 +104,11 @@ contract VaultViewer {
         address _owner,
         uint256 _from,
         uint256 _to
-    ) public view returns (IVault[] memory, uint256) {
-        (IVault[] memory vaults, uint256 valid) = _vaultsByOwner(_owner);
+    ) public view returns (IStakingVault[] memory, uint256) {
+        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsByOwner(_owner);
 
-        uint256 count = valid > _to ? _to : valid;
-        uint256 leftover = valid > _to ? valid - _to : 0;
+        uint256 count = validCount > _to ? _to : validCount;
+        uint256 leftover = validCount > _to ? validCount - _to : 0;
 
         return (_filterNonZeroVaults(vaults, _from, count), leftover);
     }
@@ -122,8 +117,9 @@ contract VaultViewer {
     /// @param _role Role to check
     /// @param _member Address to check
     /// @return An array of vaults with the given role on the given address
-    function vaultsByRole(bytes32 _role, address _member) public view returns (IVault[] memory) {
-        (IVault[] memory vaults, uint256 valid) = _vaultsByRole(_role, _member);
+    /// @dev Return roles only for connection vault owner - dashboard contract
+    function vaultsByRole(bytes32 _role, address _member) public view returns (IStakingVault[] memory) {
+        (IStakingVault[] memory vaults, uint256 valid) = _vaultsByRole(_role, _member);
 
         return _filterNonZeroVaults(vaults, 0, valid);
     }
@@ -135,26 +131,27 @@ contract VaultViewer {
     /// @param _to Index to end at non-inculsive
     /// @return array of vaults in range with the given role on the given address
     /// @return number of leftover vaults
+    /// @dev Return roles only for connection vault owner - dashboard contract
     function vaultsByRoleBound(
         bytes32 _role,
         address _member,
         uint256 _from,
         uint256 _to
-    ) public view returns (IVault[] memory, uint256) {
-        (IVault[] memory vaults, uint256 valid) = _vaultsByRole(_role, _member);
+    ) public view returns (IStakingVault[] memory, uint256) {
+        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsByRole(_role, _member);
 
-        uint256 count = valid > _to ? _to : valid;
-        uint256 leftover = valid > _to ? valid - _to : 0;
+        uint256 count = validCount > _to ? _to : validCount;
+        uint256 leftover = validCount > _to ? validCount - _to : 0;
 
         return (_filterNonZeroVaults(vaults, _from, count), leftover);
     }
 
     /// @notice Returns all connected vaults
     /// @return array of connected vaults
-    function vaultsConnected() public view returns (IVault[] memory) {
-        (IVault[] memory vaults, uint256 valid) = _vaultsConnected();
+    function vaultsConnected() public view returns (IStakingVault[] memory) {
+        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsConnected();
 
-        return _filterNonZeroVaults(vaults, 0, valid);
+        return _filterNonZeroVaults(vaults, 0, validCount);
     }
 
     /// @notice Returns all connected vaults within a range
@@ -162,11 +159,11 @@ contract VaultViewer {
     /// @param _to Index to end at non-inculsive
     /// @return array of connected vaults
     /// @return number of leftover connected vaults
-    function vaultsConnectedBound(uint256 _from, uint256 _to) public view returns (IVault[] memory, uint256) {
-        (IVault[] memory vaults, uint256 valid) = _vaultsConnected();
+    function vaultsConnectedBound(uint256 _from, uint256 _to) public view returns (IStakingVault[] memory, uint256) {
+        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsConnected();
 
-        uint256 count = valid > _to ? _to : valid;
-        uint256 leftover = valid > _to ? valid - _to : 0;
+        uint256 count = validCount > _to ? _to : validCount;
+        uint256 leftover = validCount > _to ? validCount - _to : 0;
 
         return (_filterNonZeroVaults(vaults, _from, count), leftover);
     }
@@ -175,21 +172,19 @@ contract VaultViewer {
     /// @param vault Address of the vault
     /// @return data Aggregated vault data
     function getVaultData(address vault) public view returns (VaultData memory data) {
-        ILido lido = vaultHub.LIDO();
-        IVault vaultContract = IVault(vault);
-        VaultHub.VaultConnection memory connection = vaultHub.vaultConnection(vault);
-        VaultHub.VaultRecord memory record = vaultHub.vaultRecord(vault);
-
-        (uint256 nodeOperatorFeeRate, bool isDashboard) = _getNodeOperatorFeeRate(connection.owner);
+        ILido lido = VAULT_HUB.LIDO();
+        VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
+        VaultHub.VaultRecord memory record = VAULT_HUB.vaultRecord(vault);
+        // TODO: check for valid value
+        uint256 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
 
         data = VaultData({
             vaultAddress: vault,
             connection: connection,
             record: record,
-            totalValue: vaultHub.totalValue(vault),
+            totalValue: VAULT_HUB.totalValue(vault),
             liabilityStETH: lido.getPooledEthBySharesRoundUp(record.liabilityShares),
-            nodeOperatorFeeRate: nodeOperatorFeeRate,
-            isOwnerDashboard: isDashboard
+            nodeOperatorFeeRate: nodeOperatorFeeRate
         });
     }
 
@@ -197,139 +192,125 @@ contract VaultViewer {
     /// @param _from Index to start from inclusive
     /// @param _to Index to end at non-inclusive
     /// @return vaultsData Array of aggregated vault data
-    function getVaultsDataBound(uint256 _from, uint256 _to) external view returns (VaultData[] memory vaultsData) {
-        (IVault[] memory vaults, uint256 valid) = _vaultsConnected();
+    /// @return leftover Number of leftover vaults
+    function getVaultsDataBound(
+        uint256 _from,
+        uint256 _to
+    ) external view returns (VaultData[] memory vaultsData, uint256 leftover) {
+        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsConnected();
 
-        uint256 end = _to > valid ? valid : _to;
-        uint256 count = end > _from ? end - _from : 0;
+        uint256 count = validCount > _to ? _to : validCount;
+        leftover = validCount > _to ? validCount - _to : 0;
 
-        vaultsData = new VaultData[](count);
+        if (count < _from) revert WrongPaginationRange(_from, _to);
 
-        for (uint256 i = 0; i < count; i++) {
+        vaultsData = new VaultData[](count - _from);
+        for (uint256 i = 0; i < vaultsData.length; i++) {
             vaultsData[i] = getVaultData(address(vaults[_from + i]));
         }
     }
 
-    /// @notice Returns the owner, nodeOperator, depositor, and members for each specified role on a single vault
+    /// @notice Returns the VaultMembers for each specified role on a single vault
     /// @param vaultAddress The address of the vault
     /// @param roles An array of role identifiers (bytes32) to query on the vault’s owner contract
-    /// @return owner The owner address of the vault
-    /// @return nodeOperator The nodeOperator address of the vault
-    /// @return depositor The depositor address of the vault
-    /// @return members A 2D array where members[i] contains all accounts that hold roles[i] on the vault’s owner contract
+    /// @return roleMembers VaultMembers containing vault address, owner, nodeOperator, and corresponding role members
     function getRoleMembers(
         address vaultAddress,
         bytes32[] calldata roles
-    ) public view returns (address owner, address nodeOperator, address depositor, address[][] memory members) {
-        IVault vaultContract = IVault(vaultAddress);
-        VaultHub.VaultConnection memory connection = vaultHub.vaultConnection(vaultAddress);
+    ) public view returns (VaultMembers memory roleMembers) {
+        IStakingVault vaultContract = IStakingVault(vaultAddress);
+        VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vaultAddress);
         // For connected vaults the `vaultContract.owner()` is VaultHub
-        owner = connection.owner;
-        nodeOperator = vaultContract.nodeOperator();
-        depositor = vaultContract.depositor();
+        // connection.owner is the owner of the vault - dashboard contract
+        roleMembers.vault = vaultAddress;
+        roleMembers.owner = connection.owner;
+        roleMembers.nodeOperator = vaultContract.nodeOperator();
+        roleMembers.members = new address[][](roles.length);
 
-        // TODO: check function for unconnected vault and EOA
-
-        members = new address[][](roles.length);
-        // thisContractOwnerAddress != `vault owner` connected vaults
-        address thisContractOwnerAddress = vaultContract.owner();
-
-        // thisContractOwnerAddress may be an EOA wallet
-        if (!isContract(thisContractOwnerAddress)) {
-            return (owner, nodeOperator, depositor, members);
+        // owner may be an EOA wallet
+        if (!isContract(roleMembers.owner)) {
+            return roleMembers;
         }
 
         for (uint256 i = 0; i < roles.length; i++) {
-            members[i] = _getRoleMember(thisContractOwnerAddress, roles[i]);
+            roleMembers.members[i] = _getRoleMember(roleMembers.owner, roles[i]);
         }
-        return (owner, nodeOperator, depositor, members);
+        return roleMembers;
     }
 
-    /// @notice Returns members for each role on multiple vaults
+    /// @notice Returns VaultMembers for each role on multiple vaults
     /// @param vaultAddresses Array of vault addresses to query
     /// @param roles Array of roles to check for each vault
-    /// @return result Array of VaultRoleMembers containing vault address and corresponding role members
+    /// @return result Array of VaultMembers containing vault address, owner, nodeOperator and corresponding role members
     function getRoleMembersBatch(
         address[] calldata vaultAddresses,
         bytes32[] calldata roles
-    ) external view returns (VaultRoleMembers[] memory result) {
-        result = new VaultRoleMembers[](vaultAddresses.length);
+    ) external view returns (VaultMembers[] memory result) {
+        result = new VaultMembers[](vaultAddresses.length);
 
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
-            (address owner, address nodeOperator, address depositor, address[][] memory members) = getRoleMembers(
-                vaultAddresses[i],
-                roles
-            );
-
-            result[i] = VaultRoleMembers({
-                vault: vaultAddresses[i],
-                owner: owner,
-                nodeOperator: nodeOperator,
-                depositor: depositor,
-                members: members
-            });
+            result[i] = getRoleMembers(vaultAddresses[i], roles);
         }
-        return result;
     }
 
     // ==================== Internal Functions ====================
 
     /// @dev common logic for vaultsConnected and vaultsConnectedBound
     /// @custom:todo get vaults by pages, not all vaults
-    function _vaultsConnected() internal view returns (IVault[] memory, uint256) {
-        uint256 count = vaultHub.vaultsCount();
-        IVault[] memory vaults = new IVault[](count);
-        uint256 connectedCount = 0;
+    function _vaultsConnected() internal view returns (IStakingVault[] memory, uint256) {
+        uint256 count = VAULT_HUB.vaultsCount();
+        IStakingVault[] memory vaults = new IStakingVault[](count);
+        uint256 connectedCounter = 0;
 
         // The `vaultByIndex` is 1-based list
         for (uint256 i = 1; i <= count; i++) {
             // variable declaration inside the loop doesn’t affect gas costs
-            address vaultAddress = vaultHub.vaultByIndex(i);
-            if (vaultHub.isVaultConnected(vaultAddress)) {
-                vaults[connectedCount] = IVault(vaultAddress);
-                connectedCount++;
+            address vault = VAULT_HUB.vaultByIndex(i);
+            if (VAULT_HUB.isVaultConnected(vault)) {
+                vaults[connectedCounter] = IStakingVault(vault);
+                connectedCounter++;
             }
         }
 
-        return (vaults, connectedCount);
+        return (vaults, connectedCounter);
     }
 
     /// @dev common logic for vaultsByRole and vaultsByRoleBound
     /// @custom:todo get vaults by pages, not all vaults
-    function _vaultsByRole(bytes32 _role, address _member) internal view returns (IVault[] memory, uint256) {
-        uint256 count = vaultHub.vaultsCount();
-        IVault[] memory vaults = new IVault[](count);
-        uint256 valid = 0;
+    function _vaultsByRole(bytes32 _role, address _member) internal view returns (IStakingVault[] memory, uint256) {
+        uint256 count = VAULT_HUB.vaultsCount();
+        IStakingVault[] memory vaults = new IStakingVault[](count);
+        uint256 validCounter = 0;
 
         // The `vaultByIndex` is 1-based list
         for (uint256 i = 1; i <= count; i++) {
             // variable declaration inside the loop doesn’t affect gas costs
-            IVault candidateVault = IVault(vaultHub.vaultByIndex(i));
-            if (hasRole(candidateVault, _member, _role)) {
-                vaults[valid] = candidateVault;
-                valid++;
+            IStakingVault vault = IStakingVault(VAULT_HUB.vaultByIndex(i));
+            if (hasRole(vault, _member, _role)) {
+                vaults[validCounter] = vault;
+                validCounter++;
             }
         }
 
-        return (vaults, valid);
+        return (vaults, validCounter);
     }
 
     /// @dev common logic for vaultsByOwner and vaultsByOwnerBound
     /// @custom:todo get vaults by pages, not all vaults
-    function _vaultsByOwner(address _owner) internal view returns (IVault[] memory, uint256) {
-        uint256 count = vaultHub.vaultsCount();
-        IVault[] memory vaults = new IVault[](count);
-        uint256 valid = 0;
+    function _vaultsByOwner(address _owner) internal view returns (IStakingVault[] memory, uint256) {
+        uint256 count = VAULT_HUB.vaultsCount();
+        IStakingVault[] memory vaults = new IStakingVault[](count);
+        uint256 validCounter = 0;
 
         // The `vaultByIndex` is 1-based list
         for (uint256 i = 1; i <= count; i++) {
-            IVault candidateVault = IVault(vaultHub.vaultByIndex(i));
-            if (isOwner(candidateVault, _owner)) {
-                vaults[valid] = candidateVault;
-                valid++;
+            IStakingVault vault = IStakingVault(VAULT_HUB.vaultByIndex(i));
+            if (isOwner(vault, _owner)) {
+                vaults[validCounter] = vault;
+                validCounter++;
             }
         }
-        return (vaults, valid);
+        return (vaults, validCounter);
     }
 
     /// @notice Safely attempt a staticcall to `getRoleMembers(bytes32)` on the owner address
@@ -367,14 +348,14 @@ contract VaultViewer {
     /// @param _vaults Array of vaults to filter
     /// @return filtered An array of non-zero vaults
     function _filterNonZeroVaults(
-        IVault[] memory _vaults,
+        IStakingVault[] memory _vaults,
         uint256 _from,
         uint256 _to
-    ) internal pure returns (IVault[] memory filtered) {
+    ) internal pure returns (IStakingVault[] memory filtered) {
         if (_to < _from) revert WrongPaginationRange(_from, _to);
 
         uint256 count = _to - _from;
-        filtered = new IVault[](count);
+        filtered = new IStakingVault[](count);
         for (uint256 i = 0; i < count; i++) {
             filtered[i] = _vaults[_from + i];
         }
@@ -384,13 +365,12 @@ contract VaultViewer {
     /// @dev Uses low-level staticcall to avoid reverting when the method is missing or the address is an EOA
     /// @param owner The address of the vault owner (can be either a contract or an EOA)
     /// @return fee The decoded fee value if present, otherwise 0
-    /// @return isDashboard True if the method exists and returned a valid value, false otherwise
-    function _getNodeOperatorFeeRate(address owner) internal view returns (uint256 fee, bool isDashboard) {
-        if (owner.code.length > 0) {
-            (bool ok, bytes memory result) = owner.staticcall(abi.encodeWithSignature("nodeOperatorFeeRate()"));
-            if (ok && result.length >= 32) {
+    function _getNodeOperatorFeeRate(address owner) internal view returns (uint256 fee) {
+        if (isContract(owner)) {
+            (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("nodeOperatorFeeRate()"));
+            // TODO: check if result.length >= 32 is needed
+            if (success && result.length >= 32) {
                 fee = abi.decode(result, (uint256));
-                isDashboard = true;
             }
         }
     }
