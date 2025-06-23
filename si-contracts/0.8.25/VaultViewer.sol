@@ -18,7 +18,6 @@ contract VaultViewer {
     }
 
     struct VaultMembers {
-        // TODO: check
         address vault;
         address owner;
         address nodeOperator;
