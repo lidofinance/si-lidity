@@ -897,8 +897,10 @@ describe("VaultViewer", () => {
 
     let allStakingVaultsOwner: HardhatEthersSigner;
 
+    let someGrantee: HardhatEthersSigner;
+
     before(async () => {
-      [, allStakingVaultsOwner] = await ethers.getSigners();
+      [, allStakingVaultsOwner, someGrantee] = await ethers.getSigners();
 
       await steth.mock__setTotalPooledEther(100n);
       await steth.mock__setTotalShares(100n);
@@ -931,6 +933,13 @@ describe("VaultViewer", () => {
         label: "getVaultsDataBound",
         args: () => [0, stakingVaultCount],
       },
+      {
+        label: "vaultsByRoleBound",
+        args: async () => {
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+          return [role, await allStakingVaultsOwner.getAddress(), 0, stakingVaultCount];
+        },
+      },
     ];
 
     cases.forEach(({ label, args }) => {
@@ -947,6 +956,32 @@ describe("VaultViewer", () => {
         console.log(`   ${formatWithSpaces(gasEstimate)}`);
         expect(gasEstimate).to.lte(gasLimit);
       });
+    });
+
+    // role grants here do not affect tests above
+    it("getRoleMembersBatch gas estimation (with role grants)", async () => {
+      const roles = [NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE, CHANGE_TIER_ROLE, WITHDRAW_ROLE];
+
+      for (let i = 0; i < stakingVaults.length; i++) {
+        await stakingVaults[i].dashboard
+          .connect(hubSigner)
+          .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await someGrantee.getAddress());
+
+        await stakingVaults[i].dashboard.connect(hubSigner).grantRole(CHANGE_TIER_ROLE, await someGrantee.getAddress());
+
+        await stakingVaults[i].dashboard.connect(hubSigner).grantRole(WITHDRAW_ROLE, await someGrantee.getAddress());
+      }
+
+      const vaultAddresses = await Promise.all(stakingVaults.map(({ stakingVault }) => stakingVault.getAddress()));
+
+      const gasEstimate = await ethers.provider.estimateGas({
+        to: await vaultViewer.getAddress(),
+        data: vaultViewer.interface.encodeFunctionData("getRoleMembersBatch", [vaultAddresses, roles]),
+      });
+
+      console.log("⛽️ getRoleMembersBatch gas estimate (vaults: %d):", stakingVaultCount);
+      console.log("   %s", formatWithSpaces(gasEstimate));
+      expect(gasEstimate).to.lte(gasLimit);
     });
   });
 });
