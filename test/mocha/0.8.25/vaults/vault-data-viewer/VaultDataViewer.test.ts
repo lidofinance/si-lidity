@@ -138,7 +138,10 @@ describe("VaultViewer", () => {
   let vaultViewer: VaultViewer;
   let vaultImpl: StakingVault;
   let stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
-  const stakingVaultCount = 13; // 13 is the minimum required vaults for this test suite
+  // 13 is the minimum required number of vaults for tests,
+  // due to hardcoded ranges like { from: 12, to: 16 } used in success cases.
+  const stakingVaultCount = 30;
+  const gasLimit = 2_000_000n;
 
   // See the `mock_connectVault` in the `test/mocha/0.8.25/vaults/vault-data-viewer/contracts/VaultHub__MockForHubViewer.sol`
   const expectedVaultsData = {
@@ -291,7 +294,7 @@ describe("VaultViewer", () => {
   });
 
   context(`vaults by owner (vaults count is ${stakingVaultCount})`, () => {
-    const vaultSplitIndex = 5;
+    const vaultSplitIndex = Math.ceil(stakingVaultCount / 2);
     let firstBatchOwner: HardhatEthersSigner;
     let secondBatchOwner: HardhatEthersSigner;
     let ownerWithNoVaults: HardhatEthersSigner;
@@ -331,7 +334,7 @@ describe("VaultViewer", () => {
   });
 
   context("vaults by owner bound", () => {
-    const vaultSplitIndex = 7;
+    const vaultSplitIndex = Math.ceil(stakingVaultCount / 3);
     let firstBatchOwner: HardhatEthersSigner;
     let secondBatchOwner: HardhatEthersSigner;
     let ownerWithNoVaults: HardhatEthersSigner;
@@ -411,16 +414,16 @@ describe("VaultViewer", () => {
       });
     });
 
-    it(`reverts with WrongPaginationRange [${vaultSplitIndex}, ${vaultSplitIndex}]`, async () => {
-      await expect(
-        vaultViewer.vaultsByOwnerBound(secondBatchOwner, vaultSplitIndex, vaultSplitIndex),
-      ).to.be.revertedWithCustomError(vaultViewer, "WrongPaginationRange");
-    });
-
-    it(`reverts with WrongPaginationRange [${stakingVaultCount * 10}, ${stakingVaultCount * 10}]`, async () => {
-      await expect(
-        vaultViewer.vaultsByOwnerBound(secondBatchOwner, stakingVaultCount * 10, stakingVaultCount * 10),
-      ).to.be.revertedWithCustomError(vaultViewer, "WrongPaginationRange");
+    [
+      { from: stakingVaultCount, to: vaultSplitIndex },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
+    ].forEach(({ from, to }) => {
+      it(`reverts with WrongPaginationRange [${from}, ${to}]`, async () => {
+        await expect(vaultViewer.vaultsByOwnerBound(secondBatchOwner, from, to)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "WrongPaginationRange",
+        );
+      });
     });
   });
 
@@ -522,7 +525,7 @@ describe("VaultViewer", () => {
   });
 
   context("vaults by role bound", () => {
-    const vaultSplitIndex = 7;
+    const vaultSplitIndex = Math.ceil(stakingVaultCount / 3);
     let firstBatchGrantee: HardhatEthersSigner;
     let secondBatchGrantee: HardhatEthersSigner;
     let granteeWithNoRoles: HardhatEthersSigner;
@@ -885,6 +888,64 @@ describe("VaultViewer", () => {
           expect(members[1].length).to.equal(1);
           expect(members[1][0]).to.equal(await firstGrantee.getAddress());
         }
+      });
+    });
+  });
+
+  context(`gas estimation check (connected vaults: ${stakingVaultCount})`, () => {
+    const formatWithSpaces = (n: bigint | number): string => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+
+    let allStakingVaultsOwner: HardhatEthersSigner;
+
+    before(async () => {
+      [, allStakingVaultsOwner] = await ethers.getSigners();
+
+      await steth.mock__setTotalPooledEther(100n);
+      await steth.mock__setTotalShares(100n);
+
+      const ownerAddr = await allStakingVaultsOwner.getAddress();
+
+      for (const { stakingVault } of stakingVaults) {
+        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), ownerAddr);
+      }
+    });
+
+    const cases = [
+      {
+        label: "vaultsConnected",
+        args: [],
+      },
+      {
+        label: "getVaultsDataBound",
+        args: () => [0, stakingVaultCount],
+      },
+      {
+        label: "vaultsByOwner",
+        args: async (owner: string) => [owner],
+      },
+      {
+        label: "vaultsByOwnerBound",
+        args: async (owner: string) => [owner, 0, stakingVaultCount],
+      },
+      {
+        label: "getVaultsDataBound",
+        args: () => [0, stakingVaultCount],
+      },
+    ];
+
+    cases.forEach(({ label, args }) => {
+      it(`${label} gas estimation`, async () => {
+        const ownerAddr = await allStakingVaultsOwner.getAddress();
+        const resolvedArgs = typeof args === "function" ? await args(ownerAddr) : args;
+
+        const gasEstimate = await ethers.provider.estimateGas({
+          to: await vaultViewer.getAddress(),
+          data: vaultViewer.interface.encodeFunctionData(label, resolvedArgs),
+        });
+
+        console.log(`⛽️ ${label} gas estimate (vaults: ${stakingVaultCount}):`);
+        console.log(`   ${formatWithSpaces(gasEstimate)}`);
+        expect(gasEstimate).to.lte(gasLimit);
       });
     });
   });
