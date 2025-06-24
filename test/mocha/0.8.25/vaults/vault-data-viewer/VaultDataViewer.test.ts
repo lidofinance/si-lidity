@@ -388,7 +388,6 @@ describe("VaultViewer", () => {
     ].forEach(({ from, to }) => {
       it(`returns zero vaults owned by a given address (ownerWithNoVaults) in a given range - [${from}, ${to}]`, async () => {
         const [vaults, leftover] = await vaultViewer.vaultsByOwnerBound(ownerWithNoVaults, from, to);
-        console.log("vaults:", vaults);
         expect(vaults.length).to.equal(0);
         expect(leftover).to.equal(0);
       });
@@ -542,36 +541,37 @@ describe("VaultViewer", () => {
     // TODO: add WrongPaginationRange test cases
   });
 
-  // context("get vault data", () => {
-  //   beforeEach(async () => {
-  //     await steth.mock__setTotalPooledEther(100n);
-  //     await steth.mock__setTotalShares(100n);
-  //
-  //     for (const { stakingVault, owner } of stakingVaults) {
-  //       await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
-  //     }
-  //   });
-  //
-  //   it("returns data for one vault with getVaultData", async () => {
-  //     const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
-  //
-  //     console.log('await stakingVaults[0].stakingVault.owner():', await stakingVaults[0].stakingVault.owner());
-  //     console.log('await stakingVaults[0].owner():', await stakingVaults[0].owner);
-  //     console.log('await stakingVaults[0].dashboard():', await stakingVaults[0].dashboard.getAddress());
-  //     console.log('vaultData.connection.owner:', vaultData.connection.owner);
-  //
-  //     // Sanity check: values are returned and types match
-  //     expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
-  //     expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
-  //     expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");
-  //     expect(vaultData.record.liabilityShares).to.be.a("bigint");
-  //     expect(vaultData.totalValue).to.be.a("bigint");
-  //     expect(vaultData.liabilityStETH).to.be.a("bigint");
-  //     expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
-  //
-  //     // TODO: Value check
-  //   });
-  // });
+  context("get vault data", () => {
+    beforeEach(async () => {
+      await steth.mock__setTotalPooledEther(100n);
+      await steth.mock__setTotalShares(100n);
+
+      for (const { stakingVault, dashboard } of stakingVaults) {
+        await hub.connect(hubSigner).mock_connectVault(
+          await stakingVault.getAddress(),
+          // dashboard is owner of staking vault
+          await dashboard.getAddress(),
+        );
+      }
+    });
+
+    it("returns data for one vault with getVaultData", async () => {
+      const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
+
+      // Sanity check: values are returned and types match
+      expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
+      expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
+      expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");
+      expect(vaultData.record.liabilityShares).to.be.a("bigint");
+      expect(vaultData.totalValue).to.be.a("bigint");
+      expect(vaultData.liabilityStETH).to.be.a("bigint");
+      expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
+
+      // TODO: Value check
+    });
+
+    // TODO: more checks, maybe reverts
+  });
 
   // context("get vaults data bound", () => {
   //   beforeEach(async () => {
@@ -601,51 +601,6 @@ describe("VaultViewer", () => {
   //     expect(vaultsData[0].nodeOperatorFeeRate).to.be.a("bigint");
   //
   //     // TODO: Value check
-  //   });
-  // });
-  //
-  //
-  // context("getVaultsDataBound 'highload'", () => {
-  //   beforeEach(async () => {
-  //     await steth.mock__setTotalPooledEther(100n);
-  //     await steth.mock__setTotalShares(100n);
-  //
-  //     for (const vault of vaultDashboardArray) {
-  //       await hub.connect(hubSigner).mock_connectVault(vault.getAddress(), vaultOwner.getAddress());
-  //     }
-  //   });
-  //
-  //   it("returns data for a batch of connected vaults bounded [0, 50]", async () => {
-  //     const vaultsDataBatch1 = await vaultViewer.getVaultsDataBound(0, 50);
-  //     expect(vaultsDataBatch1.length).to.equal(50);
-  //     expect(vaultsDataBatch1[0].vaultAddress).to.equal(await vaultDashboardArray[0].getAddress());
-  //     expect(vaultsDataBatch1[49].vaultAddress).to.equal(await vaultDashboardArray[49].getAddress());
-  //   });
-  //
-  //   it("returns data for a batch of connected vaults bounded [50, 75]", async () => {
-  //     const vaultsDataBatch3 = await vaultViewer.getVaultsDataBound(50, 75);
-  //     expect(vaultsDataBatch3.length).to.equal(25);
-  //     expect(vaultsDataBatch3[0].vaultAddress).to.equal(await vaultDashboardArray[50].getAddress());
-  //   });
-  //
-  //   it("returns data for a batch of connected vaults bounded [50, 100]", async () => {
-  //     const vaultsDataBatch3 = await vaultViewer.getVaultsDataBound(50, 100);
-  //     expect(vaultsDataBatch3.length).to.equal(25);
-  //     expect(vaultsDataBatch3[0].vaultAddress).to.equal(await vaultDashboardArray[50].getAddress());
-  //   });
-  //
-  //   it("returns data for a batch of connected vaults bounded [1000, 0]", async () => {
-  //     const vaultsDataBatch4 = await vaultViewer.getVaultsDataBound(10000, 0);
-  //     expect(vaultsDataBatch4.length).to.equal(0);
-  //   });
-  //
-  //   it(`checks gas estimation for getVaultsDataBound`, async () => {
-  //     const gasEstimate = await ethers.provider.estimateGas({
-  //       to: await vaultViewer.getAddress(),
-  //       data: vaultViewer.interface.encodeFunctionData("getVaultsDataBound", [0, vaultDashboardArrayCount]),
-  //     });
-  //     // console.log('gasEstimate:', gasEstimate);
-  //     expect(gasEstimate).to.lte(3_600_000n); // 3_600_000n just for passing this test
   //   });
   // });
 
