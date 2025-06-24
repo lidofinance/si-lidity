@@ -25,6 +25,8 @@ import { Snapshot } from "test-utils/suite";
 
 const NODE_OPERATOR_MANAGER_ROLE = keccak256(toUtf8Bytes("vaults.NodeOperatorFee.NodeOperatorManagerRole"));
 const PDG_COMPENSATE_PREDEPOSIT_ROLE = keccak256(toUtf8Bytes("vaults.Permissions.PDGCompensatePredeposit"));
+const CHANGE_TIER_ROLE = keccak256(toUtf8Bytes("vaults.Permissions.ChangeTier"));
+const WITHDRAW_ROLE = keccak256(toUtf8Bytes("vaults.Permissions.Withdraw"));
 
 type STAKING_VAULT_WRAPPER_TYPE = {
   stakingVault: StakingVault;
@@ -709,11 +711,11 @@ describe("VaultViewer", () => {
   });
 
   context("get role members", () => {
-    let firstBatchGrantee: HardhatEthersSigner;
-    let secondBatchGrantee: HardhatEthersSigner;
+    let firstGrantee: HardhatEthersSigner;
+    let secondGrantee: HardhatEthersSigner;
 
     beforeEach(async () => {
-      [, firstBatchGrantee, secondBatchGrantee] = await ethers.getSigners();
+      [, firstGrantee, secondGrantee] = await ethers.getSigners();
       for (const { stakingVault, dashboard } of stakingVaults) {
         await hub.connect(hubSigner).mock_connectVault(
           await stakingVault.getAddress(),
@@ -723,50 +725,103 @@ describe("VaultViewer", () => {
       }
     });
 
-    it("returns role members for a single vault", async () => {
-      const _stakingVault = stakingVaults[0].stakingVault;
-      const _dashboard = stakingVaults[0].dashboard;
-      const _operator = stakingVaults[0].operator;
+    it("returns role members for all staking vaults", async () => {
+      for (const { stakingVault, dashboard, operator: _operator } of stakingVaults) {
+        const vaultAddress = await stakingVault.getAddress();
+        const dashboardAddress = await dashboard.getAddress();
+        const operatorAddress = await _operator.getAddress();
 
-      await _dashboard
-        .connect(hubSigner)
-        .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await firstBatchGrantee.getAddress());
-      await _dashboard
-        .connect(hubSigner)
-        .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await secondBatchGrantee.getAddress());
+        await dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await firstGrantee.getAddress());
+        await dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await secondGrantee.getAddress());
 
-      const roleMembers = await vaultViewer.getRoleMembers(await _stakingVault.getAddress(), [
-        NODE_OPERATOR_MANAGER_ROLE,
-        PDG_COMPENSATE_PREDEPOSIT_ROLE,
-      ]);
+        const roleMembers = await vaultViewer.getRoleMembers(vaultAddress, [
+          NODE_OPERATOR_MANAGER_ROLE,
+          PDG_COMPENSATE_PREDEPOSIT_ROLE,
+        ]);
 
-      // The returned tuple is [vault, owner, nodeOperator, members]
-      expect(roleMembers.length).to.equal(4);
+        expect(roleMembers.length).to.equal(4);
 
-      // 0: vault
-      expect(roleMembers.vault).to.equal(await _stakingVault.getAddress());
+        // 0: vault
+        expect(roleMembers.vault).to.equal(vaultAddress);
 
-      // 1: owner (see: connection.owner)
-      expect(roleMembers.owner).to.equal(_dashboard);
+        // 1: owner (dashboard)
+        expect(roleMembers.owner).to.equal(dashboardAddress);
 
-      // 2: nodeOperator
-      expect(roleMembers.nodeOperator).to.equal(_operator);
+        // 2: nodeOperator
+        expect(roleMembers.nodeOperator).to.equal(operatorAddress);
 
-      // 3: membersArray => an array of arrays, one per requested role
-      const membersArray = roleMembers[3] as string[][];
-      expect(membersArray.length).to.equal(2);
+        // 3: membersArray — array of arrays
+        const membersArray = roleMembers[3] as string[][];
+        expect(membersArray.length).to.equal(2);
 
-      // Role 0 (NODE_OPERATOR_MANAGER_ROLE) should contain only the operator
-      expect(membersArray[0].length).to.equal(1);
-      expect(membersArray[0][0]).to.equal(_operator);
+        // Role 0: NODE_OPERATOR_MANAGER_ROLE
+        expect(membersArray[0].length).to.equal(1);
+        expect(membersArray[0][0]).to.equal(operatorAddress);
 
-      // Role 1 (PDG_COMPENSATE_PREDEPOSIT_ROLE) should contain the stranger and secondStranger
-      expect(membersArray[1].length).to.equal(2);
-      expect(membersArray[1][0]).to.equal(await firstBatchGrantee.getAddress());
-      expect(membersArray[1][1]).to.equal(await secondBatchGrantee.getAddress());
+        // Role 1: PDG_COMPENSATE_PREDEPOSIT_ROLE
+        expect(membersArray[1].length).to.equal(2);
+        expect(membersArray[1][0]).to.equal(await firstGrantee.getAddress());
+        expect(membersArray[1][1]).to.equal(await secondGrantee.getAddress());
+      }
     });
 
-    // TODO: more checks, maybe reverts
+    it("returns role members for all staking vaults (with role variations)", async () => {
+      for (let i = 0; i < stakingVaults.length; i++) {
+        const { stakingVault, dashboard, operator: _operator } = stakingVaults[i];
+        const vaultAddress = await stakingVault.getAddress();
+        const dashboardAddress = await dashboard.getAddress();
+        const operatorAddress = await _operator.getAddress();
+
+        const roles = [NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE];
+
+        await dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await firstGrantee.getAddress());
+        await dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await secondGrantee.getAddress());
+
+        // From i >= 5 add more roles
+        if (i >= 5) {
+          roles.push(CHANGE_TIER_ROLE, WITHDRAW_ROLE);
+
+          await dashboard.connect(hubSigner).grantRole(CHANGE_TIER_ROLE, await firstGrantee.getAddress());
+          await dashboard.connect(hubSigner).grantRole(WITHDRAW_ROLE, await secondGrantee.getAddress());
+        }
+
+        const roleMembers = await vaultViewer.getRoleMembers(vaultAddress, roles);
+
+        expect(roleMembers.length).to.equal(4);
+
+        // 0: vault
+        expect(roleMembers.vault).to.equal(vaultAddress);
+
+        // 1: owner (dashboard)
+        expect(roleMembers.owner).to.equal(dashboardAddress);
+
+        // 2: nodeOperator
+        expect(roleMembers.nodeOperator).to.equal(operatorAddress);
+
+        // 3: membersArray — array of arrays
+        const membersArray = roleMembers[3] as string[][];
+        expect(membersArray.length).to.equal(roles.length);
+
+        // Check roles
+        for (let j = 0; j < roles.length; j++) {
+          const role = roles[j];
+          const members = membersArray[j];
+
+          if (role === NODE_OPERATOR_MANAGER_ROLE) {
+            expect(members.length).to.equal(1);
+            expect(members[0]).to.equal(operatorAddress);
+          } else if (role === PDG_COMPENSATE_PREDEPOSIT_ROLE) {
+            expect(members.length).to.equal(2);
+            expect(members).to.include(await firstGrantee.getAddress());
+            expect(members).to.include(await secondGrantee.getAddress());
+          } else if (role === CHANGE_TIER_ROLE) {
+            expect(members).to.include(await firstGrantee.getAddress());
+          } else if (role === WITHDRAW_ROLE) {
+            expect(members).to.include(await secondGrantee.getAddress());
+          }
+        }
+      }
+    });
   });
 
   context("get role members batch", () => {
