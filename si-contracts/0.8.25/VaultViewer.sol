@@ -174,7 +174,6 @@ contract VaultViewer {
         ILido lido = VAULT_HUB.LIDO();
         VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
         VaultHub.VaultRecord memory record = VAULT_HUB.vaultRecord(vault);
-        // TODO: check for valid value
         uint256 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
 
         data = VaultData({
@@ -367,7 +366,7 @@ contract VaultViewer {
     function _getNodeOperatorFeeRate(address owner) internal view returns (uint256 fee) {
         if (isContract(owner)) {
             (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("nodeOperatorFeeRate()"));
-            // TODO: check if result.length >= 32 is needed
+            // Check ensures safe decoding — avoids abi.decode revert on short return data
             if (success && result.length >= 32) {
                 fee = abi.decode(result, (uint256));
             }
