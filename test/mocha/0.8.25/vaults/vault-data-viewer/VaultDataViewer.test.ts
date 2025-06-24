@@ -1,5 +1,5 @@
 import { expect } from "chai";
-// import { keccak256, toUtf8Bytes } from "ethers";
+import { keccak256, toUtf8Bytes } from "ethers";
 import { network } from "hardhat";
 import type { EthereumProvider } from "hardhat/types/providers";
 
@@ -24,7 +24,13 @@ import { deployLidoLocator } from "test-deploy";
 import { Snapshot } from "test-utils/suite";
 
 // const NODE_OPERATOR_MANAGER_ROLE = keccak256(toUtf8Bytes("vaults.NodeOperatorFee.NodeOperatorManagerRole"));
-// const PDG_COMPENSATE_PREDEPOSIT_ROLE = keccak256(toUtf8Bytes("vaults.Permissions.PDGCompensatePredeposit"));
+const PDG_COMPENSATE_PREDEPOSIT_ROLE = keccak256(toUtf8Bytes("vaults.Permissions.PDGCompensatePredeposit"));
+
+type STAKING_VAULT_WRAPPER_TYPE = {
+  stakingVault: StakingVault;
+  dashboard: Dashboard;
+  operator: HardhatEthersSigner;
+};
 
 // scope for tests and functions
 let ethers: HardhatEthers;
@@ -35,36 +41,36 @@ const deployStakingVault = async (
   vaultImpl: StakingVault,
   dashboardImpl: Dashboard,
   pdgStub: PredepositGuarantee,
-  factoryOwner: HardhatEthersSigner,
-  vaultOwner: HardhatEthersSigner,
+  hub: VaultHub__MockForHubViewer,
+  hubSigner: HardhatEthersSigner,
   operator: HardhatEthersSigner,
 ) => {
   // Dashboard Factory
   const factoryDashboard = await ethers.deployContract("VaultFactory__MockForDashboard", [
-    factoryOwner,
+    hub,
     vaultImpl,
     dashboardImpl,
     pdgStub,
   ]);
-  expect(await factoryDashboard.owner()).to.equal(factoryOwner);
+  expect(await factoryDashboard.owner()).to.equal(hubSigner);
   expect(await factoryDashboard.implementation()).to.equal(vaultImpl);
   expect(await factoryDashboard.DASHBOARD_IMPL()).to.equal(dashboardImpl);
   expect(await factoryDashboard.PREDEPOSIT_GUARANTEE()).to.equal(pdgStub);
 
   // Staking vault (only connected vaults)
-  const stakingVaultCreationTx = await factoryDashboard.connect(vaultOwner).createVault(operator);
+  const stakingVaultCreationTx = await factoryDashboard.connect(hubSigner).createVault(operator);
   const stakingVaultCreationReceipt = await stakingVaultCreationTx.wait();
   if (!stakingVaultCreationReceipt) throw new Error("Vault creation receipt not found");
 
   const stakingVaultCreatedEvents = findEvents(stakingVaultCreationReceipt, "VaultCreated");
   expect(stakingVaultCreatedEvents.length).to.equal(1);
   const stakingVaultAddress = stakingVaultCreatedEvents[0].args.vault;
-  const stakingVault = await ethers.getContractAt("StakingVault", stakingVaultAddress, vaultOwner);
+  const stakingVault = await ethers.getContractAt("StakingVault", stakingVaultAddress, hubSigner);
 
   const dashboardCreatedEvents = findEvents(stakingVaultCreationReceipt, "DashboardCreated");
   expect(dashboardCreatedEvents.length).to.equal(1);
   const dashboardAddress = dashboardCreatedEvents[0].args.dashboard;
-  const dashboard = await ethers.getContractAt("Dashboard", dashboardAddress, vaultOwner);
+  const dashboard = await ethers.getContractAt("Dashboard", dashboardAddress, hubSigner);
 
   return { stakingVault, dashboard };
 };
@@ -86,69 +92,35 @@ const deployStakingVaults = async (
   vaultImpl,
   dashboardImpl,
   pdgStub,
-  factoryOwner,
-  vaultOwner,
-  secondVaultOwner,
+  hub,
+  hubSigner,
   operator,
   secondOperator,
   stakingVaultCount: number,
 ) => {
-  const stakingVaults: {
-    stakingVault: StakingVault;
-    dashboard: Dashboard;
-    owner: HardhatEthersSigner;
-    operator: HardhatEthersSigner;
-  }[] = [];
+  const stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
 
   for (let i = 0; i < stakingVaultCount; i++) {
-    const _vaultOwner = i % 2 === 0 ? vaultOwner : secondVaultOwner;
     const _operator = i % 2 === 0 ? operator : secondOperator;
 
     const { stakingVault, dashboard } = await deployStakingVault(
       vaultImpl,
       dashboardImpl,
       pdgStub,
-      factoryOwner,
-      _vaultOwner,
+      hub,
+      hubSigner,
       _operator,
     );
 
-    stakingVaults.push({ stakingVault, dashboard, owner: _vaultOwner, operator: _operator });
+    stakingVaults.push({ stakingVault, dashboard, operator: _operator });
   }
 
   return stakingVaults;
 };
 
-// const deployStakingVaultsForHL = async (
-//   vaultImpl,
-//   dashboardImpl,
-//   pdgStub,
-//   factoryOwner,
-//   vaultOwner,
-//   operator,
-//   stakingVaultHLCount: number,
-// ) => {
-//   // All staking vaults controlled by Dashboard
-//   const stakingVaultsHL = [];
-//
-//   // For "highload" testing
-//   for (let i = 0; i < stakingVaultHLCount; i++) {
-//     const { stakingVault } = await deployStakingVault(vaultImpl, dashboardImpl, pdgStub, factoryOwner, vaultOwner, operator);
-//     stakingVaultsHL.push(stakingVault);
-//   }
-//
-//   return stakingVaultsHL;
-// };
-
 describe("VaultViewer", () => {
-  // Owner of any staking vault
-  let vaultOwner: HardhatEthersSigner;
-  let secondVaultOwner: HardhatEthersSigner;
   let operator: HardhatEthersSigner;
   let secondOperator: HardhatEthersSigner;
-  let stranger: HardhatEthersSigner;
-  // let secondStranger: HardhatEthersSigner;
-  let factoryOwner: HardhatEthersSigner;
   let hubSigner: HardhatEthersSigner;
   let deployerPDG: HardhatEthersSigner;
 
@@ -163,16 +135,8 @@ describe("VaultViewer", () => {
 
   let vaultViewer: VaultViewer;
   let vaultImpl: StakingVault;
-  let stakingVaults: {
-    stakingVault: StakingVault;
-    dashboard: Dashboard;
-    owner: HardhatEthersSigner;
-    operator: HardhatEthersSigner;
-  }[] = [];
-  const stakingVaultCount = 3;
-
-  // let stakingVaultsHL: StakingVault[] = [];
-  // const stakingVaultHLCount = 75;
+  let stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
+  const stakingVaultCount = 13; // 13 is the minimum required vaults for this test suite
 
   let originalState: string;
 
@@ -181,9 +145,7 @@ describe("VaultViewer", () => {
     ethers = connection.ethers;
     provider = connection.provider;
     snapshot = new Snapshot(provider);
-    // [, vaultOwner, secondVaultOwner, operator, secondOperator, stranger, secondStranger, factoryOwner, deployerPDG] = await ethers.getSigners();
-    [, vaultOwner, secondVaultOwner, operator, secondOperator, stranger, factoryOwner, deployerPDG] =
-      await ethers.getSigners();
+    [, operator, secondOperator, deployerPDG] = await ethers.getSigners();
 
     // All deploys
     steth = await ethers.deployContract("StETHPermit__HarnessForDashboard");
@@ -212,9 +174,8 @@ describe("VaultViewer", () => {
       vaultImpl,
       dashboardImpl,
       pdgStub,
-      factoryOwner,
-      vaultOwner,
-      secondVaultOwner,
+      hub,
+      hubSigner,
       operator,
       secondOperator,
       stakingVaultCount,
@@ -239,70 +200,71 @@ describe("VaultViewer", () => {
 
   context(`connected vaults (connected vaults count is ${stakingVaultCount})`, () => {
     beforeEach(async () => {
-      for (const { stakingVault, owner } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
+      for (const { stakingVault, dashboard } of stakingVaults) {
+        await hub.connect(hubSigner).mock_connectVault(
+          await stakingVault.getAddress(),
+          // dashboard is owner of staking vault
+          await dashboard.getAddress(),
+        );
       }
     });
 
     it("returns all connected vaults", async () => {
       const vaults = await vaultViewer.vaultsConnected();
-      expect(vaults.length).to.equal(3);
+      // check counts
+      expect(vaults.length).to.equal(stakingVaultCount);
+      expect(vaults.length).to.equal(await hub.vaultsCount());
+      // check addresses
       expect(vaults[0]).to.equal(stakingVaults[0].stakingVault);
       expect(vaults[1]).to.equal(stakingVaults[1].stakingVault);
       expect(vaults[2]).to.equal(stakingVaults[2].stakingVault);
+      expect(vaults[stakingVaultCount - 1]).to.equal(stakingVaults[stakingVaultCount - 1].stakingVault);
     });
   });
 
   context(`connected vaults bound (connected vaults count is ${stakingVaultCount})`, () => {
     beforeEach(async () => {
-      for (const { stakingVault, owner } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
+      for (const { stakingVault, dashboard } of stakingVaults) {
+        await hub.connect(hubSigner).mock_connectVault(
+          await stakingVault.getAddress(),
+          // dashboard is owner of staking vault
+          await dashboard.getAddress(),
+        );
       }
     });
 
-    it("returns all connected vaults in a given range [0, 0]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsConnectedBound(0, 0);
-      expect(vaults.length).to.equal(0);
-      // check the remaining
-      expect(totalCount).to.equal(3);
+    [
+      { from: 0, to: 0 },
+      { from: 0, to: 3 },
+      { from: 1, to: 1 },
+      { from: 1, to: 2 },
+      { from: 3, to: 6 },
+      { from: 2, to: 10 },
+      { from: 9, to: 14 },
+      { from: 12, to: 16 },
+      { from: stakingVaultCount, to: stakingVaultCount },
+      { from: 0, to: stakingVaultCount },
+      { from: 0, to: stakingVaultCount * 10 },
+    ].forEach(({ from, to }) => {
+      it(`returns all connected vaults in a given range [${from}, ${to}]`, async () => {
+        const [vaults, totalCount] = await vaultViewer.vaultsConnectedBound(from, to);
+
+        const expectedLength = Math.max(0, Math.min(to, stakingVaultCount) - from);
+        expect(vaults.length).to.equal(expectedLength);
+
+        const expectedRemaining = Math.max(0, stakingVaultCount - to);
+        expect(totalCount).to.equal(expectedRemaining);
+      });
     });
 
-    it("returns all connected vaults in a given range [0, 3]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsConnectedBound(0, 3);
-      expect(vaults.length).to.equal(3);
-      // check the remaining
-      expect(totalCount).to.equal(0);
-    });
-
-    it("returns all connected vaults in a given range [1, 1]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsConnectedBound(1, 1);
-      expect(vaults.length).to.equal(0);
-      // check the remaining
-      expect(totalCount).to.equal(2);
-    });
-
-    it("returns all connected vaults in a given range [1, 2]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsConnectedBound(1, 2);
-      expect(vaults.length).to.equal(1);
-      // check the remaining
-      expect(totalCount).to.equal(1);
-    });
-
-    it("returns all connected vaults in a given range [0, 1000]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsConnectedBound(0, 1000);
-      expect(vaults.length).to.equal(3);
-      // check the remaining
-      expect(totalCount).to.equal(0);
-    });
-
-    it("reverts if given range [1000, 10000]", async () => {
+    it("reverts if given range is out of range - [1000, 10000]", async () => {
       await expect(vaultViewer.vaultsConnectedBound(1_000, 10_000)).to.be.revertedWithCustomError(
         vaultViewer,
         "WrongPaginationRange",
       );
     });
 
-    it("reverts if from is greater than to [3, 1]", async () => {
+    it("reverts if `from` is greater than `to` [3, 1]", async () => {
       await expect(vaultViewer.vaultsConnectedBound(3, 1)).to.be.revertedWithCustomError(
         vaultViewer,
         "WrongPaginationRange",
@@ -310,121 +272,215 @@ describe("VaultViewer", () => {
     });
   });
 
-  context("vaults by owner", () => {
+  context(`vaults by owner (vaults count is ${stakingVaultCount})`, () => {
+    const vaultSplitIndex = 5;
+    let firstBatchOwner: HardhatEthersSigner;
+    let secondBatchOwner: HardhatEthersSigner;
+    let ownerWithNoVaults: HardhatEthersSigner;
+
     beforeEach(async () => {
-      for (const { stakingVault, owner } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
+      [, firstBatchOwner, secondBatchOwner, ownerWithNoVaults] = await ethers.getSigners();
+
+      for (let i = 0; i < stakingVaults.length; i++) {
+        const { stakingVault } = stakingVaults[i];
+        const owner = i < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
+
+        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), owner);
       }
     });
 
-    it("returns all vaults owned by a given address 1", async () => {
-      // vaultOwner corresponds to the odd-numbered staking vaults: 1, 3, 5...
-      const vaults = await vaultViewer.vaultsByOwner(vaultOwner.getAddress());
-      expect(vaults.length).to.equal(2);
-      expect(vaults[0]).to.equal(stakingVaults[0].stakingVault);
-      expect(vaults[1]).to.equal(stakingVaults[2].stakingVault);
+    it("returns all vaults owned by a given address (firstBatchOwner)", async () => {
+      const vaults = await vaultViewer.vaultsByOwner(firstBatchOwner);
+      expect(vaults.length).to.equal(vaultSplitIndex);
+      for (let i = 0; i < vaultSplitIndex; i++) {
+        expect(vaults[i]).to.equal(stakingVaults[i].stakingVault);
+      }
     });
 
-    it("returns all vaults owned by a given address 2", async () => {
-      // vaultOwner corresponds to the even-numbered staking vaults: 0, 2, 4...
-      const vaults = await vaultViewer.vaultsByOwner(secondVaultOwner.getAddress());
-      expect(vaults.length).to.equal(1);
-      expect(vaults[0]).to.equal(stakingVaults[1].stakingVault);
+    it("returns all vaults owned by a given address (secondBatchOwner)", async () => {
+      const vaults = await vaultViewer.vaultsByOwner(secondBatchOwner);
+      const expectedCount = stakingVaults.length - vaultSplitIndex;
+      expect(vaults.length).to.equal(expectedCount);
+      for (let i = 0; i < expectedCount; i++) {
+        expect(vaults[i]).to.equal(stakingVaults[vaultSplitIndex + i].stakingVault);
+      }
     });
 
-    it("returns zero vaults", async () => {
-      const vaults = await vaultViewer.vaultsByOwner(stranger.getAddress());
+    it("returns zero vaults for an owner with no vaults", async () => {
+      const vaults = await vaultViewer.vaultsByOwner(ownerWithNoVaults);
       expect(vaults.length).to.equal(0);
     });
   });
 
   context("vaults by owner bound", () => {
+    const vaultSplitIndex = 7;
+    let firstBatchOwner: HardhatEthersSigner;
+    let secondBatchOwner: HardhatEthersSigner;
+    let ownerWithNoVaults: HardhatEthersSigner;
+
     beforeEach(async () => {
-      for (const { stakingVault, owner } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
+      [, firstBatchOwner, secondBatchOwner, ownerWithNoVaults] = await ethers.getSigners();
+
+      for (let i = 0; i < stakingVaults.length; i++) {
+        const { stakingVault } = stakingVaults[i];
+        const owner = i < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
+
+        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), owner);
       }
     });
 
-    it("returns all vaults owned by a given address 1 in a given range - [0, 3]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 0, 3);
-      expect(vaults.length).to.equal(2);
-      // check the remaining
-      expect(totalCount).to.equal(0);
+    [
+      { from: 0, to: 0 },
+      { from: 0, to: 3 },
+      { from: 1, to: 1 },
+      { from: 1, to: 2 },
+      { from: 3, to: 6 },
+      { from: vaultSplitIndex, to: vaultSplitIndex },
+      { from: 0, to: vaultSplitIndex },
+      { from: 0, to: vaultSplitIndex * 10 },
+    ].forEach(({ from, to }) => {
+      it(`returns all vaults owned by a given address (firstBatchOwner) in a given range - [${from}, ${to}]`, async () => {
+        const [vaults, leftover] = await vaultViewer.vaultsByOwnerBound(firstBatchOwner, from, to);
+
+        const ownedVaults = stakingVaults.slice(0, vaultSplitIndex); // only vaults owned by firstBatchOwner
+        const expectedLength = Math.max(0, Math.min(to, ownedVaults.length) - from);
+        const expectedLeftover = Math.max(0, ownedVaults.length - to);
+
+        expect(vaults.length).to.equal(expectedLength);
+        expect(leftover).to.equal(expectedLeftover);
+
+        for (let i = 0; i < expectedLength; i++) {
+          expect(vaults[i]).to.equal(ownedVaults[from + i].stakingVault);
+        }
+      });
     });
 
-    it("returns all vaults owned by a given address 1 in a given range - [0, 1]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 0, 1);
-      expect(vaults.length).to.equal(1);
-      // check the remaining
-      expect(totalCount).to.equal(1);
+    [
+      { from: 0, to: 0 },
+      { from: 0, to: 3 },
+      { from: 1, to: 1 },
+      { from: 1, to: 2 },
+      { from: 3, to: 6 },
+      { from: 0, to: vaultSplitIndex },
+      { from: 0, to: vaultSplitIndex * 10 },
+    ].forEach(({ from, to }) => {
+      it(`returns all vaults owned by a given address (secondBatchOwner) in a given range - [${from}, ${to}]`, async () => {
+        const [vaults, leftover] = await vaultViewer.vaultsByOwnerBound(secondBatchOwner, from, to);
+
+        const owned = stakingVaults.slice(vaultSplitIndex); // only vaults owned by secondBatchOwner
+        const expectedLength = Math.max(0, Math.min(to, owned.length) - from);
+        const expectedLeftover = Math.max(0, owned.length - to);
+
+        expect(vaults.length).to.equal(expectedLength);
+        expect(leftover).to.equal(expectedLeftover);
+
+        for (let i = 0; i < expectedLength; i++) {
+          expect(vaults[i]).to.equal(owned[from + i].stakingVault);
+        }
+      });
     });
 
-    it("returns all vaults owned by a given address 1 in a given range - [1, 3]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 1, 3);
-      expect(vaults.length).to.equal(1);
-      // check the remaining
-      expect(totalCount).to.equal(0);
+    [
+      { from: 0, to: 0 },
+      { from: 0, to: vaultSplitIndex },
+      { from: 0, to: vaultSplitIndex * 10 },
+      // for { from: 1 and more } will be WrongPaginationRange
+    ].forEach(({ from, to }) => {
+      it(`returns zero vaults owned by a given address (ownerWithNoVaults) in a given range - [${from}, ${to}]`, async () => {
+        const [vaults, leftover] = await vaultViewer.vaultsByOwnerBound(ownerWithNoVaults, from, to);
+        console.log("vaults:", vaults);
+        expect(vaults.length).to.equal(0);
+        expect(leftover).to.equal(0);
+      });
     });
 
-    it("returns all vaults owned by a given address 2 in a given range - [0, 3]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsByOwnerBound(secondVaultOwner.getAddress(), 0, 3);
-      expect(vaults.length).to.equal(1);
-      // check the remaining
-      expect(totalCount).to.equal(0);
-    });
-
-    it("returns all vaults owned by a given address 2 in a given range - [0, 1]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsByOwnerBound(secondVaultOwner.getAddress(), 0, 1);
-      expect(vaults.length).to.equal(1);
-      // check the remaining
-      expect(totalCount).to.equal(0);
-    });
-
-    // TODO: check vaultsByOwnerBound
-    it("returns all vaults owned by a given address 2 in a given range - [1, 3]", async () => {
-      const [vaults, totalCount] = await vaultViewer.vaultsByOwnerBound(secondVaultOwner.getAddress(), 1, 3);
-      expect(vaults.length).to.equal(0);
-      // check the remaining
-      expect(totalCount).to.equal(0);
-    });
-
-    it("reverts if given range [1000, 10000]", async () => {
+    it(`reverts with WrongPaginationRange [${vaultSplitIndex}, ${vaultSplitIndex}]`, async () => {
       await expect(
-        vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 1_000, 10_000),
+        vaultViewer.vaultsByOwnerBound(secondBatchOwner, vaultSplitIndex, vaultSplitIndex),
       ).to.be.revertedWithCustomError(vaultViewer, "WrongPaginationRange");
     });
 
-    it("reverts if from is greater than to", async () => {
-      await expect(vaultViewer.vaultsByOwnerBound(vaultOwner.getAddress(), 3, 1)).to.be.revertedWithCustomError(
-        vaultViewer,
-        "WrongPaginationRange",
-      );
+    it(`reverts with WrongPaginationRange [${stakingVaultCount * 10}, ${stakingVaultCount * 10}]`, async () => {
+      await expect(
+        vaultViewer.vaultsByOwnerBound(secondBatchOwner, stakingVaultCount * 10, stakingVaultCount * 10),
+      ).to.be.revertedWithCustomError(vaultViewer, "WrongPaginationRange");
     });
   });
 
-  // context("vaultsByRole", () => {
-  //   beforeEach(async () => {
-  //     for (const { stakingVault, owner } of stakingVaults) {
-  //       await hub.connect(hubSigner).mock_connectVault(
-  //         await stakingVault.getAddress(),
-  //         await owner.getAddress(),
-  //       );
-  //     }
-  //   });
-  //
-  //   it("returns all vaults with a given role on Dashboard", async () => {
-  //     const _stakingVault = stakingVaults[0].stakingVault;
-  //     const _dashboard = stakingVaults[0].dashboard;
-  //     const _owner = stakingVaults[0].owner;
-  //
-  //     await _dashboard.connect(_owner).grantRole(await _dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
-  //     const vaults = await vaultViewer.vaultsByRole(await _dashboard.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
-  //
-  //     console.log('vaults:', vaults);
-  //     expect(vaults.length).to.equal(1);
-  //     expect(vaults[0]).to.equal(_stakingVault);
-  //   });
-  // });
+  context("vaults by role", () => {
+    let grantedDefaultAdmin: HardhatEthersSigner;
+    let grantedPdgCompensatePredeposit: HardhatEthersSigner;
+
+    beforeEach(async () => {
+      [, grantedDefaultAdmin, grantedPdgCompensatePredeposit] = await ethers.getSigners();
+      for (const { stakingVault, dashboard } of stakingVaults) {
+        await hub.connect(hubSigner).mock_connectVault(
+          await stakingVault.getAddress(),
+          // dashboard is owner of staking vault
+          await dashboard.getAddress(),
+        );
+      }
+    });
+
+    [
+      {
+        label: "DEFAULT_ADMIN_ROLE",
+        getRole: async (dashboard: Dashboard) => await dashboard.DEFAULT_ADMIN_ROLE(),
+        getGrantee: () => grantedDefaultAdmin,
+      },
+      {
+        label: "PDG_COMPENSATE_PREDEPOSIT_ROLE",
+        getRole: async () => PDG_COMPENSATE_PREDEPOSIT_ROLE,
+        getGrantee: () => grantedPdgCompensatePredeposit,
+      },
+      // Add more roles here when needed
+    ].forEach(({ label, getRole, getGrantee }) => {
+      it(`returns all vaults (1) with a given role (${label}) on Dashboard`, async () => {
+        const { stakingVault, dashboard } = stakingVaults[0];
+        const role = await getRole(dashboard);
+        const grantee = getGrantee();
+
+        await dashboard.connect(hubSigner).grantRole(role, grantee.getAddress());
+        const vaults = await vaultViewer.vaultsByRole(role, grantee.getAddress());
+
+        expect(vaults.length).to.equal(1);
+        expect(vaults[0]).to.equal(stakingVault);
+      });
+    });
+
+    [
+      {
+        label: "DEFAULT_ADMIN_ROLE",
+        getRole: async (dashboard: Dashboard) => await dashboard.DEFAULT_ADMIN_ROLE(),
+        getGrantee: () => grantedDefaultAdmin,
+      },
+      {
+        label: "PDG_COMPENSATE_PREDEPOSIT_ROLE",
+        getRole: async () => PDG_COMPENSATE_PREDEPOSIT_ROLE,
+        getGrantee: () => grantedPdgCompensatePredeposit,
+      },
+      // Add more roles here when needed
+    ].forEach(({ label, getRole, getGrantee }) => {
+      it(`returns all vaults (${stakingVaultCount}) with a given role (${label}) across all dashboards`, async () => {
+        const grantee = getGrantee();
+
+        for (const { dashboard } of stakingVaults) {
+          const role = await getRole(dashboard);
+          await dashboard.connect(hubSigner).grantRole(role, grantee.getAddress());
+        }
+
+        const role = await getRole(stakingVaults[0].dashboard);
+        const vaults = await vaultViewer.vaultsByRole(role, grantee.getAddress());
+
+        expect(vaults.length).to.equal(stakingVaults.length);
+        expect(vaults.length).to.equal(stakingVaultCount);
+
+        for (let i = 0; i < stakingVaults.length; i++) {
+          expect(vaults[i]).to.equal(stakingVaults[i].stakingVault);
+        }
+      });
+    });
+  });
 
   // context("vaultsByRoleBound", () => {
   //   beforeEach(async () => {
@@ -445,62 +501,67 @@ describe("VaultViewer", () => {
   //   });
   // });
 
-  context("get vault data", () => {
-    beforeEach(async () => {
-      await steth.mock__setTotalPooledEther(100n);
-      await steth.mock__setTotalShares(100n);
+  // context("get vault data", () => {
+  //   beforeEach(async () => {
+  //     await steth.mock__setTotalPooledEther(100n);
+  //     await steth.mock__setTotalShares(100n);
+  //
+  //     for (const { stakingVault, owner } of stakingVaults) {
+  //       await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
+  //     }
+  //   });
+  //
+  //   it("returns data for one vault with getVaultData", async () => {
+  //     const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
+  //
+  //     console.log('await stakingVaults[0].stakingVault.owner():', await stakingVaults[0].stakingVault.owner());
+  //     console.log('await stakingVaults[0].owner():', await stakingVaults[0].owner);
+  //     console.log('await stakingVaults[0].dashboard():', await stakingVaults[0].dashboard.getAddress());
+  //     console.log('vaultData.connection.owner:', vaultData.connection.owner);
+  //
+  //     // Sanity check: values are returned and types match
+  //     expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
+  //     expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
+  //     expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");
+  //     expect(vaultData.record.liabilityShares).to.be.a("bigint");
+  //     expect(vaultData.totalValue).to.be.a("bigint");
+  //     expect(vaultData.liabilityStETH).to.be.a("bigint");
+  //     expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
+  //
+  //     // TODO: Value check
+  //   });
+  // });
 
-      for (const { stakingVault, owner } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
-      }
-    });
-
-    it("returns data for one vault with getVaultData", async () => {
-      const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
-
-      // Sanity check: values are returned and types match
-      expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
-      expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
-      expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");
-      expect(vaultData.record.liabilityShares).to.be.a("bigint");
-      expect(vaultData.totalValue).to.be.a("bigint");
-      expect(vaultData.liabilityStETH).to.be.a("bigint");
-      expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
-
-      // TODO: Value check
-    });
-  });
-
-  context("get vaults data bound", () => {
-    beforeEach(async () => {
-      await steth.mock__setTotalPooledEther(100n);
-      await steth.mock__setTotalShares(100n);
-
-      for (const { stakingVault, owner } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
-      }
-    });
-
-    it("returns data for a batch of vaults with getVaultsDataBound [0, 1]", async () => {
-      const { vaultsData, leftover } = await vaultViewer.getVaultsDataBound(0, 1);
-
-      expect(vaultsData.length).to.equal(1);
-      expect(leftover).to.equal(2);
-
-      expect(vaultsData[0].vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
-
-      // Sanity check: values are returned and types match
-      expect(vaultsData[0].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
-      expect(vaultsData[0].connection.infraFeeBP).to.be.a("bigint");
-      expect(vaultsData[0].connection.liquidityFeeBP).to.be.a("bigint");
-      expect(vaultsData[0].record.liabilityShares).to.be.a("bigint");
-      expect(vaultsData[0].totalValue).to.be.a("bigint");
-      expect(vaultsData[0].liabilityStETH).to.be.a("bigint");
-      expect(vaultsData[0].nodeOperatorFeeRate).to.be.a("bigint");
-
-      // TODO: Value check
-    });
-  });
+  // context("get vaults data bound", () => {
+  //   beforeEach(async () => {
+  //     await steth.mock__setTotalPooledEther(100n);
+  //     await steth.mock__setTotalShares(100n);
+  //
+  //     for (const { stakingVault, owner } of stakingVaults) {
+  //       await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
+  //     }
+  //   });
+  //
+  //   it("returns data for a batch of vaults with getVaultsDataBound [0, 1]", async () => {
+  //     const { vaultsData, leftover } = await vaultViewer.getVaultsDataBound(0, 1);
+  //
+  //     expect(vaultsData.length).to.equal(1);
+  //     expect(leftover).to.equal(2);
+  //
+  //     expect(vaultsData[0].vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
+  //
+  //     // Sanity check: values are returned and types match
+  //     expect(vaultsData[0].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
+  //     expect(vaultsData[0].connection.infraFeeBP).to.be.a("bigint");
+  //     expect(vaultsData[0].connection.liquidityFeeBP).to.be.a("bigint");
+  //     expect(vaultsData[0].record.liabilityShares).to.be.a("bigint");
+  //     expect(vaultsData[0].totalValue).to.be.a("bigint");
+  //     expect(vaultsData[0].liabilityStETH).to.be.a("bigint");
+  //     expect(vaultsData[0].nodeOperatorFeeRate).to.be.a("bigint");
+  //
+  //     // TODO: Value check
+  //   });
+  // });
   //
   //
   // context("getVaultsDataBound 'highload'", () => {
@@ -546,77 +607,79 @@ describe("VaultViewer", () => {
   //     expect(gasEstimate).to.lte(3_600_000n); // 3_600_000n just for passing this test
   //   });
   // });
-  //
+
   // context("getRoleMembers & getRoleMembersBatch", () => {
   //   beforeEach(async () => {
-  //     await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
-  //   });
-  //
-  //   it("returns role members for a single vault", async () => {
-  //     const ADMIN_ROLE = await dashboard1.DEFAULT_ADMIN_ROLE();
-  //     await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
-  //     await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await secondStranger.getAddress());
-  //
-  //     const roleMembers = await vaultViewer.getRoleMembers(await vaultDashboard1.getAddress(), [
-  //       ADMIN_ROLE,
-  //       NODE_OPERATOR_MANAGER_ROLE,
-  //       PDG_COMPENSATE_PREDEPOSIT_ROLE,
-  //     ]);
-  //
-  //     // The returned tuple is [owner, nodeOperator, depositor, membersArray]
-  //     expect(roleMembers.length).to.equal(4);
-  //
-  //     // 0: owner
-  //     expect(roleMembers[0]).to.equal(await vaultOwner.getAddress());
-  //
-  //     // 1: nodeOperator
-  //     expect(roleMembers[1]).to.equal(await operator.getAddress());
-  //
-  //     // 2: depositor (if set; otherwise you can omit or adjust as needed)
-  //     // expect(roleMembers[2]).to.equal(await someDepositor.getAddress());
-  //
-  //     // 3: membersArray => an array of arrays, one per requested role
-  //     const membersArray = roleMembers[3] as string[][];
-  //     expect(membersArray.length).to.equal(3);
-  //
-  //     // Role 0 (ADMIN_ROLE) should contain only the vaultOwner
-  //     expect(membersArray[0].length).to.equal(1);
-  //     expect(membersArray[0][0]).to.equal(await vaultOwner.getAddress());
-  //
-  //     // Role 1 (NODE_OPERATOR_MANAGER_ROLE) should contain only the operator
-  //     expect(membersArray[1].length).to.equal(1);
-  //     expect(membersArray[1][0]).to.equal(await operator.getAddress());
-  //
-  //     // Role 2 (PDG_COMPENSATE_PREDEPOSIT_ROLE) should contain both strangers
-  //     expect(membersArray[2].length).to.equal(2);
-  //     expect(membersArray[2][0]).to.equal(await stranger.getAddress());
-  //     expect(membersArray[2][1]).to.equal(await secondStranger.getAddress());
-  //   });
-  //
-  //   it("returns role members for multiple vaults", async () => {
-  //     const ADMIN_ROLE = await dashboard1.DEFAULT_ADMIN_ROLE();
-  //     // Grant the role only for vaultDashboard1
-  //     await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
-  //
-  //     const membersBatch = await vaultViewer.getRoleMembersBatch(
-  //       [await vaultDashboard1.getAddress(), await vaultDashboard2.getAddress()],
-  //       [ADMIN_ROLE, NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE],
+  //     await hub.connect(hubSigner).mock_connectVault(
+  //       stakingVaults[0].stakingVault.getAddress(),
+  //       // dashboard is owner of staking vault
+  //       stakingVaults[0].dashboard.getAddress(),
   //     );
-  //
-  //     expect(membersBatch.length).to.equal(2);
-  //     expect(membersBatch[0].length).to.equal(5);
-  //     expect(membersBatch[1].length).to.equal(5);
-  //
-  //     // vaultDashboard1
-  //     expect(membersBatch[0][4][0][0]).to.equal(await vaultOwner.getAddress());
-  //     expect(membersBatch[0][4][1][0]).to.equal(await operator.getAddress());
-  //     expect(membersBatch[0][4][2][0]).to.equal(await stranger.getAddress());
-  //
-  //     // vaultDashboard2
-  //     expect(membersBatch[1][4][0][0]).to.equal(await vaultOwner.getAddress());
-  //     expect(membersBatch[1][4][1][0]).to.equal(await operator.getAddress());
-  //     // vaultDashboard2 don't have granted PDG_COMPENSATE_PREDEPOSIT_ROLE
-  //     expect(membersBatch[1][4][2].length).to.equal(0);
   //   });
+
+  // it("returns role members for a single vault", async () => {
+  //   const _stakingVault = stakingVaults[0].stakingVault;
+  //   const _dashboard = stakingVaults[0].dashboard;
+  //   const _operator = stakingVaults[0].operator;
+  //
+  //   await _dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
+  //   await _dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await secondStranger.getAddress());
+  //
+  //   const roleMembers = await vaultViewer.getRoleMembers(await _stakingVault.getAddress(), [
+  //     NODE_OPERATOR_MANAGER_ROLE,
+  //     PDG_COMPENSATE_PREDEPOSIT_ROLE,
+  //   ]);
+  //
+  //   // The returned tuple is [vault, owner, nodeOperator, members]
+  //   expect(roleMembers.length).to.equal(4);
+  //
+  //   // 0: vault
+  //   expect(roleMembers.vault).to.equal(await _stakingVault.getAddress());
+  //
+  //   // 1: owner (see: connection.owner)
+  //   expect(roleMembers.owner).to.equal(_dashboard);
+  //
+  //   // 2: nodeOperator
+  //   expect(roleMembers.nodeOperator).to.equal(_operator);
+  //
+  //   // 3: membersArray => an array of arrays, one per requested role
+  //   const membersArray = roleMembers[3] as string[][];
+  //   expect(membersArray.length).to.equal(2);
+  //
+  //   // Role 0 (NODE_OPERATOR_MANAGER_ROLE) should contain only the operator
+  //   expect(membersArray[0].length).to.equal(1);
+  //   expect(membersArray[0][0]).to.equal(_operator);
+  //
+  //   // Role 1 (PDG_COMPENSATE_PREDEPOSIT_ROLE) should contain the stranger and secondStranger
+  //   expect(membersArray[1].length).to.equal(2);
+  //   expect(membersArray[1][0]).to.equal(await stranger.getAddress());
+  //   expect(membersArray[1][1]).to.equal(await secondStranger.getAddress());
+  // });
+
+  // it("returns role members for multiple vaults", async () => {
+  //   const ADMIN_ROLE = await dashboard1.DEFAULT_ADMIN_ROLE();
+  //   // Grant the role only for vaultDashboard1
+  //   await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
+  //
+  //   const membersBatch = await vaultViewer.getRoleMembersBatch(
+  //     [await vaultDashboard1.getAddress(), await vaultDashboard2.getAddress()],
+  //     [ADMIN_ROLE, NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE],
+  //   );
+  //
+  //   expect(membersBatch.length).to.equal(2);
+  //   expect(membersBatch[0].length).to.equal(5);
+  //   expect(membersBatch[1].length).to.equal(5);
+  //
+  //   // vaultDashboard1
+  //   expect(membersBatch[0][4][0][0]).to.equal(await vaultOwner.getAddress());
+  //   expect(membersBatch[0][4][1][0]).to.equal(await operator.getAddress());
+  //   expect(membersBatch[0][4][2][0]).to.equal(await stranger.getAddress());
+  //
+  //   // vaultDashboard2
+  //   expect(membersBatch[1][4][0][0]).to.equal(await vaultOwner.getAddress());
+  //   expect(membersBatch[1][4][1][0]).to.equal(await operator.getAddress());
+  //   // vaultDashboard2 don't have granted PDG_COMPENSATE_PREDEPOSIT_ROLE
+  //   expect(membersBatch[1][4][2].length).to.equal(0);
+  // });
   // });
 });
