@@ -573,36 +573,43 @@ describe("VaultViewer", () => {
     // TODO: more checks, maybe reverts
   });
 
-  // context("get vaults data bound", () => {
-  //   beforeEach(async () => {
-  //     await steth.mock__setTotalPooledEther(100n);
-  //     await steth.mock__setTotalShares(100n);
-  //
-  //     for (const { stakingVault, owner } of stakingVaults) {
-  //       await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await owner.getAddress());
-  //     }
-  //   });
-  //
-  //   it("returns data for a batch of vaults with getVaultsDataBound [0, 1]", async () => {
-  //     const { vaultsData, leftover } = await vaultViewer.getVaultsDataBound(0, 1);
-  //
-  //     expect(vaultsData.length).to.equal(1);
-  //     expect(leftover).to.equal(2);
-  //
-  //     expect(vaultsData[0].vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
-  //
-  //     // Sanity check: values are returned and types match
-  //     expect(vaultsData[0].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
-  //     expect(vaultsData[0].connection.infraFeeBP).to.be.a("bigint");
-  //     expect(vaultsData[0].connection.liquidityFeeBP).to.be.a("bigint");
-  //     expect(vaultsData[0].record.liabilityShares).to.be.a("bigint");
-  //     expect(vaultsData[0].totalValue).to.be.a("bigint");
-  //     expect(vaultsData[0].liabilityStETH).to.be.a("bigint");
-  //     expect(vaultsData[0].nodeOperatorFeeRate).to.be.a("bigint");
-  //
-  //     // TODO: Value check
-  //   });
-  // });
+  context("get vaults data bound", () => {
+    beforeEach(async () => {
+      await steth.mock__setTotalPooledEther(100n);
+      await steth.mock__setTotalShares(100n);
+
+      for (const { stakingVault, dashboard } of stakingVaults) {
+        await hub.connect(hubSigner).mock_connectVault(
+          await stakingVault.getAddress(),
+          // dashboard is owner of staking vault
+          await dashboard.getAddress(),
+        );
+      }
+    });
+
+    // TODO: parameterized tests
+    it("returns data for a batch of vaults with getVaultsDataBound [0, 1]", async () => {
+      const { vaultsData, leftover } = await vaultViewer.getVaultsDataBound(0, 1);
+
+      expect(vaultsData.length).to.equal(1);
+      expect(leftover).to.equal(12);
+
+      expect(vaultsData[0].vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
+
+      // Sanity check: values are returned and types match
+      expect(vaultsData[0].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
+      expect(vaultsData[0].connection.infraFeeBP).to.be.a("bigint");
+      expect(vaultsData[0].connection.liquidityFeeBP).to.be.a("bigint");
+      expect(vaultsData[0].record.liabilityShares).to.be.a("bigint");
+      expect(vaultsData[0].totalValue).to.be.a("bigint");
+      expect(vaultsData[0].liabilityStETH).to.be.a("bigint");
+      expect(vaultsData[0].nodeOperatorFeeRate).to.be.a("bigint");
+
+      // TODO: Value check
+    });
+
+    // TODO: more checks, maybe reverts
+  });
 
   // context("getRoleMembers & getRoleMembersBatch", () => {
   //   beforeEach(async () => {
