@@ -138,6 +138,21 @@ describe("VaultViewer", () => {
   let stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
   const stakingVaultCount = 13; // 13 is the minimum required vaults for this test suite
 
+  // See the `mock_connectVault` in the `test/mocha/0.8.25/vaults/vault-data-viewer/contracts/VaultHub__MockForHubViewer.sol`
+  const expectedVaultsData = {
+    connection: {
+      forcedRebalanceThresholdBP: 1n,
+      infraFeeBP: 1n,
+      liquidityFeeBP: 1n,
+    },
+    record: {
+      liabilityShares: 1n,
+    },
+    totalValue: 10n,
+    liabilityStETH: 1n,
+    nodeOperatorFeeRate: 0n,
+  };
+
   let originalState: string;
 
   before(async () => {
@@ -257,18 +272,19 @@ describe("VaultViewer", () => {
       });
     });
 
-    it("reverts if given range is out of range - [1000, 10000]", async () => {
-      await expect(vaultViewer.vaultsConnectedBound(1_000, 10_000)).to.be.revertedWithCustomError(
-        vaultViewer,
-        "WrongPaginationRange",
-      );
-    });
-
-    it("reverts if `from` is greater than `to` [3, 1]", async () => {
-      await expect(vaultViewer.vaultsConnectedBound(3, 1)).to.be.revertedWithCustomError(
-        vaultViewer,
-        "WrongPaginationRange",
-      );
+    [
+      { from: 1_000, to: 10_000 },
+      { from: 3, to: 1 },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 100 },
+      { from: stakingVaultCount * 100, to: stakingVaultCount },
+    ].forEach(({ from, to }) => {
+      it(`reverts if given range is invalid [${from}, ${to}]`, async () => {
+        await expect(vaultViewer.vaultsConnectedBound(from, to)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "WrongPaginationRange",
+        );
+      });
     });
   });
 
@@ -409,9 +425,10 @@ describe("VaultViewer", () => {
   context("vaults by role", () => {
     let grantedDefaultAdmin: HardhatEthersSigner;
     let grantedPdgCompensatePredeposit: HardhatEthersSigner;
+    let userWithoutRole: HardhatEthersSigner;
 
     beforeEach(async () => {
-      [, grantedDefaultAdmin, grantedPdgCompensatePredeposit] = await ethers.getSigners();
+      [, grantedDefaultAdmin, grantedPdgCompensatePredeposit, userWithoutRole] = await ethers.getSigners();
       for (const { stakingVault, dashboard } of stakingVaults) {
         await hub.connect(hubSigner).mock_connectVault(
           await stakingVault.getAddress(),
@@ -434,7 +451,7 @@ describe("VaultViewer", () => {
       },
       // Add more roles here when needed
     ].forEach(({ label, getRole, getGrantee }) => {
-      it(`returns all vaults (1) with a given role (${label}) on Dashboard`, async () => {
+      it(`returns all vaults (1) with a given role (${label}) on Dashboard (roles was granted)`, async () => {
         const { stakingVault, dashboard } = stakingVaults[0];
         const role = await getRole(dashboard);
         const grantee = getGrantee();
@@ -460,7 +477,7 @@ describe("VaultViewer", () => {
       },
       // Add more roles here when needed
     ].forEach(({ label, getRole, getGrantee }) => {
-      it(`returns all vaults (${stakingVaultCount}) with a given role (${label}) across all dashboards`, async () => {
+      it(`returns all vaults (${stakingVaultCount}) with a given role (${label}) across all dashboards (roles was granted)`, async () => {
         const grantee = getGrantee();
 
         for (const { dashboard } of stakingVaults) {
@@ -477,6 +494,27 @@ describe("VaultViewer", () => {
         for (let i = 0; i < stakingVaults.length; i++) {
           expect(vaults[i]).to.equal(stakingVaults[i].stakingVault);
         }
+      });
+    });
+
+    [
+      {
+        label: "DEFAULT_ADMIN_ROLE",
+        getRole: async (dashboard: Dashboard) => await dashboard.DEFAULT_ADMIN_ROLE(),
+        getGrantee: () => userWithoutRole,
+      },
+      {
+        label: "PDG_COMPENSATE_PREDEPOSIT_ROLE",
+        getRole: async () => PDG_COMPENSATE_PREDEPOSIT_ROLE,
+        getGrantee: () => userWithoutRole,
+      },
+    ].forEach(({ label, getRole, getGrantee }) => {
+      it(`returns zero vaults with a given role (${label}) on Dashboard (roles wasn't granted)`, async () => {
+        const grantee = getGrantee();
+        const role = await getRole(stakingVaults[0].dashboard);
+
+        const vaults = await vaultViewer.vaultsByRole(role, grantee.getAddress());
+        expect(vaults.length).to.equal(0);
       });
     });
   });
@@ -514,7 +552,7 @@ describe("VaultViewer", () => {
       { label: "granteeWithNoRoles", getGrantee: () => granteeWithNoRoles, ownedCount: () => 0 },
     ];
 
-    const ranges = [
+    const successRanges = [
       { from: 0, to: 0 },
       { from: 0, to: 3 },
       { from: 0, to: vaultSplitIndex },
@@ -522,8 +560,8 @@ describe("VaultViewer", () => {
     ];
 
     testCases.forEach(({ label, getGrantee, ownedCount }) => {
-      ranges.forEach(({ from, to }) => {
-        it(`returns vaults for ${label} in range [${from}, ${to})`, async () => {
+      successRanges.forEach(({ from, to }) => {
+        it(`returns vaults for ${label} in range [${from}, ${to}]`, async () => {
           const grantee = getGrantee();
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
 
@@ -538,7 +576,24 @@ describe("VaultViewer", () => {
       });
     });
 
-    // TODO: add WrongPaginationRange test cases
+    const failedRanges = [
+      { from: stakingVaultCount, to: vaultSplitIndex },
+      { from: stakingVaultCount, to: vaultSplitIndex * 10 },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
+    ];
+
+    testCases.forEach(({ label, getGrantee }) => {
+      failedRanges.forEach(({ from, to }) => {
+        it(`reverts with WrongPaginationRange for ${label} in range [${from}, ${to}]`, async () => {
+          const grantee = getGrantee();
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+
+          await expect(
+            vaultViewer.vaultsByRoleBound(role, grantee.getAddress(), from, to),
+          ).to.be.revertedWithCustomError(vaultViewer, "WrongPaginationRange");
+        });
+      });
+    });
   });
 
   context("get vault data", () => {
@@ -555,7 +610,7 @@ describe("VaultViewer", () => {
       }
     });
 
-    it("returns data for one vault with getVaultData", async () => {
+    it("returns data for first vault with getVaultData", async () => {
       const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
 
       // Sanity check: values are returned and types match
@@ -567,10 +622,17 @@ describe("VaultViewer", () => {
       expect(vaultData.liabilityStETH).to.be.a("bigint");
       expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
 
-      // TODO: Value check
+      // Value check
+      expect(vaultData.connection.forcedRebalanceThresholdBP).to.equal(
+        expectedVaultsData.connection.forcedRebalanceThresholdBP,
+      );
+      expect(vaultData.connection.infraFeeBP).to.equal(expectedVaultsData.connection.infraFeeBP);
+      expect(vaultData.connection.liquidityFeeBP).to.equal(expectedVaultsData.connection.liquidityFeeBP);
+      expect(vaultData.record.liabilityShares).to.equal(expectedVaultsData.record.liabilityShares);
+      expect(vaultData.totalValue).to.equal(expectedVaultsData.totalValue);
+      expect(vaultData.liabilityStETH).to.equal(expectedVaultsData.liabilityStETH);
+      expect(vaultData.nodeOperatorFeeRate).to.equal(expectedVaultsData.nodeOperatorFeeRate);
     });
-
-    // TODO: more checks, maybe reverts
   });
 
   context("get vaults data bound", () => {
@@ -587,28 +649,63 @@ describe("VaultViewer", () => {
       }
     });
 
-    // TODO: parameterized tests
-    it("returns data for a batch of vaults with getVaultsDataBound [0, 1]", async () => {
-      const { vaultsData, leftover } = await vaultViewer.getVaultsDataBound(0, 1);
+    [
+      { from: 0, to: 1 },
+      { from: 0, to: 2 },
+      { from: 1, to: 3 },
+      { from: 0, to: stakingVaultCount },
+      { from: 2, to: stakingVaultCount },
+      { from: stakingVaultCount, to: stakingVaultCount },
+    ].forEach(({ from, to }) => {
+      it(`returns data for a batch of vaults with getVaultsDataBound [${from}, ${to}]`, async () => {
+        const expectedLength = to >= from ? to - from : 0;
+        const totalVaults = stakingVaults.length;
+        const expectedLeftover = totalVaults > to ? totalVaults - to : 0;
 
-      expect(vaultsData.length).to.equal(1);
-      expect(leftover).to.equal(12);
+        const { vaultsData, leftover } = await vaultViewer.getVaultsDataBound(from, to);
 
-      expect(vaultsData[0].vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
+        expect(vaultsData.length).to.equal(expectedLength);
+        expect(leftover).to.equal(expectedLeftover);
 
-      // Sanity check: values are returned and types match
-      expect(vaultsData[0].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
-      expect(vaultsData[0].connection.infraFeeBP).to.be.a("bigint");
-      expect(vaultsData[0].connection.liquidityFeeBP).to.be.a("bigint");
-      expect(vaultsData[0].record.liabilityShares).to.be.a("bigint");
-      expect(vaultsData[0].totalValue).to.be.a("bigint");
-      expect(vaultsData[0].liabilityStETH).to.be.a("bigint");
-      expect(vaultsData[0].nodeOperatorFeeRate).to.be.a("bigint");
+        for (let i = 0; i < vaultsData.length; i++) {
+          expect(vaultsData[i].vaultAddress).to.equal(await stakingVaults[from + i].stakingVault.getAddress());
 
-      // TODO: Value check
+          // Sanity check: values are returned and types match
+          expect(vaultsData[i].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
+          expect(vaultsData[i].connection.infraFeeBP).to.be.a("bigint");
+          expect(vaultsData[i].connection.liquidityFeeBP).to.be.a("bigint");
+          expect(vaultsData[i].record.liabilityShares).to.be.a("bigint");
+          expect(vaultsData[i].totalValue).to.be.a("bigint");
+          expect(vaultsData[i].liabilityStETH).to.be.a("bigint");
+          expect(vaultsData[i].nodeOperatorFeeRate).to.be.a("bigint");
+
+          // Value check
+          expect(vaultsData[i].connection.forcedRebalanceThresholdBP).to.equal(
+            expectedVaultsData.connection.forcedRebalanceThresholdBP,
+          );
+          expect(vaultsData[i].connection.infraFeeBP).to.equal(expectedVaultsData.connection.infraFeeBP);
+          expect(vaultsData[i].connection.liquidityFeeBP).to.equal(expectedVaultsData.connection.liquidityFeeBP);
+          expect(vaultsData[i].record.liabilityShares).to.equal(expectedVaultsData.record.liabilityShares);
+          expect(vaultsData[i].totalValue).to.equal(expectedVaultsData.totalValue);
+          expect(vaultsData[i].liabilityStETH).to.equal(expectedVaultsData.liabilityStETH);
+          expect(vaultsData[i].nodeOperatorFeeRate).to.equal(expectedVaultsData.nodeOperatorFeeRate);
+        }
+      });
     });
 
-    // TODO: more checks, maybe reverts
+    [
+      { from: stakingVaultCount + 1, to: stakingVaultCount * 10 },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
+      { from: stakingVaultCount * 100, to: stakingVaultCount * 10 },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 100 },
+    ].forEach(({ from, to }) => {
+      it(`reverts with WrongPaginationRange for invalid range [${from}, ${to}]`, async () => {
+        await expect(vaultViewer.getVaultsDataBound(from, to)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "WrongPaginationRange",
+        );
+      });
+    });
   });
 
   context("get role members", () => {
