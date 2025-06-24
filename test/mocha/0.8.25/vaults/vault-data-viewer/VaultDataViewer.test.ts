@@ -918,7 +918,7 @@ describe("VaultViewer", () => {
         args: [],
       },
       {
-        label: "getVaultsDataBound",
+        label: "vaultsConnectedBound",
         args: () => [0, stakingVaultCount],
       },
       {
