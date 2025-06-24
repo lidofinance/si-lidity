@@ -825,10 +825,10 @@ describe("VaultViewer", () => {
   });
 
   context("get role members batch", () => {
-    let firstBatchGrantee: HardhatEthersSigner;
+    let firstGrantee: HardhatEthersSigner;
 
     beforeEach(async () => {
-      [, firstBatchGrantee] = await ethers.getSigners();
+      [, firstGrantee] = await ethers.getSigners();
       for (const { stakingVault, dashboard } of stakingVaults) {
         await hub.connect(hubSigner).mock_connectVault(
           await stakingVault.getAddress(),
@@ -838,42 +838,54 @@ describe("VaultViewer", () => {
       }
     });
 
-    it("returns role members for multiple vaults", async () => {
-      const _stakingVault = stakingVaults[0].stakingVault;
-      const _dashboard = stakingVaults[0].dashboard;
+    [
+      2,
+      Math.ceil(stakingVaultCount / 2),
+      stakingVaultCount - 1,
+      stakingVaultCount,
+      // stakingVaultCount is max here
+    ].forEach((count) => {
+      it(`returns role members for a batch of ${count} vaults`, async () => {
+        const roles = [NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE];
 
-      const _stakingVault2 = stakingVaults[1].stakingVault;
-      const _dashboard2 = stakingVaults[1].dashboard;
+        // Grant roles
+        for (let i = 0; i < count; i++) {
+          await stakingVaults[i].dashboard
+            .connect(hubSigner)
+            .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await firstGrantee.getAddress());
+        }
 
-      await _dashboard
-        .connect(hubSigner)
-        .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await firstBatchGrantee.getAddress());
+        const vaultsSubset = stakingVaults.slice(0, count);
 
-      const membersBatch = await vaultViewer.getRoleMembersBatch(
-        [await _stakingVault.getAddress(), await _stakingVault2.getAddress()],
-        [NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE],
-      );
+        const vaultAddresses = await Promise.all(vaultsSubset.map(({ stakingVault }) => stakingVault.getAddress()));
+        const expectedDashboards = await Promise.all(vaultsSubset.map(({ dashboard }) => dashboard.getAddress()));
+        const expectedOperators = await Promise.all(
+          vaultsSubset.map(({ operator: _operator }) => _operator.getAddress()),
+        );
 
-      expect(membersBatch.length).to.equal(2);
-      expect(membersBatch[0].length).to.equal(4);
-      expect(membersBatch[1].length).to.equal(4);
+        const membersBatch = await vaultViewer.getRoleMembersBatch(vaultAddresses, roles);
 
-      // Staking Vault 1
-      expect(membersBatch[0].vault).to.equal(await _stakingVault.getAddress());
-      expect(membersBatch[0].owner).to.equal(await _dashboard.getAddress());
-      expect(membersBatch[0].nodeOperator).to.equal(await operator.getAddress());
-      expect(membersBatch[0].members[0][0]).to.equal(await operator.getAddress());
-      expect(membersBatch[0].members[1][0]).to.equal(await firstBatchGrantee.getAddress());
+        expect(membersBatch.length).to.equal(count);
 
-      // Staking Vault 2
-      expect(membersBatch[1].vault).to.equal(await _stakingVault2.getAddress());
-      expect(membersBatch[1].owner).to.equal(await _dashboard2.getAddress());
-      expect(membersBatch[1].nodeOperator).to.equal(await secondOperator.getAddress());
-      expect(membersBatch[1].members[0][0]).to.equal(await secondOperator.getAddress());
-      // // Staking Vault 2 don't have granted PDG_COMPENSATE_PREDEPOSIT_ROLE
-      expect(membersBatch[1].members[1].length).to.equal(0);
+        for (let i = 0; i < count; i++) {
+          const entry = membersBatch[i];
+
+          expect(entry.vault).to.equal(vaultAddresses[i]);
+          expect(entry.owner).to.equal(expectedDashboards[i]);
+          expect(entry.nodeOperator).to.equal(expectedOperators[i]);
+
+          const members = entry.members;
+          expect(members.length).to.equal(roles.length);
+
+          // NODE_OPERATOR_MANAGER_ROLE
+          expect(members[0].length).to.equal(1);
+          expect(members[0][0]).to.equal(expectedOperators[i]);
+
+          // PDG_COMPENSATE_PREDEPOSIT_ROLE
+          expect(members[1].length).to.equal(1);
+          expect(members[1][0]).to.equal(await firstGrantee.getAddress());
+        }
+      });
     });
-
-    // TODO: more checks, maybe reverts
   });
 });
