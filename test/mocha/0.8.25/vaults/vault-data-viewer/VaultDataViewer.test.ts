@@ -23,7 +23,7 @@ import { ether, findEvents, impersonate } from "lib";
 import { deployLidoLocator } from "test-deploy";
 import { Snapshot } from "test-utils/suite";
 
-// const NODE_OPERATOR_MANAGER_ROLE = keccak256(toUtf8Bytes("vaults.NodeOperatorFee.NodeOperatorManagerRole"));
+const NODE_OPERATOR_MANAGER_ROLE = keccak256(toUtf8Bytes("vaults.NodeOperatorFee.NodeOperatorManagerRole"));
 const PDG_COMPENSATE_PREDEPOSIT_ROLE = keccak256(toUtf8Bytes("vaults.Permissions.PDGCompensatePredeposit"));
 
 type STAKING_VAULT_WRAPPER_TYPE = {
@@ -611,78 +611,117 @@ describe("VaultViewer", () => {
     // TODO: more checks, maybe reverts
   });
 
-  // context("getRoleMembers & getRoleMembersBatch", () => {
-  //   beforeEach(async () => {
-  //     await hub.connect(hubSigner).mock_connectVault(
-  //       stakingVaults[0].stakingVault.getAddress(),
-  //       // dashboard is owner of staking vault
-  //       stakingVaults[0].dashboard.getAddress(),
-  //     );
-  //   });
+  context("get role members", () => {
+    let firstBatchGrantee: HardhatEthersSigner;
+    let secondBatchGrantee: HardhatEthersSigner;
 
-  // it("returns role members for a single vault", async () => {
-  //   const _stakingVault = stakingVaults[0].stakingVault;
-  //   const _dashboard = stakingVaults[0].dashboard;
-  //   const _operator = stakingVaults[0].operator;
-  //
-  //   await _dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
-  //   await _dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await secondStranger.getAddress());
-  //
-  //   const roleMembers = await vaultViewer.getRoleMembers(await _stakingVault.getAddress(), [
-  //     NODE_OPERATOR_MANAGER_ROLE,
-  //     PDG_COMPENSATE_PREDEPOSIT_ROLE,
-  //   ]);
-  //
-  //   // The returned tuple is [vault, owner, nodeOperator, members]
-  //   expect(roleMembers.length).to.equal(4);
-  //
-  //   // 0: vault
-  //   expect(roleMembers.vault).to.equal(await _stakingVault.getAddress());
-  //
-  //   // 1: owner (see: connection.owner)
-  //   expect(roleMembers.owner).to.equal(_dashboard);
-  //
-  //   // 2: nodeOperator
-  //   expect(roleMembers.nodeOperator).to.equal(_operator);
-  //
-  //   // 3: membersArray => an array of arrays, one per requested role
-  //   const membersArray = roleMembers[3] as string[][];
-  //   expect(membersArray.length).to.equal(2);
-  //
-  //   // Role 0 (NODE_OPERATOR_MANAGER_ROLE) should contain only the operator
-  //   expect(membersArray[0].length).to.equal(1);
-  //   expect(membersArray[0][0]).to.equal(_operator);
-  //
-  //   // Role 1 (PDG_COMPENSATE_PREDEPOSIT_ROLE) should contain the stranger and secondStranger
-  //   expect(membersArray[1].length).to.equal(2);
-  //   expect(membersArray[1][0]).to.equal(await stranger.getAddress());
-  //   expect(membersArray[1][1]).to.equal(await secondStranger.getAddress());
-  // });
+    beforeEach(async () => {
+      [, firstBatchGrantee, secondBatchGrantee] = await ethers.getSigners();
+      for (const { stakingVault, dashboard } of stakingVaults) {
+        await hub.connect(hubSigner).mock_connectVault(
+          await stakingVault.getAddress(),
+          // dashboard is owner of staking vault
+          await dashboard.getAddress(),
+        );
+      }
+    });
 
-  // it("returns role members for multiple vaults", async () => {
-  //   const ADMIN_ROLE = await dashboard1.DEFAULT_ADMIN_ROLE();
-  //   // Grant the role only for vaultDashboard1
-  //   await dashboard1.connect(vaultOwner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await stranger.getAddress());
-  //
-  //   const membersBatch = await vaultViewer.getRoleMembersBatch(
-  //     [await vaultDashboard1.getAddress(), await vaultDashboard2.getAddress()],
-  //     [ADMIN_ROLE, NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE],
-  //   );
-  //
-  //   expect(membersBatch.length).to.equal(2);
-  //   expect(membersBatch[0].length).to.equal(5);
-  //   expect(membersBatch[1].length).to.equal(5);
-  //
-  //   // vaultDashboard1
-  //   expect(membersBatch[0][4][0][0]).to.equal(await vaultOwner.getAddress());
-  //   expect(membersBatch[0][4][1][0]).to.equal(await operator.getAddress());
-  //   expect(membersBatch[0][4][2][0]).to.equal(await stranger.getAddress());
-  //
-  //   // vaultDashboard2
-  //   expect(membersBatch[1][4][0][0]).to.equal(await vaultOwner.getAddress());
-  //   expect(membersBatch[1][4][1][0]).to.equal(await operator.getAddress());
-  //   // vaultDashboard2 don't have granted PDG_COMPENSATE_PREDEPOSIT_ROLE
-  //   expect(membersBatch[1][4][2].length).to.equal(0);
-  // });
-  // });
+    it("returns role members for a single vault", async () => {
+      const _stakingVault = stakingVaults[0].stakingVault;
+      const _dashboard = stakingVaults[0].dashboard;
+      const _operator = stakingVaults[0].operator;
+
+      await _dashboard
+        .connect(hubSigner)
+        .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await firstBatchGrantee.getAddress());
+      await _dashboard
+        .connect(hubSigner)
+        .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await secondBatchGrantee.getAddress());
+
+      const roleMembers = await vaultViewer.getRoleMembers(await _stakingVault.getAddress(), [
+        NODE_OPERATOR_MANAGER_ROLE,
+        PDG_COMPENSATE_PREDEPOSIT_ROLE,
+      ]);
+
+      // The returned tuple is [vault, owner, nodeOperator, members]
+      expect(roleMembers.length).to.equal(4);
+
+      // 0: vault
+      expect(roleMembers.vault).to.equal(await _stakingVault.getAddress());
+
+      // 1: owner (see: connection.owner)
+      expect(roleMembers.owner).to.equal(_dashboard);
+
+      // 2: nodeOperator
+      expect(roleMembers.nodeOperator).to.equal(_operator);
+
+      // 3: membersArray => an array of arrays, one per requested role
+      const membersArray = roleMembers[3] as string[][];
+      expect(membersArray.length).to.equal(2);
+
+      // Role 0 (NODE_OPERATOR_MANAGER_ROLE) should contain only the operator
+      expect(membersArray[0].length).to.equal(1);
+      expect(membersArray[0][0]).to.equal(_operator);
+
+      // Role 1 (PDG_COMPENSATE_PREDEPOSIT_ROLE) should contain the stranger and secondStranger
+      expect(membersArray[1].length).to.equal(2);
+      expect(membersArray[1][0]).to.equal(await firstBatchGrantee.getAddress());
+      expect(membersArray[1][1]).to.equal(await secondBatchGrantee.getAddress());
+    });
+
+    // TODO: more checks, maybe reverts
+  });
+
+  context("get role members batch", () => {
+    let firstBatchGrantee: HardhatEthersSigner;
+
+    beforeEach(async () => {
+      [, firstBatchGrantee] = await ethers.getSigners();
+      for (const { stakingVault, dashboard } of stakingVaults) {
+        await hub.connect(hubSigner).mock_connectVault(
+          await stakingVault.getAddress(),
+          // dashboard is owner of staking vault
+          await dashboard.getAddress(),
+        );
+      }
+    });
+
+    it("returns role members for multiple vaults", async () => {
+      const _stakingVault = stakingVaults[0].stakingVault;
+      const _dashboard = stakingVaults[0].dashboard;
+
+      const _stakingVault2 = stakingVaults[1].stakingVault;
+      const _dashboard2 = stakingVaults[1].dashboard;
+
+      await _dashboard
+        .connect(hubSigner)
+        .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await firstBatchGrantee.getAddress());
+
+      const membersBatch = await vaultViewer.getRoleMembersBatch(
+        [await _stakingVault.getAddress(), await _stakingVault2.getAddress()],
+        [NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE],
+      );
+
+      expect(membersBatch.length).to.equal(2);
+      expect(membersBatch[0].length).to.equal(4);
+      expect(membersBatch[1].length).to.equal(4);
+
+      // Staking Vault 1
+      expect(membersBatch[0].vault).to.equal(await _stakingVault.getAddress());
+      expect(membersBatch[0].owner).to.equal(await _dashboard.getAddress());
+      expect(membersBatch[0].nodeOperator).to.equal(await operator.getAddress());
+      expect(membersBatch[0].members[0][0]).to.equal(await operator.getAddress());
+      expect(membersBatch[0].members[1][0]).to.equal(await firstBatchGrantee.getAddress());
+
+      // Staking Vault 2
+      expect(membersBatch[1].vault).to.equal(await _stakingVault2.getAddress());
+      expect(membersBatch[1].owner).to.equal(await _dashboard2.getAddress());
+      expect(membersBatch[1].nodeOperator).to.equal(await secondOperator.getAddress());
+      expect(membersBatch[1].members[0][0]).to.equal(await secondOperator.getAddress());
+      // // Staking Vault 2 don't have granted PDG_COMPENSATE_PREDEPOSIT_ROLE
+      expect(membersBatch[1].members[1].length).to.equal(0);
+    });
+
+    // TODO: more checks, maybe reverts
+  });
 });
