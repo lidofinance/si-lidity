@@ -482,24 +482,65 @@ describe("VaultViewer", () => {
     });
   });
 
-  // context("vaultsByRoleBound", () => {
-  //   beforeEach(async () => {
-  //     await hub.connect(hubSigner).mock_connectVault(vaultDashboard1.getAddress(), vaultOwner.getAddress());
-  //     await hub.connect(hubSigner).mock_connectVault(vaultDashboard2.getAddress(), vaultOwner.getAddress());
-  //     await hub.connect(hubSigner).mock_connectVault(vaultDashboard3.getAddress(), vaultOwner.getAddress());
-  //   });
-  //
-  //   it("returns all vaults with a given role on Dashboard", async () => {
-  //     await dashboard1.connect(vaultOwner).grantRole(await dashboard1.DEFAULT_ADMIN_ROLE(), stranger.getAddress());
-  //     const vaults = await vaultViewer.vaultsByRoleBound(
-  //       await dashboard1.DEFAULT_ADMIN_ROLE(),
-  //       stranger.getAddress(),
-  //       0,
-  //       3,
-  //     );
-  //     expect(vaults[0].length).to.equal(1);
-  //   });
-  // });
+  context("vaults by role bound", () => {
+    const vaultSplitIndex = 7;
+    let firstBatchGrantee: HardhatEthersSigner;
+    let secondBatchGrantee: HardhatEthersSigner;
+    let granteeWithNoRoles: HardhatEthersSigner;
+
+    beforeEach(async () => {
+      [, firstBatchGrantee, secondBatchGrantee, granteeWithNoRoles] = await ethers.getSigners();
+
+      for (let i = 0; i < stakingVaults.length; i++) {
+        const { stakingVault, dashboard } = stakingVaults[i];
+
+        // Connect vaults to the VaultHub
+        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), await dashboard.getAddress());
+
+        // Grant roles
+        const grantee = i < vaultSplitIndex ? firstBatchGrantee : secondBatchGrantee;
+        const role = await dashboard.DEFAULT_ADMIN_ROLE();
+
+        await dashboard.connect(hubSigner).grantRole(role, grantee.getAddress());
+      }
+    });
+
+    const testCases = [
+      { label: "firstBatchGrantee", getGrantee: () => firstBatchGrantee, ownedCount: () => vaultSplitIndex },
+      {
+        label: "secondBatchGrantee",
+        getGrantee: () => secondBatchGrantee,
+        ownedCount: () => stakingVaults.length - vaultSplitIndex,
+      },
+      { label: "granteeWithNoRoles", getGrantee: () => granteeWithNoRoles, ownedCount: () => 0 },
+    ];
+
+    const ranges = [
+      { from: 0, to: 0 },
+      { from: 0, to: 3 },
+      { from: 0, to: vaultSplitIndex },
+      { from: 0, to: vaultSplitIndex * 10 },
+    ];
+
+    testCases.forEach(({ label, getGrantee, ownedCount }) => {
+      ranges.forEach(({ from, to }) => {
+        it(`returns vaults for ${label} in range [${from}, ${to})`, async () => {
+          const grantee = getGrantee();
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+
+          const [vaults, leftover] = await vaultViewer.vaultsByRoleBound(role, grantee.getAddress(), from, to);
+
+          const expectedLength = Math.max(0, Math.min(to, ownedCount()) - from);
+          const expectedLeftover = Math.max(0, ownedCount() - to);
+
+          expect(vaults.length).to.equal(expectedLength);
+          expect(leftover).to.equal(expectedLeftover);
+        });
+      });
+    });
+
+    // TODO: add WrongPaginationRange test cases
+  });
 
   // context("get vault data", () => {
   //   beforeEach(async () => {
