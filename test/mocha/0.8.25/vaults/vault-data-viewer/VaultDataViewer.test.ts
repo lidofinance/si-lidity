@@ -91,13 +91,13 @@ const deployPDG = async (deployerPDG: HardhatEthersSigner) => {
 };
 
 const deployStakingVaults = async (
-  vaultImpl,
-  dashboardImpl,
-  pdgStub,
-  hub,
-  hubSigner,
-  operator,
-  secondOperator,
+  vaultImpl: StakingVault,
+  dashboardImpl: Dashboard,
+  pdgStub: PredepositGuarantee,
+  hub: VaultHub__MockForHubViewer,
+  hubSigner: HardhatEthersSigner,
+  operator: HardhatEthersSigner,
+  secondOperator: HardhatEthersSigner,
   stakingVaultCount: number,
 ) => {
   const stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
