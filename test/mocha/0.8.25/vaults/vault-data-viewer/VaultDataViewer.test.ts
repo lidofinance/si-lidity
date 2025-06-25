@@ -628,6 +628,7 @@ describe("VaultViewer", () => {
       expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
 
       // Value check
+      expect(vaultData.vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.equal(
         expectedVaultsData.connection.forcedRebalanceThresholdBP,
       );
@@ -637,6 +638,29 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.equal(expectedVaultsData.totalValue);
       expect(vaultData.liabilityStETH).to.equal(expectedVaultsData.liabilityStETH);
       expect(vaultData.nodeOperatorFeeRate).to.equal(expectedVaultsData.nodeOperatorFeeRate);
+    });
+
+    it("returns default values for zero address", async () => {
+      const vaultData = await vaultViewer.getVaultData(ethers.ZeroAddress);
+
+      // Sanity check: values are returned and types match
+      expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
+      expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
+      expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");
+      expect(vaultData.record.liabilityShares).to.be.a("bigint");
+      expect(vaultData.totalValue).to.be.a("bigint");
+      expect(vaultData.liabilityStETH).to.be.a("bigint");
+      expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
+
+      // Value check
+      expect(vaultData.vaultAddress).to.equal(ethers.ZeroAddress);
+      expect(vaultData.connection.forcedRebalanceThresholdBP).to.equal(0n);
+      expect(vaultData.connection.infraFeeBP).to.equal(0n);
+      expect(vaultData.connection.liquidityFeeBP).to.equal(0n);
+      expect(vaultData.record.liabilityShares).to.equal(0n);
+      expect(vaultData.totalValue).to.equal(0n);
+      expect(vaultData.liabilityStETH).to.equal(0n);
+      expect(vaultData.nodeOperatorFeeRate).to.equal(0n);
     });
   });
 
@@ -823,6 +847,27 @@ describe("VaultViewer", () => {
             expect(members).to.include(await secondGrantee.getAddress());
           }
         }
+      }
+    });
+
+    it("returns default role members for zero addresses", async () => {
+      const zeroAddresses = [ethers.ZeroAddress, ethers.ZeroAddress, ethers.ZeroAddress];
+
+      for (const vaultAddress of zeroAddresses) {
+        const roleMembers = await vaultViewer.getRoleMembers(vaultAddress, [
+          NODE_OPERATOR_MANAGER_ROLE,
+          PDG_COMPENSATE_PREDEPOSIT_ROLE,
+        ]);
+
+        expect(roleMembers.vault).to.equal(ethers.ZeroAddress);
+        expect(roleMembers.owner).to.equal(ethers.ZeroAddress);
+        expect(roleMembers.nodeOperator).to.equal(ethers.ZeroAddress);
+
+        const membersArray = roleMembers.members;
+        expect(membersArray.length).to.equal(2);
+
+        expect(membersArray[0].length).to.equal(0);
+        expect(membersArray[1].length).to.equal(0);
       }
     });
   });
