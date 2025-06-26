@@ -90,7 +90,7 @@ contract VaultHub__MockForHubViewer {
 
         VaultHub.Report memory report = VaultHub.Report(
             uint112(10), // totalValue
-            int112(10), // inOutDelta
+            int112(1), // inOutDelta
             uint32(1749550671) // timestamp
         );
 
