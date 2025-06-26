@@ -24,6 +24,12 @@ Just run
 
 `git submodule update --remote --recursive`
 
+`cd submodules/lidofinance-core`
+
+`git checkout v3.0.0-audits`
+
+`cd ../../`
+
 `yarn compile`
 
 ### Deploy
@@ -73,6 +79,12 @@ Just updates submodules with:
 `git submodule init`
 
 `git submodule update --remote --recursive`
+
+`cd submodules/lidofinance-core`
+
+`git checkout v3.0.0-audits`
+
+`cd ../../`
 
 ## License
 

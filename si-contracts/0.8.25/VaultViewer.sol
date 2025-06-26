@@ -18,7 +18,6 @@ contract VaultViewer {
     }
 
     struct VaultMembers {
-        // TODO: check
         address vault;
         address owner;
         address nodeOperator;
@@ -175,7 +174,6 @@ contract VaultViewer {
         ILido lido = VAULT_HUB.LIDO();
         VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
         VaultHub.VaultRecord memory record = VAULT_HUB.vaultRecord(vault);
-        // TODO: check for valid value
         uint256 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
 
         data = VaultData({
@@ -224,7 +222,7 @@ contract VaultViewer {
         // connection.owner is the owner of the vault - dashboard contract
         roleMembers.vault = vaultAddress;
         roleMembers.owner = connection.owner;
-        roleMembers.nodeOperator = vaultContract.nodeOperator();
+        roleMembers.nodeOperator = _getNodeOperatorAddress(vaultAddress);
         roleMembers.members = new address[][](roles.length);
 
         // owner may be an EOA wallet
@@ -368,9 +366,23 @@ contract VaultViewer {
     function _getNodeOperatorFeeRate(address owner) internal view returns (uint256 fee) {
         if (isContract(owner)) {
             (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("nodeOperatorFeeRate()"));
-            // TODO: check if result.length >= 32 is needed
+            // Check ensures safe decoding — avoids abi.decode revert on short return data
             if (success && result.length >= 32) {
                 fee = abi.decode(result, (uint256));
+            }
+        }
+    }
+
+    /// @notice Tries to fetch nodeOperator() from the vault contract
+    /// @dev Uses low-level staticcall to avoid reverting when the method is missing or vault is not a valid contract
+    /// @param vault The address of the vault (must be a contract implementing nodeOperator())
+    /// @return operator The decoded nodeOperator address if present, otherwise address(0)
+    function _getNodeOperatorAddress(address vault) internal view returns (address operator) {
+        if (isContract(vault)) {
+            (bool success, bytes memory result) = vault.staticcall(abi.encodeWithSignature("nodeOperator()"));
+            // Check ensures safe decoding — avoids abi.decode revert on short return data
+            if (success && result.length >= 32) {
+                operator = abi.decode(result, (address));
             }
         }
     }
