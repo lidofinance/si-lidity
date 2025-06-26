@@ -377,6 +377,7 @@ contract VaultViewer {
     /// @dev Uses low-level staticcall to avoid reverting when the method is missing or vault is not a valid contract
     /// @param vault The address of the vault (must be a contract implementing nodeOperator())
     /// @return operator The decoded nodeOperator address if present, otherwise address(0)
+    /// @custom:todo Think about the need for this method
     function _getNodeOperatorAddress(address vault) internal view returns (address operator) {
         if (isContract(vault)) {
             (bool success, bytes memory result) = vault.staticcall(abi.encodeWithSignature("nodeOperator()"));
