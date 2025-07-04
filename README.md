@@ -40,7 +40,7 @@ Set ENVs
 Deploy with
 `yarn deploy:<network_name>`
 
-#### Hoodi example
+#### example
 
 `yarn deploy:hoodi`
 
