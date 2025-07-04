@@ -27,7 +27,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: "./sidebars.ts",
-          path: "cli",
+          path: "silidity",
           // Remove this to remove the "edit this page" links.
           editUrl: "https://github.com/lidofinance/si-lidity",
           routeBasePath: "/",
