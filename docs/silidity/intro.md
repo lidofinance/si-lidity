@@ -8,10 +8,6 @@ slug: /
 
 ⚠️ **Attention**: this repository uses **Hardhat 3 Alpha**!
 
-## Changelog
-
-For changes between versions see [Changelog](./changelog.mdx)
-
 ## Features
 
 - **Easy Setup**: Quick installation and configuration to get you started.

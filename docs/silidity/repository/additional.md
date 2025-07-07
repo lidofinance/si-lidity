@@ -1,26 +1,28 @@
 ---
-sidebar_position: 4
+sidebar_position: 2
 ---
 
-# Tests
+# Additional
+
+## Tests
 
 ```bash
 yarn test
 ```
 
-# Verify
+## Verify
 
 ```bash
 yarn verify:deployed-contracts --chainId <chainId> --contractName <contractName>
 ```
 
-## Example
+### Example
 
 ```bash
 yarn verify:deployed-contracts --chainId 560048 --contractName VaultViewer
 ```
 
-# ABI
+## ABI
 
 Before deploying, make sure the contract has been compiled.
 

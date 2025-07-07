@@ -1,7 +1,10 @@
+---
+sidebar_position: 2
+---
+
 # VaultViewer
 
 - [Source code](https://github.com/lidofinance/si-lidity/blob/develop/si-contracts/0.8.25/VaultViewer.sol)
-- [Deployed contract on the HOODI](https://hoodi.etherscan.io/address/0xe1E9d4B5fc05A8B824B211164A683B1AefB46F31)
 
 **VaultViewer** is a read-only utility contract designed to simplify querying aggregated data about staking vaults managed by the VaultHub.
 
