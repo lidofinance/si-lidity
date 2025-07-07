@@ -28,6 +28,7 @@ Holds aggregated data for a vault:
 | `totalValue`          | `uint256`                  |
 | `liabilityStETH`      | `uint256`                  |
 | `nodeOperatorFeeRate` | `uint256`                  |
+| `isReportFresh`       | `bool`                     |
 
 ### VaultMembers
 
@@ -101,12 +102,13 @@ Returns aggregated data for a specific vault, including value, liabilities, and 
 function getVaultData(address vault)
 view returns(
   VaultData {
-  address vaultAddress;
-  VaultHub.VaultConnection connection;
-  VaultHub.VaultRecord record;
-  uint256 totalValue;
-  uint256 liabilityStETH;
-  uint256 nodeOperatorFeeRate;
+    address vaultAddress;
+    VaultHub.VaultConnection connection;
+    VaultHub.VaultRecord record;
+    uint256 totalValue;
+    uint256 liabilityStETH;
+    uint256 nodeOperatorFeeRate;
+    bool isReportFresh;
   }
 )
 ```
@@ -128,10 +130,10 @@ Returns detailed role members data for a vault owner.
 function getRoleMembers(address vaultAddress, bytes32[] calldata roles)
 view returns(
   VaultMembers {
-  address vault;
-  address owner;
-  address nodeOperator;
-  address[][] members;
+    address vault;
+    address owner;
+    address nodeOperator;
+    address[][] members;
   }
 )
 ```
