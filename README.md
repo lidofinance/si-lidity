@@ -4,87 +4,95 @@
 
 A set of solidity contracts from the SI team with Hardhat 3 Alpha!
 
-## Getting Started
-
-### Prerequisites
+## Prerequisites
 
 Node.js 22
 
-### Installation
+## ⚙️ Configuration
 
-Just run
+**📑 This file contains a brief guide. For full documentation, see the Docusaurus docs by running:**
+
+```
+cd ../docs
+yarn start
+```
+
+### 🌐 ENV
+
+Set ENVs
+
+`cp .env.example .env.local`
+
+- PRIVATE_KEY
+- RPC*URL*<chainId>
+- VAULT_HUB_ADDRESS
+- ETHERSCAN_API_KEY
+
+### 🔧 Installation
+
+Just run:
 
 `yarn install`
 
-### Quick Start
+### 🔀 Init submodules
 
-Just run
+Just updates submodules with:
 
-`git submodule init`
+```
+git submodule init
+git submodule update --remote --recursive
+cd submodules/lidofinance-core
+git checkout v3.0.0-audits
+cd ../../
+```
 
-`git submodule update --remote --recursive`
+### 🏃‍♂️ Compile
 
-`cd submodules/lidofinance-core`
-
-`git checkout v3.0.0-audits`
-
-`cd ../../`
+Just run:
 
 `yarn compile`
 
-### Deploy
+## 📌 Additional
 
-Set ENVs
-`cp .env.example .env.local`
+### 🚀 Deploy
 
-Deploy with
+Deploy with:
+
 `yarn deploy:<network_name>`
 
-#### Hoodi example
+**Example:**
 
 `yarn deploy:hoodi`
 
-### Verify
+### ✅ Verify
 
-Deploy with
+Deploy with:
+
 `yarn deploy:<network_name>`
 
-Verify with
+Verify with:
+
 `yarn verify:deployed-contracts --chainId <chainId> --contractName <contractName>`
 
-#### Hoodi example
+**Example:**
 
 `yarn deploy:hoodi`
 
 `yarn verify:deployed-contracts --chainId 560048 --contractName VaultViewer`
 
-### Tests
+### 📝 Tests
 
-Just run
+Just run:
 
 `yarn test`
 
-### ABI
+### 📦 ABI
 
-Just run
+Just run:
 
 `yarn compile`
 
 `yarn abis:extract`
-
-### Submodules
-
-Just updates submodules with:
-
-`git submodule init`
-
-`git submodule update --remote --recursive`
-
-`cd submodules/lidofinance-core`
-
-`git checkout v3.0.0-audits`
-
-`cd ../../`
 
 ## License
 

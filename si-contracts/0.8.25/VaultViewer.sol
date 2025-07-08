@@ -15,6 +15,7 @@ contract VaultViewer {
         uint256 totalValue;
         uint256 liabilityStETH;
         uint256 nodeOperatorFeeRate;
+        bool isReportFresh;
     }
 
     struct VaultMembers {
@@ -182,7 +183,8 @@ contract VaultViewer {
             record: record,
             totalValue: VAULT_HUB.totalValue(vault),
             liabilityStETH: lido.getPooledEthBySharesRoundUp(record.liabilityShares),
-            nodeOperatorFeeRate: nodeOperatorFeeRate
+            nodeOperatorFeeRate: nodeOperatorFeeRate,
+            isReportFresh: VAULT_HUB.isReportFresh(vault)
         });
     }
 

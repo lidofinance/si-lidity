@@ -156,6 +156,7 @@ describe("VaultViewer", () => {
     totalValue: 10n,
     liabilityStETH: 1n,
     nodeOperatorFeeRate: 0n,
+    isReportFresh: true,
   };
 
   let originalState: string;
@@ -626,6 +627,7 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.be.a("bigint");
       expect(vaultData.liabilityStETH).to.be.a("bigint");
       expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
+      expect(vaultData.isReportFresh).to.be.a("boolean");
 
       // Value check
       expect(vaultData.vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
@@ -638,6 +640,7 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.equal(expectedVaultsData.totalValue);
       expect(vaultData.liabilityStETH).to.equal(expectedVaultsData.liabilityStETH);
       expect(vaultData.nodeOperatorFeeRate).to.equal(expectedVaultsData.nodeOperatorFeeRate);
+      expect(vaultData.isReportFresh).to.equal(expectedVaultsData.isReportFresh);
     });
 
     it("returns default values for zero address", async () => {
@@ -651,6 +654,7 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.be.a("bigint");
       expect(vaultData.liabilityStETH).to.be.a("bigint");
       expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
+      expect(vaultData.isReportFresh).to.be.a("boolean");
 
       // Value check
       expect(vaultData.vaultAddress).to.equal(ethers.ZeroAddress);
@@ -661,6 +665,7 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.equal(0n);
       expect(vaultData.liabilityStETH).to.equal(0n);
       expect(vaultData.nodeOperatorFeeRate).to.equal(0n);
+      expect(vaultData.isReportFresh).to.equal(expectedVaultsData.isReportFresh);
     });
   });
 
@@ -707,6 +712,7 @@ describe("VaultViewer", () => {
           expect(vaultsData[i].totalValue).to.be.a("bigint");
           expect(vaultsData[i].liabilityStETH).to.be.a("bigint");
           expect(vaultsData[i].nodeOperatorFeeRate).to.be.a("bigint");
+          expect(vaultsData[i].isReportFresh).to.be.a("boolean");
 
           // Value check
           expect(vaultsData[i].connection.forcedRebalanceThresholdBP).to.equal(
@@ -718,6 +724,7 @@ describe("VaultViewer", () => {
           expect(vaultsData[i].totalValue).to.equal(expectedVaultsData.totalValue);
           expect(vaultsData[i].liabilityStETH).to.equal(expectedVaultsData.liabilityStETH);
           expect(vaultsData[i].nodeOperatorFeeRate).to.equal(expectedVaultsData.nodeOperatorFeeRate);
+          expect(vaultsData[i].isReportFresh).to.equal(expectedVaultsData.isReportFresh);
         }
       });
     });

@@ -52,6 +52,10 @@ contract VaultHub__MockForHubViewer {
         return _getVaultHubStorage().records[_vault];
     }
 
+    function _vaultRecord(address _vault) internal view returns (VaultHub.VaultRecord storage) {
+        return _getVaultHubStorage().records[_vault];
+    }
+
     function vaultsCount() public view returns (uint256) {
         return _getVaultHubStorage().vaults.length - 1;
     }
@@ -64,13 +68,13 @@ contract VaultHub__MockForHubViewer {
         return _totalValue(_vaultRecord(_vault));
     }
 
-    function _vaultRecord(address _vault) internal view returns (VaultHub.VaultRecord storage) {
-        return _getVaultHubStorage().records[_vault];
-    }
-
     function _totalValue(VaultHub.VaultRecord storage _record) internal view returns (uint256) {
         VaultHub.Report memory report = _record.report;
         return uint256(int256(uint256(report.totalValue)) + _record.inOutDelta.value - report.inOutDelta);
+    }
+
+    function isReportFresh(address _vault) external view returns (bool) {
+        return true;
     }
 
     function disconnect(address _vault) external {
