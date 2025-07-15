@@ -34,13 +34,13 @@ contract WstETHReferralStaker {
         uint256 stETHAmount = stETH.submit{value: msg.value}(_referral);
 
         // 2. wrap stETH to wstETH
-        // unlimited approval is set in constructor
+        // unlimited approval is set in constructor, 0 wstETH check inside
         uint256 wstETHAmount = wstETH.wrap(stETHAmount);
 
         // 3. transfer wstETH to the user
         wstETH.transfer(msg.sender, wstETHAmount);
 
-        // 4. return the amount of wstETH received
+        // 4. return the amount of wstETH
         return wstETHAmount;
     }
 }
