@@ -10,6 +10,8 @@ interface IWstETH is IERC20 {
     function wrap(uint256) external returns (uint256);
 
     function unwrap(uint256) external returns (uint256);
+
+    function stETH() external view returns (address);
 }
 
 interface IStETH is IERC20 {
@@ -20,9 +22,9 @@ contract WstETHStaker {
     IWstETH public wstETH;
     IStETH public stETH;
 
-    constructor(IWstETH _wstETH, IStETH _stETH) {
+    constructor(IWstETH _wstETH) {
         wstETH = _wstETH;
-        stETH = _stETH;
+        stETH = IStETH(wstETH.stETH());
         stETH.approve(address(wstETH), type(uint256).max);
     }
 
