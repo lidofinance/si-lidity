@@ -16,6 +16,8 @@ interface IWstETH is IERC20 {
 
 interface IStETH is IERC20 {
     function submit(address _referral) external payable returns (uint256);
+
+    function getPooledEthBySharesRoundUp(uint256 _sharesAmount) external view returns (uint256);
 }
 
 contract WstETHReferralStaker {
@@ -31,11 +33,11 @@ contract WstETHReferralStaker {
     function stakeETH(address _referral) external payable returns (uint256) {
         // 1. stake ETH and recieve stETH
         // referral event and 0 check inside
-        uint256 stETHAmount = stETH.submit{value: msg.value}(_referral);
+        uint256 stethAmount = stETH.getPooledEthBySharesRoundUp(stETH.submit{value: msg.value}(_referral));
 
         // 2. wrap stETH to wstETH
         // unlimited approval is set in constructor, 0 wstETH check inside
-        uint256 wstETHAmount = wstETH.wrap(stETHAmount);
+        uint256 wstETHAmount = wstETH.wrap(stethAmount);
 
         // 3. transfer wstETH to the user
         wstETH.transfer(msg.sender, wstETHAmount);
