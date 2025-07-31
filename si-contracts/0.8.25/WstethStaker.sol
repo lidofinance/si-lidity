@@ -9,8 +9,6 @@ import {IERC20} from "@openzeppelin/contracts-v5.2/token/ERC20/IERC20.sol";
 interface IWstETH is IERC20 {
     function wrap(uint256) external returns (uint256);
 
-    function unwrap(uint256) external returns (uint256);
-
     function stETH() external view returns (address);
 }
 
