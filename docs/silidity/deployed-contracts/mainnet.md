@@ -11,3 +11,5 @@ This page lists production contract addresses on Mainnets.
 ## Contracts
 
 - Vault Viewer: `TBD`
+
+- wstETH Referral Staker: `TBD`
