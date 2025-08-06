@@ -167,6 +167,15 @@ describe("VaultViewer", () => {
     },
   };
 
+  const quarantinePeriod = 10_000_000n;
+  const startTimestampMs = BigInt(Date.now());
+  const mockVaultToQuarantineExpectedData = {
+    isActive: true,
+    pendingTotalValueIncrease: 100n,
+    startTimestamp: startTimestampMs,
+    endTimestamp: startTimestampMs + quarantinePeriod,
+  };
+
   let originalState: string;
 
   before(async () => {
@@ -182,7 +191,6 @@ describe("VaultViewer", () => {
     wsteth = await ethers.deployContract("WstETH__HarnessForVault", [steth]);
     pdgStub = await deployPDG(deployerPDG);
 
-    const quarantinePeriod = 10000000;
     lazyOracle = await ethers.deployContract("LazyOracle__MockForHubViewer", [quarantinePeriod]);
 
     hub = await ethers.deployContract("VaultHub__MockForHubViewer", [steth]);
@@ -700,6 +708,44 @@ describe("VaultViewer", () => {
       expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.equal(0n);
       expect(vaultData.quarantineInfo.startTimestamp).to.equal(0n);
       expect(vaultData.quarantineInfo.endTimestamp).to.equal(0n);
+    });
+  });
+
+  context("get vault data with mocked quarantine info", () => {
+    beforeEach(async () => {
+      await steth.mock__setTotalPooledEther(100n);
+      await steth.mock__setTotalShares(100n);
+
+      await hub.connect(hubSigner).mock_connectVault(
+        await stakingVaults[0].stakingVault.getAddress(),
+        // dashboard is owner of staking vault
+        await stakingVaults[0].dashboard.getAddress(),
+      );
+
+      await lazyOracle.mock_addVaultToQuarantine(
+        await stakingVaults[0].stakingVault.getAddress(),
+        mockVaultToQuarantineExpectedData.pendingTotalValueIncrease,
+        mockVaultToQuarantineExpectedData.startTimestamp,
+      );
+    });
+
+    it("returns data for first vault with getVaultData", async () => {
+      const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
+
+      // Sanity check: values are returned and types match
+      expect(vaultData.quarantineInfo.isActive).to.be.a("boolean");
+      expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.be.a("bigint");
+      expect(vaultData.quarantineInfo.startTimestamp).to.be.a("bigint");
+      expect(vaultData.quarantineInfo.endTimestamp).to.be.a("bigint");
+
+      // Value check
+      expect(vaultData.vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
+      expect(vaultData.quarantineInfo.isActive).to.equal(mockVaultToQuarantineExpectedData.isActive);
+      expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.equal(
+        mockVaultToQuarantineExpectedData.pendingTotalValueIncrease,
+      );
+      expect(vaultData.quarantineInfo.startTimestamp).to.equal(mockVaultToQuarantineExpectedData.startTimestamp);
+      expect(vaultData.quarantineInfo.endTimestamp).to.equal(mockVaultToQuarantineExpectedData.endTimestamp);
     });
   });
 
