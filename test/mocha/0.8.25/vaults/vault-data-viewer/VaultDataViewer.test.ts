@@ -159,6 +159,12 @@ describe("VaultViewer", () => {
     liabilityStETH: 1n,
     nodeOperatorFeeRate: 0n,
     isReportFresh: true,
+    quarantineInfo: {
+      isActive: false,
+      pendingTotalValueIncrease: 0n,
+      startTimestamp: 0n,
+      endTimestamp: 0n,
+    },
   };
 
   let originalState: string;
@@ -638,6 +644,10 @@ describe("VaultViewer", () => {
       expect(vaultData.liabilityStETH).to.be.a("bigint");
       expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
       expect(vaultData.isReportFresh).to.be.a("boolean");
+      expect(vaultData.quarantineInfo.isActive).to.be.a("boolean");
+      expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.be.a("bigint");
+      expect(vaultData.quarantineInfo.startTimestamp).to.be.a("bigint");
+      expect(vaultData.quarantineInfo.endTimestamp).to.be.a("bigint");
 
       // Value check
       expect(vaultData.vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
@@ -651,6 +661,12 @@ describe("VaultViewer", () => {
       expect(vaultData.liabilityStETH).to.equal(expectedVaultsData.liabilityStETH);
       expect(vaultData.nodeOperatorFeeRate).to.equal(expectedVaultsData.nodeOperatorFeeRate);
       expect(vaultData.isReportFresh).to.equal(expectedVaultsData.isReportFresh);
+      expect(vaultData.quarantineInfo.isActive).to.equal(expectedVaultsData.quarantineInfo.isActive);
+      expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.equal(
+        expectedVaultsData.quarantineInfo.pendingTotalValueIncrease,
+      );
+      expect(vaultData.quarantineInfo.startTimestamp).to.equal(expectedVaultsData.quarantineInfo.startTimestamp);
+      expect(vaultData.quarantineInfo.endTimestamp).to.equal(expectedVaultsData.quarantineInfo.endTimestamp);
     });
 
     it("returns default values for zero address", async () => {
@@ -665,6 +681,10 @@ describe("VaultViewer", () => {
       expect(vaultData.liabilityStETH).to.be.a("bigint");
       expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
       expect(vaultData.isReportFresh).to.be.a("boolean");
+      expect(vaultData.quarantineInfo.isActive).to.be.a("boolean");
+      expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.be.a("bigint");
+      expect(vaultData.quarantineInfo.startTimestamp).to.be.a("bigint");
+      expect(vaultData.quarantineInfo.endTimestamp).to.be.a("bigint");
 
       // Value check
       expect(vaultData.vaultAddress).to.equal(ethers.ZeroAddress);
@@ -675,7 +695,11 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.equal(0n);
       expect(vaultData.liabilityStETH).to.equal(0n);
       expect(vaultData.nodeOperatorFeeRate).to.equal(0n);
-      expect(vaultData.isReportFresh).to.equal(expectedVaultsData.isReportFresh);
+      expect(vaultData.isReportFresh).to.equal(true);
+      expect(vaultData.quarantineInfo.isActive).to.equal(false);
+      expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.equal(0n);
+      expect(vaultData.quarantineInfo.startTimestamp).to.equal(0n);
+      expect(vaultData.quarantineInfo.endTimestamp).to.equal(0n);
     });
   });
 
@@ -723,6 +747,10 @@ describe("VaultViewer", () => {
           expect(vaultsData[i].liabilityStETH).to.be.a("bigint");
           expect(vaultsData[i].nodeOperatorFeeRate).to.be.a("bigint");
           expect(vaultsData[i].isReportFresh).to.be.a("boolean");
+          expect(vaultsData[i].quarantineInfo.isActive).to.be.a("boolean");
+          expect(vaultsData[i].quarantineInfo.pendingTotalValueIncrease).to.be.a("bigint");
+          expect(vaultsData[i].quarantineInfo.startTimestamp).to.be.a("bigint");
+          expect(vaultsData[i].quarantineInfo.endTimestamp).to.be.a("bigint");
 
           // Value check
           expect(vaultsData[i].connection.forcedRebalanceThresholdBP).to.equal(
@@ -735,6 +763,14 @@ describe("VaultViewer", () => {
           expect(vaultsData[i].liabilityStETH).to.equal(expectedVaultsData.liabilityStETH);
           expect(vaultsData[i].nodeOperatorFeeRate).to.equal(expectedVaultsData.nodeOperatorFeeRate);
           expect(vaultsData[i].isReportFresh).to.equal(expectedVaultsData.isReportFresh);
+          expect(vaultsData[i].quarantineInfo.isActive).to.equal(expectedVaultsData.quarantineInfo.isActive);
+          expect(vaultsData[i].quarantineInfo.pendingTotalValueIncrease).to.equal(
+            expectedVaultsData.quarantineInfo.pendingTotalValueIncrease,
+          );
+          expect(vaultsData[i].quarantineInfo.startTimestamp).to.equal(
+            expectedVaultsData.quarantineInfo.startTimestamp,
+          );
+          expect(vaultsData[i].quarantineInfo.endTimestamp).to.equal(expectedVaultsData.quarantineInfo.endTimestamp);
         }
       });
     });
