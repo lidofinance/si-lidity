@@ -20,15 +20,16 @@ This contract is **not upgradable** and is intended solely for efficient on-chai
 
 Holds aggregated data for a vault:
 
-| Field                 | Type                       |
-| --------------------- | -------------------------- |
-| `vaultAddress`        | `address`                  |
-| `connection`          | `VaultHub.VaultConnection` |
-| `record`              | `VaultHub.VaultRecord`     |
-| `totalValue`          | `uint256`                  |
-| `liabilityStETH`      | `uint256`                  |
-| `nodeOperatorFeeRate` | `uint256`                  |
-| `isReportFresh`       | `bool`                     |
+| Field                 | Type                        |
+| --------------------- | --------------------------- |
+| `vaultAddress`        | `address`                   |
+| `connection`          | `VaultHub.VaultConnection`  |
+| `record`              | `VaultHub.VaultRecord`      |
+| `totalValue`          | `uint256`                   |
+| `liabilityStETH`      | `uint256`                   |
+| `nodeOperatorFeeRate` | `uint256`                   |
+| `isReportFresh`       | `bool`                      |
+| `quarantineInfo`      | `LazyOracle.QuarantineInfo` |
 
 ### VaultMembers
 
@@ -109,6 +110,7 @@ view returns(
     uint256 liabilityStETH;
     uint256 nodeOperatorFeeRate;
     bool isReportFresh;
+    LazyOracle.QuarantineInfo: quarantineInfo
   }
 )
 ```
