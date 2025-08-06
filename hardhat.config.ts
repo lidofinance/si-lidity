@@ -136,9 +136,9 @@ const config: HardhatUserConfig = {
         accountsBalance: "100000000000000000000000",
       },
     },
-    sepolia: {
+    mainnet: {
       type: "http",
-      url: process.env.RPC_URL_11155111,
+      url: process.env.RPC_URL_1,
       accounts: [process.env.PRIVATE_KEY],
     },
     hoodi: {
