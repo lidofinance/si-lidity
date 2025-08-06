@@ -3,9 +3,11 @@
 
 // See contracts/COMPILERS.md
 pragma solidity 0.8.25;
-import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
-import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
-import {ILido} from "contracts/common/interfaces/ILido.sol";
+import { VaultHub } from "contracts/0.8.25/vaults/VaultHub.sol";
+import { IStakingVault } from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
+import { ILido } from "contracts/common/interfaces/ILido.sol";
+import { ILidoLocator } from "contracts/common/interfaces/ILidoLocator.sol";
+import { LazyOracle } from "contracts/0.8.25/vaults/LazyOracle.sol";
 
 contract VaultViewer {
     struct VaultData {
@@ -16,6 +18,7 @@ contract VaultViewer {
         uint256 liabilityStETH;
         uint256 nodeOperatorFeeRate;
         bool isReportFresh;
+        LazyOracle.QuarantineInfo quarantineInfo;
     }
 
     struct VaultMembers {
@@ -35,13 +38,23 @@ contract VaultViewer {
      */
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
+    ILidoLocator public immutable LIDO_LOCATOR;
     VaultHub public immutable VAULT_HUB;
+    LazyOracle public immutable LAZY_ORACLE;
 
     /// @notice Constructor
-    /// @param _vaultHub Address of the vault hub
-    constructor(address _vaultHub) {
-        if (_vaultHub == address(0)) revert ZeroArgument("_vaultHub");
-        VAULT_HUB = VaultHub(payable(_vaultHub));
+    /// @param _lidoLocator Address of the lido locator
+    constructor(address _lidoLocator) {
+        if (_lidoLocator == address(0)) revert ZeroArgument("_lidoLocator");
+        LIDO_LOCATOR = ILidoLocator(_lidoLocator);
+
+        address vaultHubAddress = LIDO_LOCATOR.vaultHub();
+        if (vaultHubAddress == address(0)) revert ZeroVaultHub();
+        VAULT_HUB = VaultHub(payable(vaultHubAddress));
+
+        address lazyOracleAddress = LIDO_LOCATOR.lazyOracle();
+        if (lazyOracleAddress == address(0)) revert ZeroLazyOracle();
+        LAZY_ORACLE = LazyOracle(lazyOracleAddress);
     }
 
     /// @notice Checks if a given address is a contract
@@ -176,6 +189,7 @@ contract VaultViewer {
         VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
         VaultHub.VaultRecord memory record = VAULT_HUB.vaultRecord(vault);
         uint256 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
+        LazyOracle.QuarantineInfo memory quarantineInfo = LAZY_ORACLE.vaultQuarantine(vault);
 
         data = VaultData({
             vaultAddress: vault,
@@ -184,7 +198,8 @@ contract VaultViewer {
             totalValue: VAULT_HUB.totalValue(vault),
             liabilityStETH: lido.getPooledEthBySharesRoundUp(record.liabilityShares),
             nodeOperatorFeeRate: nodeOperatorFeeRate,
-            isReportFresh: VAULT_HUB.isReportFresh(vault)
+            isReportFresh: VAULT_HUB.isReportFresh(vault),
+            quarantineInfo: quarantineInfo
         });
     }
 
@@ -395,6 +410,10 @@ contract VaultViewer {
     /// @notice Error for zero address arguments
     /// @param argName Name of the argument that is zero
     error ZeroArgument(string argName);
+
+    /// @notice LidoLocator returned address zero
+    error ZeroVaultHub();
+    error ZeroLazyOracle();
 
     /// @notice Error for wrong pagination range
     /// @param _from Start of the range
