@@ -8,6 +8,7 @@ import type { HardhatEthers, HardhatEthersSigner } from "@nomicfoundation/hardha
 import {
   Dashboard,
   DepositContract__MockForStakingVault,
+  LazyOracle__MockForHubViewer,
   LidoLocator,
   PredepositGuarantee,
   StakingVault,
@@ -132,6 +133,7 @@ describe("VaultViewer", () => {
   let pdgStub: PredepositGuarantee;
   let locator: LidoLocator;
   let hub: VaultHub__MockForHubViewer;
+  let lazyOracle: LazyOracle__MockForHubViewer;
   let dashboardImpl: Dashboard;
   let depositContract: DepositContract__MockForStakingVault;
 
@@ -174,20 +176,28 @@ describe("VaultViewer", () => {
     wsteth = await ethers.deployContract("WstETH__HarnessForVault", [steth]);
     pdgStub = await deployPDG(deployerPDG);
 
+    const quarantinePeriod = 10000000;
+    lazyOracle = await ethers.deployContract("LazyOracle__MockForHubViewer", [quarantinePeriod]);
+
+    hub = await ethers.deployContract("VaultHub__MockForHubViewer", [steth]);
+
     locator = await deployLidoLocator(ethers, {
       lido: steth,
       weth: weth,
       wstETH: wsteth,
       predepositGuarantee: pdgStub,
+      lazyOracle: lazyOracle,
+      vaultHub: hub,
     });
 
-    hub = await ethers.deployContract("VaultHub__MockForHubViewer", [locator, steth]);
     depositContract = await ethers.deployContract("DepositContract__MockForStakingVault");
     vaultImpl = await ethers.deployContract("StakingVault", [depositContract]);
     dashboardImpl = await ethers.deployContract("Dashboard", [steth, wsteth, hub, locator]);
 
-    vaultViewer = await ethers.deployContract("VaultViewer", [hub]);
+    vaultViewer = await ethers.deployContract("VaultViewer", [locator]);
     expect(await vaultViewer.VAULT_HUB()).to.equal(hub);
+    expect(await vaultViewer.LIDO_LOCATOR()).to.equal(locator);
+    expect(await vaultViewer.LAZY_ORACLE()).to.equal(lazyOracle);
 
     hubSigner = await impersonate(ethers, provider, await hub.getAddress(), ether("100"));
 
@@ -215,7 +225,7 @@ describe("VaultViewer", () => {
     it("reverts if vault hub is zero address", async () => {
       await expect(ethers.deployContract("VaultViewer", [ethers.ZeroAddress]))
         .to.be.revertedWithCustomError(vaultViewer, "ZeroArgument")
-        .withArgs("_vaultHub");
+        .withArgs("_lidoLocator");
     });
   });
 
