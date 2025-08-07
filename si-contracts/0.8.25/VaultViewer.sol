@@ -48,13 +48,8 @@ contract VaultViewer {
         if (_lidoLocator == address(0)) revert ZeroArgument("_lidoLocator");
         LIDO_LOCATOR = ILidoLocator(_lidoLocator);
 
-        address vaultHubAddress = LIDO_LOCATOR.vaultHub();
-        if (vaultHubAddress == address(0)) revert ZeroVaultHub();
-        VAULT_HUB = VaultHub(payable(vaultHubAddress));
-
-        address lazyOracleAddress = LIDO_LOCATOR.lazyOracle();
-        if (lazyOracleAddress == address(0)) revert ZeroLazyOracle();
-        LAZY_ORACLE = LazyOracle(lazyOracleAddress);
+        VAULT_HUB = VaultHub(payable(LIDO_LOCATOR.vaultHub()));
+        LAZY_ORACLE = LazyOracle(LIDO_LOCATOR.lazyOracle());
     }
 
     /// @notice Checks if a given address is a contract
@@ -410,10 +405,6 @@ contract VaultViewer {
     /// @notice Error for zero address arguments
     /// @param argName Name of the argument that is zero
     error ZeroArgument(string argName);
-
-    /// @notice LidoLocator returned address zero
-    error ZeroVaultHub();
-    error ZeroLazyOracle();
 
     /// @notice Error for wrong pagination range
     /// @param _from Start of the range
