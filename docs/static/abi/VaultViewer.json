@@ -39,16 +39,6 @@
   },
   {
     "inputs": [],
-    "name": "ZeroLazyOracle",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ZeroVaultHub",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "DEFAULT_ADMIN_ROLE",
     "outputs": [
       {
