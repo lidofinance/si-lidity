@@ -62,7 +62,7 @@ export const verifyDeployedContracts = task(
       );
 
       log("⏱ Waiting 5 seconds before checking verification status...");
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
 
       await checkVerificationStatus(verificationStatusGuid);
     } catch (error) {
