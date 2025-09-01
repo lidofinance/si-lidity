@@ -16,6 +16,10 @@ interface IStETH is IERC20 {
     function submit(address _referral) external payable returns (uint256);
 
     function getPooledEthBySharesRoundUp(uint256 _sharesAmount) external view returns (uint256);
+
+    function totalShares() external view returns (uint256);
+
+    function getTotalPooledEther() external view returns (uint256);
 }
 
 contract WstETHReferralStaker {
@@ -28,10 +32,16 @@ contract WstETHReferralStaker {
         stETH.approve(address(wstETH), type(uint256).max);
     }
 
+
+
+    /**
+     * @notice stakes ETH directly into wstETH with stETH referral
+     * @param _referral The address used for the stETH referral program
+     */
     function stakeETH(address _referral) external payable returns (uint256) {
         // 1. stake ETH and recieve stETH
         // referral event and 0 check inside
-        uint256 stethAmount = stETH.getPooledEthBySharesRoundUp(stETH.submit{value: msg.value}(_referral));
+        uint256 stethAmount = _getPooledEthBySharesRoundUp(stETH.submit{value: msg.value}(_referral));
 
         // 2. wrap stETH to wstETH
         // unlimited approval is set in constructor, 0 wstETH check inside
@@ -42,5 +52,24 @@ contract WstETHReferralStaker {
 
         // 4. return the amount of wstETH
         return wstETHAmount;
+    }
+
+    /**
+     * @notice A ported function from Lido V3 to get the amount of pooled ETH for a given amount of stETH shares 
+     * @param _sharesAmount The amount of stETH shares to convert
+     */
+    function _getPooledEthBySharesRoundUp(uint256 _sharesAmount) internal view returns (uint256) {
+        uint256 numeratorInEther = stETH.getTotalPooledEther();
+        uint256 denominatorInShares = stETH.totalShares();
+
+        return _ceilDiv(_sharesAmount * numeratorInEther, denominatorInShares);
+    }
+
+    /**
+     * @notice A ported function from Lido Math256 lib
+     */
+    function _ceilDiv(uint256 a, uint256 b) internal pure returns (uint256) {
+        // (a + b - 1) / b can overflow on addition, so we distribute.
+        return a == 0 ? 0 : (a - 1) / b + 1;
     }
 }
