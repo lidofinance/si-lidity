@@ -65,5 +65,4 @@ contract WstETHReferralStaker {
 
         return Math.ceilDiv(_sharesAmount * numeratorInEther, denominatorInShares);
     }
-
 }
