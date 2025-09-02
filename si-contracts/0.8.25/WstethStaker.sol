@@ -4,6 +4,8 @@
 // See contracts/COMPILERS.md
 pragma solidity 0.8.25;
 
+import {Math} from "@openzeppelin/contracts-v5.2/utils/math/Math.sol";
+
 import {IERC20} from "@openzeppelin/contracts-v5.2/token/ERC20/IERC20.sol";
 
 interface IWstETH is IERC20 {
@@ -37,6 +39,7 @@ contract WstETHReferralStaker {
     /**
      * @notice stakes ETH directly into wstETH with stETH referral
      * @param _referral The address used for the stETH referral program
+     * @return amount of wstETH received
      */
     function stakeETH(address _referral) external payable returns (uint256) {
         // 1. stake ETH and recieve stETH
@@ -47,7 +50,7 @@ contract WstETHReferralStaker {
         // unlimited approval is set in constructor, 0 wstETH check inside
         uint256 wstETHAmount = wstETH.wrap(stethAmount);
 
-        // 3. transfer wstETH to the user
+        // 3. transfer wstETH to the caller
         wstETH.transfer(msg.sender, wstETHAmount);
 
         // 4. return the amount of wstETH
@@ -62,14 +65,7 @@ contract WstETHReferralStaker {
         uint256 numeratorInEther = stETH.getTotalPooledEther();
         uint256 denominatorInShares = stETH.totalShares();
 
-        return _ceilDiv(_sharesAmount * numeratorInEther, denominatorInShares);
+        return Math.ceilDiv(_sharesAmount * numeratorInEther, denominatorInShares);
     }
 
-    /**
-     * @notice A ported function from Lido Math256 lib
-     */
-    function _ceilDiv(uint256 a, uint256 b) internal pure returns (uint256) {
-        // (a + b - 1) / b can overflow on addition, so we distribute.
-        return a == 0 ? 0 : (a - 1) / b + 1;
-    }
 }
