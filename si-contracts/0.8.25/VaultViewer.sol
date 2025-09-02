@@ -220,6 +220,23 @@ contract VaultViewer {
         }
     }
 
+    function getVaultsDataBound2(
+        uint256 _from,
+        uint256 _to
+    ) external view returns (VaultData[] memory vaultsData, uint256 leftover) {
+        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsConnected2(_to);
+
+        uint256 count = validCount > _to ? _to : validCount;
+        leftover = validCount > _to ? validCount - _to : 0;
+
+        if (count < _from) revert WrongPaginationRange(_from, _to);
+
+        vaultsData = new VaultData[](count - _from);
+        for (uint256 i = 0; i < vaultsData.length; i++) {
+            vaultsData[i] = getVaultData(address(vaults[_from + i]));
+        }
+    }
+
     /// @notice Returns the VaultMembers for each specified role on a single vault
     /// @param vaultAddress The address of the vault
     /// @param roles An array of role identifiers (bytes32) to query on the vault’s owner contract
@@ -274,6 +291,23 @@ contract VaultViewer {
 
         // The `vaultByIndex` is 1-based list
         for (uint256 i = 1; i <= count; i++) {
+            // variable declaration inside the loop doesn’t affect gas costs
+            address vault = VAULT_HUB.vaultByIndex(i);
+            if (VAULT_HUB.isVaultConnected(vault)) {
+                vaults[connectedCounter] = IStakingVault(vault);
+                connectedCounter++;
+            }
+        }
+
+        return (vaults, connectedCounter);
+    }
+
+    function _vaultsConnected2(uint to) internal view returns (IStakingVault[] memory, uint256) {
+        IStakingVault[] memory vaults = new IStakingVault[](to);
+        uint256 connectedCounter = 0;
+
+        // The `vaultByIndex` is 1-based list
+        for (uint256 i = 1; i <= to; i++) {
             // variable declaration inside the loop doesn’t affect gas costs
             address vault = VAULT_HUB.vaultByIndex(i);
             if (VAULT_HUB.isVaultConnected(vault)) {

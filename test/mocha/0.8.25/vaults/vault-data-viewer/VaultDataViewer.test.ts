@@ -142,8 +142,10 @@ describe("VaultViewer", () => {
   let stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
   // 13 is the minimum required number of vaults for tests,
   // due to hardcoded ranges like { from: 12, to: 16 } used in success cases.
-  const stakingVaultCount = 30;
-  const gasLimit = 2_000_000n;
+  const stakingVaultCount = 100;
+  const batchStakingVaultCount = 50;
+  // const batchRoleMembersCount = 10;
+  const gasLimit = 4_000_000n;
 
   // See the `mock_connectVault` in the `test/mocha/0.8.25/vaults/vault-data-viewer/contracts/VaultHub__MockForHubViewer.sol`
   const expectedVaultsData = {
@@ -1096,7 +1098,51 @@ describe("VaultViewer", () => {
           data: vaultViewer.interface.encodeFunctionData(label, resolvedArgs),
         });
 
-        console.log(`⛽️ ${label} gas estimate (vaults: ${stakingVaultCount}):`);
+        console.log(`⛽️ ${label} gas estimate (all vaults: ${stakingVaultCount}):`);
+        console.log(`   ${formatWithSpaces(gasEstimate)}`);
+        expect(gasEstimate).to.lte(gasLimit);
+      });
+    });
+
+    const casesBatch = [
+      {
+        label: "vaultsConnectedBound",
+        args: () => [0, batchStakingVaultCount],
+      },
+      {
+        label: "vaultsByOwnerBound",
+        args: async (owner: string) => [owner, 0, batchStakingVaultCount],
+      },
+      {
+        label: "getVaultsDataBound",
+        args: () => [0, batchStakingVaultCount],
+      },
+      {
+        label: "getVaultsDataBound2",
+        args: () => [0, batchStakingVaultCount],
+      },
+      {
+        label: "vaultsByRoleBound",
+        args: async () => {
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+          return [role, await allStakingVaultsOwner.getAddress(), 0, batchStakingVaultCount];
+        },
+      },
+    ];
+
+    casesBatch.forEach(({ label, args }) => {
+      it(`${label} gas estimation`, async () => {
+        const ownerAddr = await allStakingVaultsOwner.getAddress();
+        const resolvedArgs = typeof args === "function" ? await args(ownerAddr) : args;
+
+        const gasEstimate = await ethers.provider.estimateGas({
+          to: await vaultViewer.getAddress(),
+          data: vaultViewer.interface.encodeFunctionData(label, resolvedArgs),
+        });
+
+        console.log(
+          `⛽️ ${label} gas estimate (batch vaults: ${batchStakingVaultCount}, all vaults: ${stakingVaultCount}):`,
+        );
         console.log(`   ${formatWithSpaces(gasEstimate)}`);
         expect(gasEstimate).to.lte(gasLimit);
       });
