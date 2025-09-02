@@ -34,8 +34,6 @@ contract WstETHReferralStaker {
         stETH.approve(address(wstETH), type(uint256).max);
     }
 
-
-
     /**
      * @notice stakes ETH directly into wstETH with stETH referral
      * @param _referral The address used for the stETH referral program
