@@ -1122,6 +1122,14 @@ describe("VaultViewer", () => {
         args: () => [0, batchStakingVaultCount],
       },
       {
+        label: "getVaultsDataBound3",
+        args: () => [0, batchStakingVaultCount],
+      },
+      {
+        label: "getVaultsDataBound4",
+        args: () => [0, batchStakingVaultCount],
+      },
+      {
         label: "vaultsByRoleBound",
         args: async () => {
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
