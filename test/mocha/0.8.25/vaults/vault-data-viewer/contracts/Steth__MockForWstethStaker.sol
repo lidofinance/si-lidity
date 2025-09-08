@@ -21,6 +21,10 @@ contract Steth__MockForWstethStaker is StETHPermit {
         return totalPooledEther;
     }
 
+    function getTotalShares() external view returns (uint256) {
+        return totalShares;
+    }
+
     // StETH::_getTotalShares
     function _getTotalShares() internal view returns (uint256) {
         return totalShares;
