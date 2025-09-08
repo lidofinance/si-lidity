@@ -96,6 +96,33 @@ describe("WstethRefferalStaker", () => {
         .withArgs(await wrapper.getAddress(), amount, refferal);
     });
 
+    const amounts = [1n, 2n, 10n, 100n, 1000n, ether("1"), ether("1000")];
+    const shareRates = [0.1, 0.5, 1, 1.2, 2, 3, 10];
+
+    for (const amount of amounts) {
+      for (const shareRate of shareRates) {
+        it(`correctly stakes ${amount} on variable share rate ${shareRate}`, async () => {
+          const totalEther = 1_000_0000;
+          const totalShares = totalEther * shareRate;
+
+          await steth.mock__setTotalPooledEther(ether(totalEther.toFixed(0)));
+          await steth.mock__setTotalShares(ether(totalShares.toFixed(0)));
+
+          const amountWsteth = await steth.getSharesByPooledEth(amount);
+
+          if (amountWsteth > 0n) {
+            await (await wrapper.stakeETH(refferal, { value: amount })).wait();
+
+            expect(await wsteth.balanceOf(user.getAddress())).to.equal(amountWsteth);
+          } else {
+            await expect(wrapper.stakeETH(refferal, { value: amount })).to.be.revertedWith(
+              "wstETH: can't wrap zero stETH",
+            );
+          }
+        });
+      }
+    }
+
     it("revert on zero ether", async () => {
       await expect(wrapper.stakeETH(refferal, { value: 0 })).to.be.revertedWith("ZERO_DEPOSIT");
     });
