@@ -66,7 +66,7 @@ contract WstETHReferralStaker {
     }
 
     /**
-     * @notice A ported function from Lido V3 to get the amount of pooled ETH for a given amount of stETH shares 
+     * @notice Get the amount of pooled ETH for a given amount of stETH shares rounded up
      * @param _sharesAmount The amount of stETH shares to convert
      */
     function _getPooledEthBySharesRoundUp(uint256 _sharesAmount) internal view returns (uint256) {
