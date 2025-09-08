@@ -32,6 +32,15 @@ contract VaultViewer {
 //        LazyOracle.QuarantineInfo quarantineInfo;
     }
 
+    struct VaultDataOpt {
+        address vaultAddress;
+//         VaultHub.VaultConnection connection;
+        uint16 forcedRebalanceThresholdBP;
+        uint256 totalValue;
+        uint256 liabilityStETH;
+        uint256 nodeOperatorFeeRate;
+    }
+
     struct VaultMembers {
         address vault;
         address owner;
@@ -231,6 +240,24 @@ contract VaultViewer {
         });
     }
 
+    /// @notice Returns aggregated data for a single vault
+    /// @param vault Address of the vault
+    /// @return data Aggregated vault data
+    function getVaultDataOpt(address vault) public view returns (VaultDataOpt memory data) {
+        ILido lido = VAULT_HUB.LIDO();
+        VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
+        uint256 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
+
+        data = VaultDataOpt({
+            vaultAddress: vault,
+            totalValue: VAULT_HUB.totalValue(vault),
+//            connection: connection,
+            forcedRebalanceThresholdBP: connection.forcedRebalanceThresholdBP,
+            liabilityStETH: lido.getPooledEthBySharesRoundUp(VAULT_HUB.liabilityShares(vault)),
+            nodeOperatorFeeRate: nodeOperatorFeeRate
+        });
+    }
+
     /// @notice Returns aggregated data for a batch of connected vaults
     /// @param _from Index to start from inclusive
     /// @param _to Index to end at non-inclusive
@@ -250,6 +277,23 @@ contract VaultViewer {
         vaultsData = new VaultData[](count - _from);
         for (uint256 i = 0; i < vaultsData.length; i++) {
             vaultsData[i] = getVaultData(address(vaults[_from + i]));
+        }
+    }
+
+    function getVaultsDataBoundOpt1(
+        uint256 _from,
+        uint256 _to
+    ) external view returns (VaultDataOpt[] memory vaultsData, uint256 leftover) {
+        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsConnected();
+
+        uint256 count = validCount > _to ? _to : validCount;
+        leftover = validCount > _to ? validCount - _to : 0;
+
+        if (count < _from) revert WrongPaginationRange(_from, _to);
+
+        vaultsData = new VaultDataOpt[](count - _from);
+        for (uint256 i = 0; i < vaultsData.length; i++) {
+            vaultsData[i] = getVaultDataOpt(address(vaults[_from + i]));
         }
     }
 
@@ -311,6 +355,34 @@ contract VaultViewer {
                 totalValue: hub.totalValue(v),
                 isReportFresh: hub.isReportFresh(v)
             });
+
+        unchecked { ++i; }
+        }
+
+        leftover = total > end ? total - end : 0;
+    }
+
+
+    function getVaultsDataBoundOpt2(
+        uint256 _from,
+        uint256 _to
+    ) external view returns (VaultDataOpt[] memory vaultsData, uint256 leftover) {
+        if (_to < _from) revert WrongPaginationRange(_from, _to);
+
+        VaultHub hub = VAULT_HUB;
+        uint256 total = hub.vaultsCount();
+        uint256 end = _to > total ? total : _to;
+
+        if (end < _from) revert WrongPaginationRange(_from, _to);
+
+        uint256 n = end - _from;
+        vaultsData = new VaultDataOpt[](n);
+
+        // vaultByIndex — 1-based
+        for (uint256 i = 0; i < n; ) {
+            address v = hub.vaultByIndex(_from + 1 + i);
+
+            vaultsData[i] = getVaultDataOpt(v);
 
         unchecked { ++i; }
         }

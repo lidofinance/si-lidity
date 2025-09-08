@@ -142,7 +142,7 @@ describe("VaultViewer", () => {
   let stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
   // 13 is the minimum required number of vaults for tests,
   // due to hardcoded ranges like { from: 12, to: 16 } used in success cases.
-  const stakingVaultCount = 100;
+  const stakingVaultCount = 500;
   const batchStakingVaultCount = 50;
   // const batchRoleMembersCount = 10;
   const gasLimit = 4_000_000n;
@@ -1127,6 +1127,14 @@ describe("VaultViewer", () => {
       },
       {
         label: "getVaultsDataBound4",
+        args: () => [0, batchStakingVaultCount],
+      },
+      {
+        label: "getVaultsDataBoundOpt1",
+        args: () => [0, batchStakingVaultCount],
+      },
+      {
+        label: "getVaultsDataBoundOpt2",
         args: () => [0, batchStakingVaultCount],
       },
       {

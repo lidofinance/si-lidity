@@ -50,6 +50,10 @@ contract VaultHub__MockForHubViewer {
         return _getVaultHubStorage().records[_vault];
     }
 
+    function liabilityShares(address _vault) external view returns (uint256) {
+        return _vaultRecord(_vault).liabilityShares;
+    }
+
     function _vaultRecord(address _vault) internal view returns (VaultHub.VaultRecord storage) {
         return _getVaultHubStorage().records[_vault];
     }
