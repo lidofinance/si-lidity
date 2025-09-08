@@ -66,6 +66,22 @@ describe("WstethRefferalStaker", () => {
     });
   });
 
+  context("direct eth transfer", () => {
+    it("reverts on direct ETH transfer", async () => {
+      await expect(user.sendTransaction({ to: wrapper.getAddress(), value: ether("1") })).to.be.revertedWithCustomError(
+        wrapper,
+        "EthTransferNotAllowed",
+      );
+    });
+
+    it("reverts of fallback", async () => {
+      await expect(user.sendTransaction({ to: wrapper.getAddress(), value: 0n })).to.be.revertedWithCustomError(
+        wrapper,
+        "EthTransferNotAllowed",
+      );
+    });
+  });
+
   context("staking", () => {
     it("can stake to wstETH", async () => {
       const amount = ether("1");

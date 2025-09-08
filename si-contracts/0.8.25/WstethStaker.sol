@@ -61,7 +61,7 @@ contract WstETHReferralStaker {
     /**
      * @notice fallback function to prevent sending ETH directly
      */
-    function receive() external payable {
+    receive() external payable {
         revert EthTransferNotAllowed();
     }
 
