@@ -146,6 +146,11 @@ const config: HardhatUserConfig = {
       url: process.env.RPC_URL_560048,
       accounts: [process.env.PRIVATE_KEY],
     },
+    sepolia: {
+      type: "http",
+      url: process.env.RPC_URL_11155111,
+      accounts: [process.env.PRIVATE_KEY],
+    },
   },
   // for tests
   mocha: {
