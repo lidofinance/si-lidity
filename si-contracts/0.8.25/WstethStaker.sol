@@ -17,7 +17,7 @@ interface IWstETH is IERC20 {
 interface IStETH is IERC20 {
     function submit(address _referral) external payable returns (uint256);
 
-    function totalShares() external view returns (uint256);
+    function getTotalShares() external view returns (uint256);
 
     function getTotalPooledEther() external view returns (uint256);
 }
@@ -71,7 +71,7 @@ contract WstETHReferralStaker {
      */
     function _getPooledEthBySharesRoundUp(uint256 _sharesAmount) internal view returns (uint256) {
         uint256 numeratorInEther = stETH.getTotalPooledEther();
-        uint256 denominatorInShares = stETH.totalShares();
+        uint256 denominatorInShares = stETH.getTotalShares();
 
         return Math.ceilDiv(_sharesAmount * numeratorInEther, denominatorInShares);
     }
