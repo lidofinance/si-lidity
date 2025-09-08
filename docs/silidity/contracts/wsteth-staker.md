@@ -43,7 +43,8 @@ Amount of wstETH user receives after wrap.
 
 ### IStETH
 
-| Function                                                                             | Description                                                                                                                                                                      |
-| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `submit(address _referral) external payable returns (uint256)`                       | Stakes ETH, optionally credits a referral, and mints stETH shares for the caller; returns the number of shares minted. [More here](https://docs.lido.fi/contracts/lido#submit-1) |
-| `getPooledEthBySharesRoundUp(uint256 _sharesAmount) external view returns (uint256)` | Converts a given `_sharesAmount` of stETH shares into the ETH-equivalent amount, rounding up. [More here](https://github.com/lidofinance/core/pull/874)                          |
+| Function                                                         | Description                                                                                                                                                                      |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `submit(address _referral) external payable returns (uint256)`   | Stakes ETH, optionally credits a referral, and mints stETH shares for the caller; returns the number of shares minted. [More here](https://docs.lido.fi/contracts/lido#submit-1) |
+| `function totalShares() external view returns (uint256)`         | Returns the total amount of shares in existence. [More here](https://docs.lido.fi/contracts/lido/#gettotalshares)                                                                |
+| `function getTotalPooledEther() external view returns (uint256)` | Returns the entire amount of ether controlled by the protocol. [More here](https://docs.lido.fi/contracts/lido/#gettotalshares)                                                  |
