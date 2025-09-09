@@ -103,6 +103,12 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+    overrides: {
+      "si-contracts/0.8.25/WstethStaker.sol": {
+        version: "0.8.25",
+        settings: { optimizer: { enabled: true, runs: 999_999 } },
+      },
+    },
     dependenciesToCompile: [
       // for tests
       "@openzeppelin/contracts-v5.2/proxy/beacon/UpgradeableBeacon.sol",
