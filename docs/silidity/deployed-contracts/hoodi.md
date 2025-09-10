@@ -14,6 +14,6 @@ Hoodi is the main operational and maintained protocol testnet.
 
   <a href="/si-lidity/abi/VaultViewer.json" download>📥 Download ABI</a>
 
-- wstETH Referral Staker: [`0xA23b3a758256c470c11546a3DFA75B41D194CAb4`](https://hoodi.etherscan.io/address/0xA23b3a758256c470c11546a3DFA75B41D194CAb4)
+- wstETH Referral Staker: [`0xf886BcC68b240316103fE8A12453Ce7831c2e835`](https://hoodi.etherscan.io/address/0xf886BcC68b240316103fE8A12453Ce7831c2e835)
 
   <a href="/si-lidity/abi/WstETHReferralStaker.json" download>📥 Download ABI</a>
