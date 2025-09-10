@@ -13,13 +13,17 @@ Before deploying, make sure:
 3. you have removed the `<repo_root>/ignition/deployments` directory.
 
 ```bash
-yarn deploy:<network_name>
+yarn deploy-{contract}:<network_name>
 ```
 
-# Example
-
-For hoodi:
+# Example `VaultViewer` hoodi:
 
 ```bash
-yarn deploy:hoodi
+yarn deploy-vv:hoodi
+```
+
+# Example `WstETHReferralStaker` hoodi:
+
+```bash
+yarn deploy-wrs:hoodi
 ```

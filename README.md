@@ -58,27 +58,39 @@ Just run:
 
 Deploy with:
 
-`yarn deploy:<network_name>`
+**VaultViewer:**
+
+`yarn deploy-vv:<network_name>`
+
+**WstETHReferralStaker:**
+
+`yarn deploy-wrs:<network_name>`
 
 **Example:**
 
-`yarn deploy:hoodi`
+`yarn deploy-vv:hoodi`
 
 ### ✅ Verify
 
 Deploy with:
 
-`yarn deploy:<network_name>`
+`yarn deploy-vv:<network_name>`
 
 Verify with:
 
 `yarn verify:deployed-contracts --chainId <chainId> --contractName <contractName>`
 
-**Example:**
+**Example Hoodi:**
 
-`yarn deploy:hoodi`
+`yarn deploy-vv:hoodi`
 
 `yarn verify:deployed-contracts --chainId 560048 --contractName VaultViewer`
+
+**Example Sepolia:**
+
+`yarn deploy-wrs:sepolia`
+
+`yarn verify:deployed-contracts --chainId 11155111 --contractName WstETHReferralStaker`
 
 ### 📝 Tests
 

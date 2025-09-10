@@ -16,19 +16,7 @@ import { abisExtractTask, verifyDeployedContracts } from "./tasks";
 
 const config: HardhatUserConfig = {
   paths: {
-    tests: {
-      mocha: "./test/mocha",
-    },
-    sources: [
-      "./si-contracts",
-      "./test",
-
-      "./submodules/lidofinance-core/contracts/0.8.25",
-      "./submodules/lidofinance-core/test/0.8.25",
-
-      "./submodules/lidofinance-core/contracts/0.8.9",
-      "./submodules/lidofinance-core/test/0.8.9",
-    ],
+    sources: ["./si-contracts/0.8.25/WstethStaker"],
   },
   plugins: [
     HardhatEthers,
@@ -109,18 +97,6 @@ const config: HardhatUserConfig = {
         settings: { optimizer: { enabled: true, runs: 999_999 } },
       },
     },
-    dependenciesToCompile: [
-      // for tests
-      "@openzeppelin/contracts-v5.2/proxy/beacon/UpgradeableBeacon.sol",
-    ],
-    remappings: [
-      "contracts/=submodules/lidofinance-core/contracts/",
-      "test/0.8.9/contracts/=submodules/lidofinance-core/test/0.8.9/contracts/",
-
-      // from hardhat v3 init command
-      // can be deleted if we aren't planning to use
-      "forge-std/=npm/forge-std@1.9.4/src/",
-    ],
   },
   typechain: {
     outDir: "typechain-types",
@@ -157,11 +133,6 @@ const config: HardhatUserConfig = {
       url: process.env.RPC_URL_11155111,
       accounts: [process.env.PRIVATE_KEY],
     },
-  },
-  // for tests
-  mocha: {
-    parallel: true,
-    timeout: 20 * 60 * 1000, // 20 minutes
   },
 };
 
