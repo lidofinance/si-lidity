@@ -12,6 +12,6 @@ This page lists production contract addresses on Mainnets.
 
 - Vault Viewer: `TBD`
 
-- wstETH Referral Staker: [`0xeC9d1B39594cde226CB3CFdf703C657983517EeE`](https://etherscan.io/address/0xeC9d1B39594cde226CB3CFdf703C657983517EeE)
+- wstETH Referral Staker: [`0xa88f0329C2c4ce51ba3fc619BBf44efE7120Dd0d`](https://etherscan.io/address/0xa88f0329C2c4ce51ba3fc619BBf44efE7120Dd0d)
 
   <a href="/si-lidity/abi/WstETHReferralStaker.json" download>📥 Download ABI</a>
