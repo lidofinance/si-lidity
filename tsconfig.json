@@ -21,5 +21,5 @@
     "require": ["tsconfig-paths/register"]
   },
   "include": ["./lib", "./test", "./tasks", "./typechain-types", "./ignition/modules", "./eslint.config.ts", "./docs"],
-  "files": ["./hardhat.config.ts", "./commitlint.config.ts", "./globals.d.ts"]
+  "files": ["./hardhat.config.ts", "./hardhat.wsteth.config.ts", "./commitlint.config.ts", "./globals.d.ts"]
 }
