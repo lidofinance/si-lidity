@@ -20,7 +20,7 @@ const config: HardhatUserConfig = {
     //   mocha: "./test/mocha",
     // },
     sources: [
-      "./si-contracts/0.8.25/w",
+      "./si-contracts/0.8.25/WstethStaker",
       // "./test",
     ],
   },
