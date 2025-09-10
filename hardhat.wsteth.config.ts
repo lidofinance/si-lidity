@@ -16,13 +16,7 @@ import { abisExtractTask, verifyDeployedContracts } from "./tasks";
 
 const config: HardhatUserConfig = {
   paths: {
-    // tests: {
-    //   mocha: "./test/mocha",
-    // },
-    sources: [
-      "./si-contracts/0.8.25/WstethStaker",
-      // "./test",
-    ],
+    sources: ["./si-contracts/0.8.25/WstethStaker"],
   },
   plugins: [
     HardhatEthers,
@@ -139,11 +133,6 @@ const config: HardhatUserConfig = {
       url: process.env.RPC_URL_11155111,
       accounts: [process.env.PRIVATE_KEY],
     },
-  },
-  // for tests
-  mocha: {
-    parallel: true,
-    timeout: 20 * 60 * 1000, // 20 minutes
   },
 };
 
