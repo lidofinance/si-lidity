@@ -390,6 +390,33 @@ contract VaultViewer {
         leftover = total > end ? total - end : 0;
     }
 
+    function getVaultsDataBoundOpt3(
+        uint256 _from,
+        uint256 _to
+    ) external view returns (VaultData[] memory vaultsData, uint256 leftover) {
+        if (_to < _from) revert WrongPaginationRange(_from, _to);
+
+        VaultHub hub = VAULT_HUB;
+        uint256 total = hub.vaultsCount();
+        uint256 end = _to > total ? total : _to;
+
+        if (end < _from) revert WrongPaginationRange(_from, _to);
+
+        uint256 n = end - _from;
+        vaultsData = new VaultData[](n);
+
+        // vaultByIndex — 1-based
+        for (uint256 i = 0; i < n; ) {
+            address v = hub.vaultByIndex(_from + 1 + i);
+
+            vaultsData[i] = getVaultData(v);
+
+        unchecked { ++i; }
+        }
+
+        leftover = total > end ? total - end : 0;
+    }
+
     /// @notice Returns the VaultMembers for each specified role on a single vault
     /// @param vaultAddress The address of the vault
     /// @param roles An array of role identifiers (bytes32) to query on the vault’s owner contract
