@@ -8,6 +8,10 @@ sidebar_position: 3
 
 **WstETHReferralStaker** is a utility contract that allows users to stake ETH into the Lido protocol with referral address, then automatically wrap the received stETH into wstETH and transfer it back to the user in a single transaction.
 
+## Audit
+
+_In progress_
+
 ## Upgradability
 
 This contract is **not upgradable**.
