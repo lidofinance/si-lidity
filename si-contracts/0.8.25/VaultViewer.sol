@@ -177,26 +177,34 @@ contract VaultViewer {
         });
     }
 
-    /// @notice Returns aggregated data for a batch of connected vaults
+    /// @notice Returns aggregated data for a range of vaults (indices are 0-based, upper bound exclusive)
     /// @param _from Index to start from inclusive
-    /// @param _to Index to end at non-inclusive
+    /// @param _to Index to end at exclusive
     /// @return vaultsData Array of aggregated vault data
     /// @return leftover Number of leftover vaults
     function getVaultsDataBound(
         uint256 _from,
         uint256 _to
     ) external view returns (VaultData[] memory vaultsData, uint256 leftover) {
-        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsConnected();
+        if (_from > _to) revert WrongPaginationRange(_from, _to);
 
-        uint256 count = validCount > _to ? _to : validCount;
-        leftover = validCount > _to ? validCount - _to : 0;
+        VaultHub vaultHub = VAULT_HUB;
+        uint256 vaultsCount = vaultHub.vaultsCount();
+        uint256 toExclusive = _to > vaultsCount ? vaultsCount : _to;
 
-        if (count < _from) revert WrongPaginationRange(_from, _to);
+        if (_from > toExclusive) revert WrongPaginationRange(_from, _to);
 
-        vaultsData = new VaultData[](count - _from);
-        for (uint256 i = 0; i < vaultsData.length; i++) {
-            vaultsData[i] = getVaultData(address(vaults[_from + i]));
+        uint256 outputCount = toExclusive - _from;
+        vaultsData = new VaultData[](outputCount);
+
+        uint256 start1Based = _from + 1;
+        for (uint256 i = 0; i < outputCount; ) {
+            address v = vaultHub.vaultByIndex(start1Based + i);
+            vaultsData[i] = getVaultData(v);
+            unchecked { ++i; }
         }
+
+        leftover = vaultsCount > toExclusive ? vaultsCount - toExclusive : 0;
     }
 
     /// @notice Returns the VaultMembers for each specified role on a single vault
