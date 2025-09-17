@@ -118,6 +118,7 @@ contract VaultViewer {
         uint256 count = validCount > _to ? _to : validCount;
         uint256 leftover = validCount > _to ? validCount - _to : 0;
 
+        // TODO: check gas in the _filterNonZeroVaults!!!
         return (_filterNonZeroVaults(vaults, _from, count), leftover);
     }
 
@@ -147,28 +148,6 @@ contract VaultViewer {
         uint256 _to
     ) public view returns (IStakingVault[] memory, uint256) {
         (IStakingVault[] memory vaults, uint256 validCount) = _vaultsByRole(_role, _member);
-
-        uint256 count = validCount > _to ? _to : validCount;
-        uint256 leftover = validCount > _to ? validCount - _to : 0;
-
-        return (_filterNonZeroVaults(vaults, _from, count), leftover);
-    }
-
-    /// @notice Returns all connected vaults
-    /// @return array of connected vaults
-    function vaultsConnected() public view returns (IStakingVault[] memory) {
-        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsConnected();
-
-        return _filterNonZeroVaults(vaults, 0, validCount);
-    }
-
-    /// @notice Returns all connected vaults within a range
-    /// @param _from Index to start from inclisive
-    /// @param _to Index to end at non-inculsive
-    /// @return array of connected vaults
-    /// @return number of leftover connected vaults
-    function vaultsConnectedBound(uint256 _from, uint256 _to) public view returns (IStakingVault[] memory, uint256) {
-        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsConnected();
 
         uint256 count = validCount > _to ? _to : validCount;
         uint256 leftover = validCount > _to ? validCount - _to : 0;
@@ -264,26 +243,6 @@ contract VaultViewer {
     }
 
     // ==================== Internal Functions ====================
-
-    /// @dev common logic for vaultsConnected and vaultsConnectedBound
-    /// @custom:todo get vaults by pages, not all vaults
-    function _vaultsConnected() internal view returns (IStakingVault[] memory, uint256) {
-        uint256 count = VAULT_HUB.vaultsCount();
-        IStakingVault[] memory vaults = new IStakingVault[](count);
-        uint256 connectedCounter = 0;
-
-        // The `vaultByIndex` is 1-based list
-        for (uint256 i = 1; i <= count; i++) {
-            // variable declaration inside the loop doesn’t affect gas costs
-            address vault = VAULT_HUB.vaultByIndex(i);
-            if (VAULT_HUB.isVaultConnected(vault)) {
-                vaults[connectedCounter] = IStakingVault(vault);
-                connectedCounter++;
-            }
-        }
-
-        return (vaults, connectedCounter);
-    }
 
     /// @dev common logic for vaultsByRole and vaultsByRoleBound
     /// @custom:todo get vaults by pages, not all vaults
