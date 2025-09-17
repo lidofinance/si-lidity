@@ -16,19 +16,8 @@ import { abisExtractTask, verifyDeployedContracts } from "./tasks";
 
 const config: HardhatUserConfig = {
   paths: {
-    tests: {
-      mocha: "./test/mocha",
-    },
-    sources: [
-      "./si-contracts",
-      "./test",
-
-      "./submodules/lidofinance-core/contracts/0.8.25",
-      "./submodules/lidofinance-core/test/0.8.25",
-
-      "./submodules/lidofinance-core/contracts/0.8.9",
-      "./submodules/lidofinance-core/test/0.8.9",
-    ],
+    // TODO
+    sources: ["./si-contracts/0.8.25/vaults"],
   },
   plugins: [
     HardhatEthers,
@@ -103,18 +92,13 @@ const config: HardhatUserConfig = {
         },
       },
     ],
-    dependenciesToCompile: [
-      // for tests
-      "@openzeppelin/contracts-v5.2/proxy/beacon/UpgradeableBeacon.sol",
-    ],
-    remappings: [
-      "contracts/=submodules/lidofinance-core/contracts/",
-      "test/0.8.9/contracts/=submodules/lidofinance-core/test/0.8.9/contracts/",
-
-      // from hardhat v3 init command
-      // can be deleted if we aren't planning to use
-      "forge-std/=npm/forge-std@1.9.4/src/",
-    ],
+    remappings: ["contracts/=submodules/lidofinance-core/contracts/"],
+    overrides: {
+      "si-contracts/0.8.25/vaults/VaultViewer.sol": {
+        version: "0.8.25",
+        settings: { optimizer: { enabled: true, runs: 999_999 } },
+      },
+    },
   },
   typechain: {
     outDir: "typechain-types",
@@ -127,7 +111,7 @@ const config: HardhatUserConfig = {
       // minimal base fee is 1 for EIP-1559
       // gasPrice: 0,
       // initialBaseFeePerGas: 0,
-      blockGasLimit: 200_000_000_000,
+      blockGasLimit: 30000000,
       allowUnlimitedContractSize: true,
       accounts: {
         // default hardhat's node mnemonic
@@ -136,11 +120,21 @@ const config: HardhatUserConfig = {
         accountsBalance: "100000000000000000000000",
       },
     },
-  },
-  // for tests
-  mocha: {
-    parallel: true,
-    timeout: 20 * 60 * 1000, // 20 minutes
+    mainnet: {
+      type: "http",
+      url: process.env.RPC_URL_1,
+      accounts: [process.env.PRIVATE_KEY],
+    },
+    hoodi: {
+      type: "http",
+      url: process.env.RPC_URL_560048,
+      accounts: [process.env.PRIVATE_KEY],
+    },
+    sepolia: {
+      type: "http",
+      url: process.env.RPC_URL_11155111,
+      accounts: [process.env.PRIVATE_KEY],
+    },
   },
 };
 
