@@ -10,7 +10,7 @@ sidebar_position: 3
 
 ## Audit
 
-_In progress_
+[MixBytes WstETH Staker Security Audit Report](https://github.com/lidofinance/audits/blob/main/MixBytes%20WstETH%20Staker%20Security%20Audit%20Report%2009-2025.pdf)
 
 ## Upgradability
 
