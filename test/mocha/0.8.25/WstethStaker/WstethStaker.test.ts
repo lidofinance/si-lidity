@@ -5,7 +5,7 @@ import type { EthereumProvider } from "hardhat/types/providers";
 
 import type { HardhatEthers, HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
 
-import { Steth__MockForWstethStaker, WstETH__HarnessForVault, WstETHReferralStaker } from "typechain-types";
+import { Steth__MockForWstethStaker, WstETH__Harness, WstETHReferralStaker } from "typechain-types";
 
 import { ether } from "lib";
 
@@ -21,7 +21,7 @@ describe("WstethRefferalStaker", () => {
   let refferalHandler: HardhatEthersSigner;
   let refferal: string;
 
-  let wsteth: WstETH__HarnessForVault;
+  let wsteth: WstETH__Harness;
   let steth: Steth__MockForWstethStaker;
   let wrapper: WstETHReferralStaker;
 
@@ -43,7 +43,7 @@ describe("WstethRefferalStaker", () => {
     await steth.mock__setTotalPooledEther(totalEther);
     await steth.mock__setTotalShares(totalShares);
 
-    wsteth = await ethers.deployContract("WstETH__HarnessForVault", [steth]);
+    wsteth = await ethers.deployContract("WstETH__Harness", [steth]);
 
     wrapper = await ethers.deployContract("WstETHReferralStaker", [wsteth]);
     wrapper = wrapper.connect(user);

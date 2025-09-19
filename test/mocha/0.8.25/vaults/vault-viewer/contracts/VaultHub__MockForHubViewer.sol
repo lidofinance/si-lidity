@@ -79,7 +79,6 @@ contract VaultHub__MockForHubViewer {
     function mock_connectVault(address _vault, address _owner) external {
         VaultHub.Storage storage $ = _storage();
 
-        // 1) report и connection можно собрать в memory
         VaultHub.Report memory report = VaultHub.Report(
             uint104(10), // totalValue
             int104(1), // inOutDelta
@@ -99,18 +98,15 @@ contract VaultHub__MockForHubViewer {
             false // isBeaconDepositsManuallyPaused
         );
 
-        // 2) индексы/маппинги
         $.vaults.push(_vault);
         $.connections[_vault] = vc;
 
-        // 3) ВАЖНО: VaultRecord заполняем IN-PLACE в storage
         VaultHub.VaultRecord storage vr = $.records[_vault];
 
         vr.report = report;
         vr.maxLiabilityShares = uint96(2);
         vr.liabilityShares = uint96(1);
 
-        // вместо initializeInt104DoubleCache(...) — вручную проставляем оба слота
         vr.inOutDelta[0] = DoubleRefSlotCache.Int104WithCache({
             value: int104(0),
             valueOnRefSlot: int104(0),

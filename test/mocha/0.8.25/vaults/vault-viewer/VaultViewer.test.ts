@@ -16,7 +16,7 @@ import {
   VaultHub__MockForHubViewer,
   VaultViewer,
   WETH9__MockForVault,
-  WstETH__HarnessForVault,
+  WstETH__Harness,
 } from "typechain-types";
 
 import { ether, findEvents, impersonate } from "lib";
@@ -129,7 +129,7 @@ describe("VaultViewer", () => {
 
   let steth: StETHPermit__HarnessForDashboard;
   let weth: WETH9__MockForVault;
-  let wsteth: WstETH__HarnessForVault;
+  let wsteth: WstETH__Harness;
   let pdgStub: PredepositGuarantee;
   let locator: LidoLocator;
   let hub: VaultHub__MockForHubViewer;
@@ -155,7 +155,7 @@ describe("VaultViewer", () => {
     record: {
       liabilityShares: 1n,
     },
-    totalValue: 10n,
+    totalValue: 9n,
     liabilityStETH: 1n,
     nodeOperatorFeeRate: 0n,
     isReportFresh: true,
@@ -188,7 +188,7 @@ describe("VaultViewer", () => {
     // All deploys
     steth = await ethers.deployContract("StETHPermit__HarnessForDashboard");
     weth = await ethers.deployContract("WETH9__MockForVault");
-    wsteth = await ethers.deployContract("WstETH__HarnessForVault", [steth]);
+    wsteth = await ethers.deployContract("WstETH__Harness", [steth]);
     pdgStub = await deployPDG(deployerPDG);
 
     lazyOracle = await ethers.deployContract("LazyOracle__MockForHubViewer", [quarantinePeriod]);
