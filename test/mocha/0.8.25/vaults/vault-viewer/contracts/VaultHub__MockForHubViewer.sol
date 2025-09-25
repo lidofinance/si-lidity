@@ -3,63 +3,55 @@
 
 pragma solidity 0.8.25;
 
+import {SafeCast} from "@openzeppelin/contracts-v5.2/utils/math/SafeCast.sol";
+
 import {VaultHub} from "contracts/0.8.25/vaults/VaultHub.sol";
 import {IStakingVault} from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
-import {RefSlotCache} from "contracts/0.8.25/vaults/lib/RefSlotCache.sol";
+import {RefSlotCache, DoubleRefSlotCache, DOUBLE_CACHE_LENGTH} from "contracts/0.8.25/vaults/lib/RefSlotCache.sol";
 import {ILido} from "contracts/common/interfaces/ILido.sol";
 import {ILidoLocator} from "contracts/common/interfaces/ILidoLocator.sol";
 
 contract VaultHub__MockForHubViewer {
-    using RefSlotCache for RefSlotCache.Uint112WithRefSlotCache;
-    using RefSlotCache for RefSlotCache.Int112WithRefSlotCache;
+    using RefSlotCache for RefSlotCache.Uint104WithCache;
+    using DoubleRefSlotCache for DoubleRefSlotCache.Int104WithCache[DOUBLE_CACHE_LENGTH];
 
     ILido public immutable LIDO;
 
-    uint256 internal constant BPS_BASE = 100_00;
     // keccak256(abi.encode(uint256(keccak256("VaultHub")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant VAULT_HUB_STORAGE_LOCATION =
-        0xb158a1a9015c52036ff69e7937a7bb424e82a8c4cbec5c5309994af06d825300;
+    bytes32 private constant STORAGE_LOCATION = 0xb158a1a9015c52036ff69e7937a7bb424e82a8c4cbec5c5309994af06d825300;
 
     constructor(ILido _lido) {
         LIDO = _lido;
 
-        _getVaultHubStorage().vaults.push(address(0));
+        _storage().vaults.push(address(0));
     }
 
     event Mock__VaultDisconnected(address vault);
     event Mock__Rebalanced(uint256 amount);
 
-    //    function initialize(address _admin) external initializer {
-    //        // the stone in the elevator. index 0 is reserved for not connected vaults
-    //        _getVaultHubStorage().vaults.push(address(0));
-    //    }
-
     function vaultConnection(address _vault) external view returns (VaultHub.VaultConnection memory) {
-        return _getVaultHubStorage().connections[_vault];
+        return _storage().connections[_vault];
     }
 
     function vaultByIndex(uint256 _index) external view returns (address) {
-        return _getVaultHubStorage().vaults[_index];
+        _requireNotZero(_index);
+        return _storage().vaults[_index];
     }
 
     function isVaultConnected(address _vault) external view returns (bool) {
-        return _getVaultHubStorage().connections[_vault].vaultIndex != 0;
+        return _storage().connections[_vault].vaultIndex != 0;
     }
 
     function vaultRecord(address _vault) external view returns (VaultHub.VaultRecord memory) {
-        return _getVaultHubStorage().records[_vault];
+        return _storage().records[_vault];
     }
 
     function _vaultRecord(address _vault) internal view returns (VaultHub.VaultRecord storage) {
-        return _getVaultHubStorage().records[_vault];
+        return _storage().records[_vault];
     }
 
     function vaultsCount() public view returns (uint256) {
-        return _getVaultHubStorage().vaults.length - 1;
-    }
-
-    function vault(uint256 _index) public view returns (address) {
-        return _getVaultHubStorage().vaults[_index];
+        return _storage().vaults.length - 1;
     }
 
     function totalValue(address _vault) external view returns (uint256) {
@@ -68,7 +60,8 @@ contract VaultHub__MockForHubViewer {
 
     function _totalValue(VaultHub.VaultRecord storage _record) internal view returns (uint256) {
         VaultHub.Report memory report = _record.report;
-        return uint256(int256(uint256(report.totalValue)) + _record.inOutDelta.value - report.inOutDelta);
+        DoubleRefSlotCache.Int104WithCache[DOUBLE_CACHE_LENGTH] memory inOutDelta = _record.inOutDelta;
+        return SafeCast.toUint256(int256(uint256(report.totalValue)) + inOutDelta.currentValue() - report.inOutDelta);
     }
 
     function isReportFresh(address _vault) external view returns (bool) {
@@ -83,31 +76,20 @@ contract VaultHub__MockForHubViewer {
         emit Mock__VaultDisconnected(_vault);
     }
 
-    function rebalance() external payable {
-        emit Mock__Rebalanced(msg.value);
-    }
-
     function mock_connectVault(address _vault, address _owner) external {
-        VaultHub.Storage storage $ = _getVaultHubStorage();
+        VaultHub.Storage storage $ = _storage();
 
         VaultHub.Report memory report = VaultHub.Report(
-            uint112(10), // totalValue
-            int112(1), // inOutDelta
-            uint32(1749550671) // timestamp
-        );
-
-        VaultHub.VaultRecord memory vr = VaultHub.VaultRecord(
-            report,
-            uint128(0), // locked
-            uint96(1), // liabilityShares
-            RefSlotCache.Int112WithRefSlotCache({value: int112(1), valueOnRefSlot: int112(1), refSlot: uint32(0)}) // inOutDelta
+            uint104(10), // totalValue
+            int104(1), // inOutDelta
+            uint48(1749550671) // timestamp
         );
 
         VaultHub.VaultConnection memory vc = VaultHub.VaultConnection(
             _owner,
-            uint96(1), // shareLimit,
+            uint96(1), // shareLimit
             uint96($.vaults.length), // vaultIndex
-            false, // pendingDisconnect
+            uint48(type(uint48).max), // disconnectInitiatedTs
             uint16(1), // reserveRatioBP
             uint16(1), // forcedRebalanceThresholdBP
             uint16(1), // infraFeeBP
@@ -118,12 +100,44 @@ contract VaultHub__MockForHubViewer {
 
         $.vaults.push(_vault);
         $.connections[_vault] = vc;
-        $.records[_vault] = vr;
+
+        VaultHub.VaultRecord storage vr = $.records[_vault];
+
+        vr.report = report;
+        vr.maxLiabilityShares = uint96(2);
+        vr.liabilityShares = uint96(1);
+
+        vr.inOutDelta[0] = DoubleRefSlotCache.Int104WithCache({
+            value: int104(0),
+            valueOnRefSlot: int104(0),
+            refSlot: uint48(0)
+        });
+        vr.inOutDelta[1] = DoubleRefSlotCache.Int104WithCache({
+            value: int104(0),
+            valueOnRefSlot: int104(0),
+            refSlot: uint48(0)
+        });
+
+        vr.minimalReserve = uint128(1);
+        vr.redemptionShares = uint128(0);
+        vr.cumulativeLidoFees = uint128(0);
+        vr.settledLidoFees = uint128(0);
     }
 
-    function _getVaultHubStorage() private pure returns (VaultHub.Storage storage $) {
+    function _storage() private pure returns (VaultHub.Storage storage $) {
         assembly {
-            $.slot := VAULT_HUB_STORAGE_LOCATION
+            $.slot := STORAGE_LOCATION
         }
     }
+
+    function _requireNotZero(uint256 _value) internal pure {
+        if (_value == 0) revert ZeroArgument();
+    }
+
+    function _requireNotZero(address _address) internal pure {
+        if (_address == address(0)) revert ZeroAddress();
+    }
+
+    error ZeroAddress();
+    error ZeroArgument();
 }
