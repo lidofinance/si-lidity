@@ -16,7 +16,7 @@ import {
   VaultHub__MockForHubViewer,
   VaultViewer,
   WETH9__MockForVault,
-  WstETH__HarnessForVault,
+  WstETH__Harness,
 } from "typechain-types";
 
 import { ether, findEvents, impersonate } from "lib";
@@ -129,7 +129,7 @@ describe("VaultViewer", () => {
 
   let steth: StETHPermit__HarnessForDashboard;
   let weth: WETH9__MockForVault;
-  let wsteth: WstETH__HarnessForVault;
+  let wsteth: WstETH__Harness;
   let pdgStub: PredepositGuarantee;
   let locator: LidoLocator;
   let hub: VaultHub__MockForHubViewer;
@@ -155,7 +155,7 @@ describe("VaultViewer", () => {
     record: {
       liabilityShares: 1n,
     },
-    totalValue: 10n,
+    totalValue: 9n,
     liabilityStETH: 1n,
     nodeOperatorFeeRate: 0n,
     isReportFresh: true,
@@ -188,7 +188,7 @@ describe("VaultViewer", () => {
     // All deploys
     steth = await ethers.deployContract("StETHPermit__HarnessForDashboard");
     weth = await ethers.deployContract("WETH9__MockForVault");
-    wsteth = await ethers.deployContract("WstETH__HarnessForVault", [steth]);
+    wsteth = await ethers.deployContract("WstETH__Harness", [steth]);
     pdgStub = await deployPDG(deployerPDG);
 
     lazyOracle = await ethers.deployContract("LazyOracle__MockForHubViewer", [quarantinePeriod]);
@@ -253,6 +253,18 @@ describe("VaultViewer", () => {
         );
       }
     });
+
+    it("returns all connected vaults", async () => {
+      const vaults = await vaultViewer.vaultsConnected();
+      // check counts
+      expect(vaults.length).to.equal(stakingVaultCount);
+      expect(vaults.length).to.equal(await hub.vaultsCount());
+      // check addresses
+      expect(vaults[0]).to.equal(stakingVaults[0].stakingVault);
+      expect(vaults[1]).to.equal(stakingVaults[1].stakingVault);
+      expect(vaults[2]).to.equal(stakingVaults[2].stakingVault);
+      expect(vaults[stakingVaultCount - 1]).to.equal(stakingVaults[stakingVaultCount - 1].stakingVault);
+    });
   });
 
   context(`connected vaults bound (connected vaults count is ${stakingVaultCount})`, () => {
@@ -264,6 +276,45 @@ describe("VaultViewer", () => {
           await dashboard.getAddress(),
         );
       }
+    });
+
+    [
+      { from: 0, to: 0 },
+      { from: 0, to: 3 },
+      { from: 1, to: 1 },
+      { from: 1, to: 2 },
+      { from: 3, to: 6 },
+      { from: 2, to: 10 },
+      { from: 9, to: 14 },
+      { from: 12, to: 16 },
+      { from: stakingVaultCount, to: stakingVaultCount },
+      { from: 0, to: stakingVaultCount },
+      { from: 0, to: stakingVaultCount * 10 },
+    ].forEach(({ from, to }) => {
+      it(`returns all connected vaults in a given range [${from}, ${to}]`, async () => {
+        const [vaults, totalCount] = await vaultViewer.vaultsConnectedBound(from, to);
+
+        const expectedLength = Math.max(0, Math.min(to, stakingVaultCount) - from);
+        expect(vaults.length).to.equal(expectedLength);
+
+        const expectedRemaining = Math.max(0, stakingVaultCount - to);
+        expect(totalCount).to.equal(expectedRemaining);
+      });
+    });
+
+    [
+      { from: 1_000, to: 10_000 },
+      { from: 3, to: 1 },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 100 },
+      { from: stakingVaultCount * 100, to: stakingVaultCount },
+    ].forEach(({ from, to }) => {
+      it(`reverts if given range is invalid [${from}, ${to}]`, async () => {
+        await expect(vaultViewer.vaultsConnectedBound(from, to)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "WrongPaginationRange",
+        );
+      });
     });
   });
 

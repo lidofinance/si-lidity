@@ -95,6 +95,8 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.25",
         settings: {
+          // like here https://github.com/lidofinance/core/blob/4af82f0d0851ec514b32c9ce40c7ac0cd2915d69/hardhat.config.ts
+          viaIR: true,
           optimizer: {
             enabled: true,
             runs: 200,
