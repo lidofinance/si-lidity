@@ -95,15 +95,6 @@ contract VaultViewer {
 
     /// @notice Returns all vaults owned by a given address
     /// @param _owner Address of the owner
-    /// @return An array of vaults owned by the given address
-    function vaultsByOwner(address _owner) public view returns (IStakingVault[] memory) {
-        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsByOwner(_owner);
-
-        return _filterNonZeroVaults(vaults, 0, validCount);
-    }
-
-    /// @notice Returns all vaults owned by a given address
-    /// @param _owner Address of the owner
     /// @param _from Index to start from inclisive
     /// @param _to Index to end at non-inculsive
     /// @return array of vaults owned by the given address
@@ -120,17 +111,6 @@ contract VaultViewer {
 
         // TODO: check gas in the _filterNonZeroVaults!!!
         return (_filterNonZeroVaults(vaults, _from, count), leftover);
-    }
-
-    /// @notice Returns all vaults with a given role on a given address
-    /// @param _role Role to check
-    /// @param _member Address to check
-    /// @return An array of vaults with the given role on the given address
-    /// @dev Return roles only for connection vault owner - dashboard contract
-    function vaultsByRole(bytes32 _role, address _member) public view returns (IStakingVault[] memory) {
-        (IStakingVault[] memory vaults, uint256 valid) = _vaultsByRole(_role, _member);
-
-        return _filterNonZeroVaults(vaults, 0, valid);
     }
 
     /// @notice Returns all vaults with a given role on a given address

@@ -243,46 +243,6 @@ describe("VaultViewer", () => {
     });
   });
 
-  context(`vaults by owner (vaults count is ${stakingVaultCount})`, () => {
-    const vaultSplitIndex = Math.ceil(stakingVaultCount / 2);
-    let firstBatchOwner: HardhatEthersSigner;
-    let secondBatchOwner: HardhatEthersSigner;
-    let ownerWithNoVaults: HardhatEthersSigner;
-
-    beforeEach(async () => {
-      [, firstBatchOwner, secondBatchOwner, ownerWithNoVaults] = await ethers.getSigners();
-
-      for (let i = 0; i < stakingVaults.length; i++) {
-        const { stakingVault } = stakingVaults[i];
-        const owner = i < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
-
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), owner);
-      }
-    });
-
-    it("returns all vaults owned by a given address (firstBatchOwner)", async () => {
-      const vaults = await vaultViewer.vaultsByOwner(firstBatchOwner);
-      expect(vaults.length).to.equal(vaultSplitIndex);
-      for (let i = 0; i < vaultSplitIndex; i++) {
-        expect(vaults[i]).to.equal(stakingVaults[i].stakingVault);
-      }
-    });
-
-    it("returns all vaults owned by a given address (secondBatchOwner)", async () => {
-      const vaults = await vaultViewer.vaultsByOwner(secondBatchOwner);
-      const expectedCount = stakingVaults.length - vaultSplitIndex;
-      expect(vaults.length).to.equal(expectedCount);
-      for (let i = 0; i < expectedCount; i++) {
-        expect(vaults[i]).to.equal(stakingVaults[vaultSplitIndex + i].stakingVault);
-      }
-    });
-
-    it("returns zero vaults for an owner with no vaults", async () => {
-      const vaults = await vaultViewer.vaultsByOwner(ownerWithNoVaults);
-      expect(vaults.length).to.equal(0);
-    });
-  });
-
   context("vaults by owner bound", () => {
     const vaultSplitIndex = Math.ceil(stakingVaultCount / 3);
     let firstBatchOwner: HardhatEthersSigner;
@@ -373,103 +333,6 @@ describe("VaultViewer", () => {
           vaultViewer,
           "WrongPaginationRange",
         );
-      });
-    });
-  });
-
-  context("vaults by role", () => {
-    let grantedDefaultAdmin: HardhatEthersSigner;
-    let grantedPdgCompensatePredeposit: HardhatEthersSigner;
-    let userWithoutRole: HardhatEthersSigner;
-
-    beforeEach(async () => {
-      [, grantedDefaultAdmin, grantedPdgCompensatePredeposit, userWithoutRole] = await ethers.getSigners();
-      for (const { stakingVault, dashboard } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(
-          await stakingVault.getAddress(),
-          // dashboard is owner of staking vault
-          await dashboard.getAddress(),
-        );
-      }
-    });
-
-    [
-      {
-        label: "DEFAULT_ADMIN_ROLE",
-        getRole: async (dashboard: Dashboard) => await dashboard.DEFAULT_ADMIN_ROLE(),
-        getGrantee: () => grantedDefaultAdmin,
-      },
-      {
-        label: "PDG_COMPENSATE_PREDEPOSIT_ROLE",
-        getRole: async () => PDG_COMPENSATE_PREDEPOSIT_ROLE,
-        getGrantee: () => grantedPdgCompensatePredeposit,
-      },
-      // Add more roles here when needed
-    ].forEach(({ label, getRole, getGrantee }) => {
-      it(`returns all vaults (1) with a given role (${label}) on Dashboard (roles was granted)`, async () => {
-        const { stakingVault, dashboard } = stakingVaults[0];
-        const role = await getRole(dashboard);
-        const grantee = getGrantee();
-
-        await dashboard.connect(hubSigner).grantRole(role, grantee.getAddress());
-        const vaults = await vaultViewer.vaultsByRole(role, grantee.getAddress());
-
-        expect(vaults.length).to.equal(1);
-        expect(vaults[0]).to.equal(stakingVault);
-      });
-    });
-
-    [
-      {
-        label: "DEFAULT_ADMIN_ROLE",
-        getRole: async (dashboard: Dashboard) => await dashboard.DEFAULT_ADMIN_ROLE(),
-        getGrantee: () => grantedDefaultAdmin,
-      },
-      {
-        label: "PDG_COMPENSATE_PREDEPOSIT_ROLE",
-        getRole: async () => PDG_COMPENSATE_PREDEPOSIT_ROLE,
-        getGrantee: () => grantedPdgCompensatePredeposit,
-      },
-      // Add more roles here when needed
-    ].forEach(({ label, getRole, getGrantee }) => {
-      it(`returns all vaults (${stakingVaultCount}) with a given role (${label}) across all dashboards (roles was granted)`, async () => {
-        const grantee = getGrantee();
-
-        for (const { dashboard } of stakingVaults) {
-          const role = await getRole(dashboard);
-          await dashboard.connect(hubSigner).grantRole(role, grantee.getAddress());
-        }
-
-        const role = await getRole(stakingVaults[0].dashboard);
-        const vaults = await vaultViewer.vaultsByRole(role, grantee.getAddress());
-
-        expect(vaults.length).to.equal(stakingVaults.length);
-        expect(vaults.length).to.equal(stakingVaultCount);
-
-        for (let i = 0; i < stakingVaults.length; i++) {
-          expect(vaults[i]).to.equal(stakingVaults[i].stakingVault);
-        }
-      });
-    });
-
-    [
-      {
-        label: "DEFAULT_ADMIN_ROLE",
-        getRole: async (dashboard: Dashboard) => await dashboard.DEFAULT_ADMIN_ROLE(),
-        getGrantee: () => userWithoutRole,
-      },
-      {
-        label: "PDG_COMPENSATE_PREDEPOSIT_ROLE",
-        getRole: async () => PDG_COMPENSATE_PREDEPOSIT_ROLE,
-        getGrantee: () => userWithoutRole,
-      },
-    ].forEach(({ label, getRole, getGrantee }) => {
-      it(`returns zero vaults with a given role (${label}) on Dashboard (roles wasn't granted)`, async () => {
-        const grantee = getGrantee();
-        const role = await getRole(stakingVaults[0].dashboard);
-
-        const vaults = await vaultViewer.vaultsByRole(role, grantee.getAddress());
-        expect(vaults.length).to.equal(0);
       });
     });
   });
@@ -982,10 +845,6 @@ describe("VaultViewer", () => {
     });
 
     const cases = [
-      {
-        label: "vaultsByOwner",
-        args: async (owner: string) => [owner],
-      },
       {
         label: "vaultsByOwnerBound",
         args: async (owner: string) => [owner, 0, stakingVaultCount],
