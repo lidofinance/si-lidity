@@ -55,6 +55,7 @@ contract VaultViewer {
     /// @notice Checks if a given address is a contract
     /// @param account The address to check
     /// @return True if the address is a contract, false otherwise
+    // TODO: internal method
     function isContract(address account) public view returns (bool) {
         uint256 size;
         assembly {
@@ -98,16 +99,16 @@ contract VaultViewer {
     /// @param _from Index to start from inclusive
     /// @param _to Index to end at exclusive
     /// @return vaults Array of vaults owned by the given owner in the requested period
-    /// @return leftover Number of remaining owner-matching vaults after `_to`
     // TODO: getVaultsByOwnerBound
     function vaultsByOwnerBound(
         address _owner,
         uint256 _from,
         uint256 _to
         // TODO: add _forceSkip
-    ) public view returns (IStakingVault[] memory vaults, uint256 leftover) {
+    ) public view returns (IStakingVault[] memory vaults) {
         if (_from > _to) revert WrongPaginationRange(_from, _to);
 
+        // TODO: periodLength = 0
         uint256 periodLength = _to - _from;
         vaults = new IStakingVault[](periodLength);
 
@@ -119,25 +120,24 @@ contract VaultViewer {
 
         IStakingVault vault;
         // VaultHub index is 1-based
-        for (uint256 i = 1; i <= vaultsCount; ) {
+        for (uint256 i = 1; i <= vaultsCount && matchedCount < periodLength; ) {
             vault = IStakingVault(vaultHub.vaultByIndex(i));
             if (isVaultOwner(vault, _owner)) {
-                if (ownerMatchedCount >= _from && matchedCount < periodLength) {
+                if (ownerMatchedCount >= _to) break;
+
+                if (ownerMatchedCount >= _from) {
                     vaults[matchedCount] = vault;
                     matchedCount++;
                 }
+
                 ownerMatchedCount++;
             }
+
             unchecked { ++i; }
-            // TODO: add early return if i > _to
         }
 
         // shrink to actual length
         assembly { mstore(vaults, matchedCount) }
-
-        // TODO: remove leftover
-        // leftover = matches beyond `_to` (upper bound exclusive)
-        leftover = ownerMatchedCount > _to ? ownerMatchedCount - _to : 0;
     }
 
     /// @notice Returns all vaults with a given role on a given address
