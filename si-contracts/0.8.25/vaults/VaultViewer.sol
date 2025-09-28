@@ -107,9 +107,7 @@ contract VaultViewer {
     ) public view returns (IStakingVault[] memory vaults, uint256 nextCursor) {
         // VaultHub index is 1-based
         _requireNotZero(_cursor, '_cursor');
-
-        // TODO: _requireNonZeroLimit(_limit) ?
-        if (_limit == 0) revert WrongLimitPagination(_limit);
+        _requireNotZero(_limit, '_limit');
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
@@ -120,7 +118,8 @@ contract VaultViewer {
         vaults = new IStakingVault[](_limit);
         IStakingVault vault;
 
-        for (uint256 i = _cursor; i <= vaultsCount && matchedCount < _limit; ) {
+        uint256 i = _cursor;
+        for (; i <= vaultsCount && matchedCount < _limit; ) {
             vault = IStakingVault(vaultHub.vaultByIndex(i));
             if (isVaultOwner(vault, _owner)) {
                 vaults[matchedCount] = vault;
@@ -352,7 +351,7 @@ contract VaultViewer {
         }
     }
 
-    function _requireNotZero(uint256 _value, string _argName) internal pure {
+    function _requireNotZero(uint256 _value, string memory _argName) internal pure {
         if (_value == 0) revert ZeroArgument(_argName);
     }
 
@@ -366,4 +365,9 @@ contract VaultViewer {
     /// @param _from Start of the range
     /// @param _to End of the range
     error WrongPaginationRange(uint256 _from, uint256 _to);
+
+    /// @notice Error for wrong cursor in the pagination
+    /// @param _cursor The 1-based cursor value provided by the caller
+    /// @param vaultsCount The total number of vaults available for pagination
+    error WrongCursorPagination(uint256 _cursor, uint256 vaultsCount);
 }
