@@ -178,32 +178,10 @@ contract VaultViewer {
         nextCursor = (i <= vaultsCount) ? i : 0;
     }
 
-//    /// @notice Returns all vaults with a given role on a given address
-//    /// @param _role Role to check
-//    /// @param _member Address to check
-//    /// @param _from Index to start from inclisive
-//    /// @param _to Index to end at non-inculsive
-//    /// @return array of vaults in range with the given role on the given address
-//    /// @return number of leftover vaults
-//    /// @dev Return roles only for connection vault owner - dashboard contract
-//    function vaultsByRoleBound(
-//        bytes32 _role,
-//        address _member,
-//        uint256 _from,
-//        uint256 _to
-//    ) public view returns (IStakingVault[] memory, uint256) {
-//        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsByRole(_role, _member);
-//
-//        uint256 count = validCount > _to ? _to : validCount;
-//        uint256 leftover = validCount > _to ? validCount - _to : 0;
-//
-//        return (_filterNonZeroVaults(vaults, _from, count), leftover);
-//    }
-
     /// @notice Returns aggregated data for a single vault
     /// @param vault Address of the vault
     /// @return data Aggregated vault data
-    function getVaultData(address vault) public view returns (VaultData memory data) {
+    function vaultData(address vault) public view returns (VaultData memory data) {
         ILido lido = VAULT_HUB.LIDO();
         VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
         VaultHub.VaultRecord memory record = VAULT_HUB.vaultRecord(vault);
@@ -227,7 +205,7 @@ contract VaultViewer {
     /// @param _to Index to end at exclusive
     /// @return vaultsData Array of aggregated vault data
     /// @return leftover Number of leftover vaults
-    function getVaultsDataBound(
+    function vaultsDataBound(
         uint256 _from,
         uint256 _to
     ) external view returns (VaultData[] memory vaultsData, uint256 leftover) {
@@ -245,7 +223,7 @@ contract VaultViewer {
         uint256 start1Based = _from + 1;
         for (uint256 i = 0; i < outputCount; ) {
             address va = vaultHub.vaultByIndex(start1Based + i);
-            vaultsData[i] = getVaultData(va);
+            vaultsData[i] = vaultData(va);
             unchecked { ++i; }
         }
 
@@ -256,7 +234,7 @@ contract VaultViewer {
     /// @param vaultAddress The address of the vault
     /// @param roles An array of role identifiers (bytes32) to query on the vault’s owner contract
     /// @return roleMembers VaultMembers containing vault address, owner, nodeOperator, and corresponding role members
-    function getRoleMembers(
+    function roleMembers(
         address vaultAddress,
         bytes32[] calldata roles
     ) public view returns (VaultMembers memory roleMembers) {
@@ -284,14 +262,14 @@ contract VaultViewer {
     /// @param vaultAddresses Array of vault addresses to query
     /// @param roles Array of roles to check for each vault
     /// @return result Array of VaultMembers containing vault address, owner, nodeOperator and corresponding role members
-    function getRoleMembersBatch(
+    function roleMembersBatch(
         address[] calldata vaultAddresses,
         bytes32[] calldata roles
     ) external view returns (VaultMembers[] memory result) {
         result = new VaultMembers[](vaultAddresses.length);
 
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
-            result[i] = getRoleMembers(vaultAddresses[i], roles);
+            result[i] = roleMembers(vaultAddresses[i], roles);
         }
     }
 

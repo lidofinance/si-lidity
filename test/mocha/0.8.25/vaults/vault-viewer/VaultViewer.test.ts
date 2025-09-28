@@ -423,8 +423,8 @@ describe("VaultViewer", () => {
       }
     });
 
-    it("returns data for first vault with getVaultData", async () => {
-      const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
+    it("returns data for first vault with vaultData", async () => {
+      const vaultData = await vaultViewer.vaultData(await stakingVaults[0].stakingVault.getAddress());
 
       // Sanity check: values are returned and types match
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
@@ -461,7 +461,7 @@ describe("VaultViewer", () => {
     });
 
     it("returns default values for zero address", async () => {
-      const vaultData = await vaultViewer.getVaultData(ethers.ZeroAddress);
+      const vaultData = await vaultViewer.vaultData(ethers.ZeroAddress);
 
       // Sanity check: values are returned and types match
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
@@ -512,8 +512,8 @@ describe("VaultViewer", () => {
       );
     });
 
-    it("returns data for first vault with getVaultData", async () => {
-      const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
+    it("returns data for first vault with vaultData", async () => {
+      const vaultData = await vaultViewer.vaultData(await stakingVaults[0].stakingVault.getAddress());
 
       // Sanity check: values are returned and types match
       expect(vaultData.quarantineInfo.isActive).to.be.a("boolean");
@@ -554,12 +554,12 @@ describe("VaultViewer", () => {
       { from: 2, to: stakingVaultCount },
       { from: stakingVaultCount, to: stakingVaultCount },
     ].forEach(({ from, to }) => {
-      it(`returns data for a batch of vaults with getVaultsDataBound [${from}, ${to}]`, async () => {
+      it(`returns data for a batch of vaults with vaultsDataBound [${from}, ${to}]`, async () => {
         const expectedLength = to >= from ? to - from : 0;
         const totalVaults = stakingVaults.length;
         const expectedLeftover = totalVaults > to ? totalVaults - to : 0;
 
-        const { vaultsData, leftover } = await vaultViewer.getVaultsDataBound(from, to);
+        const { vaultsData, leftover } = await vaultViewer.vaultsDataBound(from, to);
 
         expect(vaultsData.length).to.equal(expectedLength);
         expect(leftover).to.equal(expectedLeftover);
@@ -611,7 +611,7 @@ describe("VaultViewer", () => {
       { from: stakingVaultCount * 10, to: stakingVaultCount * 100 },
     ].forEach(({ from, to }) => {
       it(`reverts with WrongPaginationRange for invalid range [${from}, ${to}]`, async () => {
-        await expect(vaultViewer.getVaultsDataBound(from, to)).to.be.revertedWithCustomError(
+        await expect(vaultViewer.vaultsDataBound(from, to)).to.be.revertedWithCustomError(
           vaultViewer,
           "WrongPaginationRange",
         );
@@ -643,7 +643,7 @@ describe("VaultViewer", () => {
         await dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await firstGrantee.getAddress());
         await dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await secondGrantee.getAddress());
 
-        const roleMembers = await vaultViewer.getRoleMembers(vaultAddress, [
+        const roleMembers = await vaultViewer.roleMembers(vaultAddress, [
           NODE_OPERATOR_MANAGER_ROLE,
           PDG_COMPENSATE_PREDEPOSIT_ROLE,
         ]);
@@ -694,7 +694,7 @@ describe("VaultViewer", () => {
           await dashboard.connect(hubSigner).grantRole(WITHDRAW_ROLE, await secondGrantee.getAddress());
         }
 
-        const roleMembers = await vaultViewer.getRoleMembers(vaultAddress, roles);
+        const roleMembers = await vaultViewer.roleMembers(vaultAddress, roles);
 
         expect(roleMembers.length).to.equal(4);
 
@@ -736,7 +736,7 @@ describe("VaultViewer", () => {
       const zeroAddresses = [ethers.ZeroAddress, ethers.ZeroAddress, ethers.ZeroAddress];
 
       for (const vaultAddress of zeroAddresses) {
-        const roleMembers = await vaultViewer.getRoleMembers(vaultAddress, [
+        const roleMembers = await vaultViewer.roleMembers(vaultAddress, [
           NODE_OPERATOR_MANAGER_ROLE,
           PDG_COMPENSATE_PREDEPOSIT_ROLE,
         ]);
@@ -793,7 +793,7 @@ describe("VaultViewer", () => {
           vaultsSubset.map(({ operator: _operator }) => _operator.getAddress()),
         );
 
-        const membersBatch = await vaultViewer.getRoleMembersBatch(vaultAddresses, roles);
+        const membersBatch = await vaultViewer.roleMembersBatch(vaultAddresses, roles);
 
         expect(membersBatch.length).to.equal(count);
 
@@ -845,7 +845,7 @@ describe("VaultViewer", () => {
       //   args: async (owner: string) => [owner, 0, stakingVaultCount],
       // },
       {
-        label: "getVaultsDataBound",
+        label: "vaultsDataBound",
         args: () => [0, stakingVaultCount],
       },
       // {
@@ -874,7 +874,7 @@ describe("VaultViewer", () => {
     });
 
     // role grants here do not affect tests above
-    it("getRoleMembersBatch gas estimation (with role grants)", async () => {
+    it("roleMembersBatch gas estimation (with role grants)", async () => {
       const roles = [NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE, CHANGE_TIER_ROLE, WITHDRAW_ROLE];
 
       for (let i = 0; i < stakingVaults.length; i++) {
@@ -891,10 +891,10 @@ describe("VaultViewer", () => {
 
       const gasEstimate = await ethers.provider.estimateGas({
         to: await vaultViewer.getAddress(),
-        data: vaultViewer.interface.encodeFunctionData("getRoleMembersBatch", [vaultAddresses, roles]),
+        data: vaultViewer.interface.encodeFunctionData("roleMembersBatch", [vaultAddresses, roles]),
       });
 
-      console.log("⛽️ getRoleMembersBatch gas estimate (vaults: %d):", stakingVaultCount);
+      console.log("⛽️ roleMembersBatch gas estimate (vaults: %d):", stakingVaultCount);
       console.log("   %s", formatWithSpaces(gasEstimate));
       expect(gasEstimate).to.lte(gasLimit);
     });
