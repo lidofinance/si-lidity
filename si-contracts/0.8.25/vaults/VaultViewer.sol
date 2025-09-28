@@ -94,50 +94,46 @@ contract VaultViewer {
         return _checkHasRole(connection.owner, _member, _role);
     }
 
-    /// @notice Returns vaults owned by `_owner`
+    /// @notice Returns vaults owned by `_owner` using `cursor-based` pagination
     /// @param _owner Address of the owner
-    /// @param _from Index to start from inclusive
-    /// @param _to Index to end at exclusive
-    /// @return vaults Array of vaults owned by the given owner in the requested period
-    // TODO: getVaultsByOwnerBound
-    function vaultsByOwnerBound(
+    /// @param _cursor 1-based global index to start from (pass 1 to start from the first vault)
+    /// @param _limit Maximum number of owner-matching vaults to return (must be > 0)
+    /// @return vaults Array of owner-matching vaults (max length <= _limit)
+    /// @return nextCursor 1-based index to resume from, or 0 if end is reached
+    function vaultsByOwner(
         address _owner,
-        uint256 _from,
-        uint256 _to
-        // TODO: add _forceSkip
-    ) public view returns (IStakingVault[] memory vaults) {
-        if (_from > _to) revert WrongPaginationRange(_from, _to);
+        uint256 _cursor,
+        uint256 _limit
+    ) public view returns (IStakingVault[] memory vaults, uint256 nextCursor) {
+        // VaultHub index is 1-based
+        _requireNotZero(_cursor, '_cursor');
 
-        // TODO: periodLength = 0
-        uint256 periodLength = _to - _from;
-        vaults = new IStakingVault[](periodLength);
+        // TODO: _requireNonZeroLimit(_limit) ?
+        if (_limit == 0) revert WrongLimitPagination(_limit);
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
 
-        uint256 ownerMatchedCount = 0;
-        uint256 matchedCount = 0;
+        if (_cursor > vaultsCount) revert WrongCursorPagination(_cursor, vaultsCount);
 
+        uint256 matchedCount = 0;
+        vaults = new IStakingVault[](_limit);
         IStakingVault vault;
-        // VaultHub index is 1-based
-        for (uint256 i = 1; i <= vaultsCount && matchedCount < periodLength; ) {
+
+        for (uint256 i = _cursor; i <= vaultsCount && matchedCount < _limit; ) {
             vault = IStakingVault(vaultHub.vaultByIndex(i));
             if (isVaultOwner(vault, _owner)) {
-                if (ownerMatchedCount >= _to) break;
-
-                if (ownerMatchedCount >= _from) {
-                    vaults[matchedCount] = vault;
-                    matchedCount++;
-                }
-
-                ownerMatchedCount++;
+                vaults[matchedCount] = vault;
+                unchecked { ++matchedCount; }
             }
-
             unchecked { ++i; }
         }
 
         // shrink to actual length
         assembly { mstore(vaults, matchedCount) }
+
+        // next cursor (0 means end)
+        nextCursor = (i <= vaultsCount) ? i : 0;
     }
 
     /// @notice Returns all vaults with a given role on a given address
@@ -354,6 +350,10 @@ contract VaultViewer {
                 operator = abi.decode(result, (address));
             }
         }
+    }
+
+    function _requireNotZero(uint256 _value, string _argName) internal pure {
+        if (_value == 0) revert ZeroArgument(_argName);
     }
 
     // ==================== Errors ====================
