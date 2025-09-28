@@ -67,7 +67,7 @@ contract VaultViewer {
     /// @param vault The vault to check
     /// @param _owner The address to check
     /// @return True if the address is the owner, false otherwise
-    function isOwner(IStakingVault vault, address _owner) public view returns (bool) {
+    function isVaultOwner(IStakingVault vault, address _owner) public view returns (bool) {
         // For connected vaults the `vault.owner()` is VaultHub
         VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(address(vault));
         if (connection.owner == _owner) {
@@ -93,24 +93,51 @@ contract VaultViewer {
         return _checkHasRole(connection.owner, _member, _role);
     }
 
-    /// @notice Returns all vaults owned by a given address
+    /// @notice Returns vaults owned by `_owner`
     /// @param _owner Address of the owner
-    /// @param _from Index to start from inclisive
-    /// @param _to Index to end at non-inculsive
-    /// @return array of vaults owned by the given address
-    /// @return number of leftover vaults in range
+    /// @param _from Index to start from inclusive
+    /// @param _to Index to end at exclusive
+    /// @return vaults Array of vaults owned by the given owner in the requested period
+    /// @return leftover Number of remaining owner-matching vaults after `_to`
+    // TODO: getVaultsByOwnerBound
     function vaultsByOwnerBound(
         address _owner,
         uint256 _from,
         uint256 _to
-    ) public view returns (IStakingVault[] memory, uint256) {
-        (IStakingVault[] memory vaults, uint256 validCount) = _vaultsByOwner(_owner);
+        // TODO: add _forceSkip
+    ) public view returns (IStakingVault[] memory vaults, uint256 leftover) {
+        if (_from > _to) revert WrongPaginationRange(_from, _to);
 
-        uint256 count = validCount > _to ? _to : validCount;
-        uint256 leftover = validCount > _to ? validCount - _to : 0;
+        uint256 periodLength = _to - _from;
+        vaults = new IStakingVault[](periodLength);
 
-        // TODO: check gas in the _filterNonZeroVaults!!!
-        return (_filterNonZeroVaults(vaults, _from, count), leftover);
+        VaultHub vaultHub = VAULT_HUB;
+        uint256 vaultsCount = vaultHub.vaultsCount();
+
+        uint256 ownerMatchedCount = 0;
+        uint256 matchedCount = 0;
+
+        IStakingVault vault;
+        // VaultHub index is 1-based
+        for (uint256 i = 1; i <= vaultsCount; ) {
+            vault = IStakingVault(vaultHub.vaultByIndex(i));
+            if (isVaultOwner(vault, _owner)) {
+                if (ownerMatchedCount >= _from && matchedCount < periodLength) {
+                    vaults[matchedCount] = vault;
+                    matchedCount++;
+                }
+                ownerMatchedCount++;
+            }
+            unchecked { ++i; }
+            // TODO: add early return if i > _to
+        }
+
+        // shrink to actual length
+        assembly { mstore(vaults, matchedCount) }
+
+        // TODO: remove leftover
+        // leftover = matches beyond `_to` (upper bound exclusive)
+        leftover = ownerMatchedCount > _to ? ownerMatchedCount - _to : 0;
     }
 
     /// @notice Returns all vaults with a given role on a given address
@@ -179,8 +206,8 @@ contract VaultViewer {
 
         uint256 start1Based = _from + 1;
         for (uint256 i = 0; i < outputCount; ) {
-            address v = vaultHub.vaultByIndex(start1Based + i);
-            vaultsData[i] = getVaultData(v);
+            address va = vaultHub.vaultByIndex(start1Based + i);
+            vaultsData[i] = getVaultData(va);
             unchecked { ++i; }
         }
 
@@ -249,24 +276,6 @@ contract VaultViewer {
             }
         }
 
-        return (vaults, validCounter);
-    }
-
-    /// @dev common logic for vaultsByOwner and vaultsByOwnerBound
-    /// @custom:todo get vaults by pages, not all vaults
-    function _vaultsByOwner(address _owner) internal view returns (IStakingVault[] memory, uint256) {
-        uint256 count = VAULT_HUB.vaultsCount();
-        IStakingVault[] memory vaults = new IStakingVault[](count);
-        uint256 validCounter = 0;
-
-        // The `vaultByIndex` is 1-based list
-        for (uint256 i = 1; i <= count; i++) {
-            IStakingVault vault = IStakingVault(VAULT_HUB.vaultByIndex(i));
-            if (isOwner(vault, _owner)) {
-                vaults[validCounter] = vault;
-                validCounter++;
-            }
-        }
         return (vaults, validCounter);
     }
 
