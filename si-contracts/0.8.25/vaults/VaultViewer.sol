@@ -306,23 +306,6 @@ contract VaultViewer {
         }
     }
 
-    /// @notice Filters out zero address vaults from an array
-    /// @param _vaults Array of vaults to filter
-    /// @return filtered An array of non-zero vaults
-    function _filterNonZeroVaults(
-        IStakingVault[] memory _vaults,
-        uint256 _from,
-        uint256 _to
-    ) internal pure returns (IStakingVault[] memory filtered) {
-        if (_to < _from) revert WrongPaginationRange(_from, _to);
-
-        uint256 count = _to - _from;
-        filtered = new IStakingVault[](count);
-        for (uint256 i = 0; i < count; i++) {
-            filtered[i] = _vaults[_from + i];
-        }
-    }
-
     /// @notice Tries to fetch nodeOperatorFeeRate() from the vault owner if it's a dashboard contract
     /// @dev Uses low-level staticcall to avoid reverting when the method is missing or the address is an EOA
     /// @param owner The address of the vault owner (can be either a contract or an EOA)
