@@ -337,19 +337,31 @@ describe("VaultViewer", () => {
         expect(vaults.length).to.equal(0);
       });
     });
-    //
-    //   [
-    //     { from: stakingVaultCount, to: vaultSplitIndex },
-    //     { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
-    //   ].forEach(({ from, to }) => {
-    //     it(`reverts with WrongPaginationRange [${from}, ${to}]`, async () => {
-    //       await expect(vaultViewer.vaultsByOwnerBound(secondBatchOwner, from, to)).to.be.revertedWithCustomError(
-    //         vaultViewer,
-    //         "WrongPaginationRange",
-    //       );
-    //     });
-    //   });
-    // });
+
+    [
+      { cursor: stakingVaultCount + 1, limit: 2 },
+      { cursor: stakingVaultCount * 10, limit: stakingVaultCount * 10 },
+    ].forEach(({ cursor, limit }) => {
+      it(`reverts with WrongCursorPagination where cursor=${cursor}, limit=${limit}`, async () => {
+        await expect(vaultViewer.vaultsByOwner(secondBatchOwner, cursor, limit)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "WrongCursorPagination",
+        );
+      });
+    });
+
+    [
+      { cursor: 0, limit: 0 },
+      { cursor: 0, limit: 2 },
+      { cursor: 2, limit: 0 },
+    ].forEach(({ cursor, limit }) => {
+      it(`reverts with ZeroArgument where cursor=${cursor}, limit=${limit}`, async () => {
+        await expect(vaultViewer.vaultsByOwner(secondBatchOwner, cursor, limit)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "ZeroArgument",
+        );
+      });
+    });
 
     // context("vaults by role bound", () => {
     //   const vaultSplitIndex = Math.ceil(stakingVaultCount / 3);
