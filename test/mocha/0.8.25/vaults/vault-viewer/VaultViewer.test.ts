@@ -247,11 +247,10 @@ describe("VaultViewer", () => {
     const vaultSplitIndex = Math.ceil(stakingVaultCount / 3);
     let firstBatchOwner: HardhatEthersSigner;
     let secondBatchOwner: HardhatEthersSigner;
-    // let ownerWithNoVaults: HardhatEthersSigner;
+    let ownerWithNoVaults: HardhatEthersSigner;
 
     beforeEach(async () => {
-      // [, firstBatchOwner, secondBatchOwner, ownerWithNoVaults] = await ethers.getSigners();
-      [, firstBatchOwner, secondBatchOwner] = await ethers.getSigners();
+      [, firstBatchOwner, secondBatchOwner, ownerWithNoVaults] = await ethers.getSigners();
 
       for (let i = 0; i < stakingVaults.length; i++) {
         const { stakingVault } = stakingVaults[i];
@@ -278,7 +277,7 @@ describe("VaultViewer", () => {
 
         const expected: string[] = [];
         for (let gi = cursor; gi <= stakingVaults.length && expected.length < limit; gi++) {
-          const idx = gi - 1; // hub 1-based, stakingVaults 0-based (means in this file)
+          const idx = gi - 1; // hub 1-based, stakingVaults 0-based (means in this tests)
           const { stakingVault } = stakingVaults[idx];
           const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
           if (ownerAtGi.address === firstBatchOwner.address) {
@@ -292,41 +291,52 @@ describe("VaultViewer", () => {
         }
       });
     });
-    //
-    //   [
-    //     { from: 0, to: 0 },
-    //     { from: 0, to: 3 },
-    //     { from: 1, to: 1 },
-    //     { from: 1, to: 2 },
-    //     { from: 3, to: 6 },
-    //     { from: 0, to: vaultSplitIndex },
-    //     { from: 0, to: vaultSplitIndex * 10 },
-    //   ].forEach(({ from, to }) => {
-    //     it(`returns all vaults owned by a given address (secondBatchOwner) in a given range - [${from}, ${to}]`, async () => {
-    //       const vaults = await vaultViewer.vaultsByOwnerBound(secondBatchOwner, from, to);
-    //
-    //       const owned = stakingVaults.slice(vaultSplitIndex); // only vaults owned by secondBatchOwner
-    //       const expectedLength = Math.max(0, Math.min(to, owned.length) - from);
-    //
-    //       expect(vaults.length).to.equal(expectedLength);
-    //
-    //       for (let i = 0; i < expectedLength; i++) {
-    //         expect(vaults[i]).to.equal(owned[from + i].stakingVault);
-    //       }
-    //     });
-    //   });
-    //
-    //   [
-    //     { from: 0, to: 0 },
-    //     { from: 0, to: vaultSplitIndex },
-    //     { from: 0, to: vaultSplitIndex * 10 },
-    //     // for { from: 1 and more } will be WrongPaginationRange
-    //   ].forEach(({ from, to }) => {
-    //     it(`returns zero vaults owned by a given address (ownerWithNoVaults) in a given range - [${from}, ${to}]`, async () => {
-    //       const vaults = await vaultViewer.vaultsByOwnerBound(ownerWithNoVaults, from, to);
-    //       expect(vaults.length).to.equal(0);
-    //     });
-    //   });
+
+    [
+      // TODO
+      // { cursor: 0, limit: 0 }, // revert
+      // { cursor: 0, limit: 3 }, // revert
+      { cursor: 1, limit: 1 },
+      { cursor: 1, limit: 2 },
+      { cursor: 3, limit: 6 },
+      { cursor: vaultSplitIndex, limit: vaultSplitIndex },
+      { cursor: 1, limit: vaultSplitIndex },
+    ].forEach(({ cursor, limit }) => {
+      it(`returns all vaults owned by a given address (secondBatchOwner) where cursor=${cursor}, limit=${limit}`, async () => {
+        // TODO: add expect for 'nextCursor'
+        const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(secondBatchOwner, cursor, limit);
+        console.log("nextCursor:", nextCursor);
+
+        const expected: string[] = [];
+        for (let gi = cursor; gi <= stakingVaults.length && expected.length < limit; gi++) {
+          const idx = gi - 1; // hub 1-based, stakingVaults 0-based (means in this tests)
+          const { stakingVault } = stakingVaults[idx];
+          const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
+          if (ownerAtGi.address === secondBatchOwner.address) {
+            expected.push(await stakingVault.getAddress());
+          }
+        }
+
+        expect(vaults.length).to.equal(expected.length);
+        for (let i = 0; i < expected.length; i++) {
+          expect(vaults[i]).to.equal(expected[i]);
+        }
+      });
+    });
+
+    [
+      { cursor: 1, limit: 1 },
+      { cursor: 1, limit: 2 },
+      { cursor: 1, limit: vaultSplitIndex },
+      { cursor: 1, limit: vaultSplitIndex * 10 },
+    ].forEach(({ cursor, limit }) => {
+      it(`returns zero vaults owned by a given address (ownerWithNoVaults) where cursor=${cursor}, limit=${limit}`, async () => {
+        // TODO: add expect for 'nextCursor'
+        const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(ownerWithNoVaults, cursor, limit);
+        console.log("nextCursor:", nextCursor);
+        expect(vaults.length).to.equal(0);
+      });
+    });
     //
     //   [
     //     { from: stakingVaultCount, to: vaultSplitIndex },
