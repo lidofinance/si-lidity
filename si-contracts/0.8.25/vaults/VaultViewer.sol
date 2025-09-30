@@ -188,34 +188,40 @@ contract VaultViewer {
         });
     }
 
-    /// @notice Returns aggregated data for a range of vaults (indices are 0-based, upper bound exclusive)
-    /// @param _from Index to start from inclusive
-    /// @param _to Index to end at exclusive
+    /// @notice Returns aggregated data for a range of vaults (indices are 1-based, inclusive)
+    /// @param _from 1-based index to start from (inclusive)
+    /// @param _to 1-based index to end at (inclusive)
     /// @return vaultsData Array of aggregated vault data
     /// @return leftover Number of leftover vaults
     function vaultsDataBound(
         uint256 _from,
         uint256 _to
     ) external view returns (VaultData[] memory vaultsData, uint256 leftover) {
+        // VaultHub index is 1-based
+        _requireNotZero(_from, '_from');
+        _requireNotZero(_to, '_to');
+
         if (_from > _to) revert WrongPaginationRange(_from, _to);
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
-        uint256 toExclusive = _to > vaultsCount ? vaultsCount : _to;
 
-        if (_from > toExclusive) revert WrongPaginationRange(_from, _to);
+        if (_to > vaultsCount) {
+            _to = vaultsCount;
+        }
 
-        uint256 outputCount = toExclusive - _from;
+        if (_from > vaultsCount) revert WrongPaginationRange(_from, _to);
+
+        uint256 outputCount = _to >= _from ? (_to - _from + 1) : 0;
         vaultsData = new VaultData[](outputCount);
 
-        uint256 start1Based = _from + 1;
         for (uint256 i = 0; i < outputCount; ) {
-            address va = vaultHub.vaultByIndex(start1Based + i);
+            address va = vaultHub.vaultByIndex(_from + i);
             vaultsData[i] = vaultData(va);
             unchecked { ++i; }
         }
 
-        leftover = vaultsCount > toExclusive ? vaultsCount - toExclusive : 0;
+        leftover = vaultsCount > _to ? vaultsCount - _to : 0;
     }
 
     /// @notice Returns the VaultMembers for each specified role on a single vault

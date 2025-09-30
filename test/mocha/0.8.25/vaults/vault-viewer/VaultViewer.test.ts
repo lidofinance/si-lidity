@@ -611,16 +611,22 @@ describe("VaultViewer", () => {
     });
 
     [
-      { from: 0, to: 1 },
-      { from: 0, to: 2 },
-      { from: 1, to: 3 },
-      { from: 0, to: stakingVaultCount },
-      { from: 2, to: stakingVaultCount },
+      { from: 1, to: 1 },
+      { from: 1, to: 2 },
+      { from: 2, to: 3 },
+      { from: 1, to: stakingVaultCount },
+      { from: 3, to: stakingVaultCount },
       { from: stakingVaultCount, to: stakingVaultCount },
+      { from: 1, to: stakingVaultCount }, // All
+      { from: 1, to: stakingVaultCount + 1 },
+      { from: 1, to: stakingVaultCount + stakingVaultCount },
     ].forEach(({ from, to }) => {
       it(`returns data for a batch of vaults with vaultsDataBound [${from}, ${to}]`, async () => {
-        const expectedLength = to >= from ? to - from : 0;
         const totalVaults = stakingVaults.length;
+
+        // 1-based inclusive
+        let expectedLength = to >= from ? to - from + 1 : 0;
+        expectedLength = expectedLength > totalVaults ? totalVaults : expectedLength;
         const expectedLeftover = totalVaults > to ? totalVaults - to : 0;
 
         const { vaultsData, leftover } = await vaultViewer.vaultsDataBound(from, to);
@@ -629,7 +635,8 @@ describe("VaultViewer", () => {
         expect(leftover).to.equal(expectedLeftover);
 
         for (let i = 0; i < vaultsData.length; i++) {
-          expect(vaultsData[i].vaultAddress).to.equal(await stakingVaults[from + i].stakingVault.getAddress());
+          // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+          expect(vaultsData[i].vaultAddress).to.equal(await stakingVaults[from - 1 + i].stakingVault.getAddress());
 
           // Sanity check: values are returned and types match
           expect(vaultsData[i].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
@@ -680,6 +687,17 @@ describe("VaultViewer", () => {
           "WrongPaginationRange",
         );
       });
+    });
+  });
+
+  [
+    { from: 0, to: 0 },
+    { from: 0, to: 1 },
+    { from: 0, to: 2 },
+    { from: stakingVaultCount, to: 0 },
+  ].forEach(({ from, to }) => {
+    it(`reverts with WrongPaginationRange for invalid range [${from}, ${to}]`, async () => {
+      await expect(vaultViewer.vaultsDataBound(from, to)).to.be.revertedWithCustomError(vaultViewer, "ZeroArgument");
     });
   });
 
@@ -910,7 +928,7 @@ describe("VaultViewer", () => {
       },
       {
         label: "vaultsDataBound",
-        args: () => [0, stakingVaultCount],
+        args: () => [1, stakingVaultCount],
       },
       {
         label: "vaultsByRole",
