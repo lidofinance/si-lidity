@@ -398,14 +398,10 @@ describe("VaultViewer", () => {
     ];
 
     const successRanges = [
-      // { cursor: 0, limit: 0 }, // revert
-      // { cursor: 0, limit: 3 }, // revert
       { cursor: 1, limit: 1 },
       { cursor: 1, limit: 2 },
       { cursor: 3, limit: 6 },
       { cursor: vaultSplitIndex, limit: vaultSplitIndex },
-      // { cursor: 0, limit: vaultSplitIndex }, // revert
-      // { cursor: 0, limit: vaultSplitIndex * 10 }, // revert
     ];
 
     testCases.forEach(({ label, getGrantee }) => {
@@ -437,24 +433,26 @@ describe("VaultViewer", () => {
       });
     });
 
-    // const failedRanges = [
-    //   { from: stakingVaultCount, to: vaultSplitIndex },
-    //   { from: stakingVaultCount, to: vaultSplitIndex * 10 },
-    //   { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
-    // ];
-    //
-    // testCases.forEach(({ label, getGrantee }) => {
-    //   failedRanges.forEach(({ from, to }) => {
-    //     it(`reverts with WrongPaginationRange for ${label} in range [${from}, ${to}]`, async () => {
-    //       const grantee = getGrantee();
-    //       const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
-    //
-    //       await expect(
-    //         vaultViewer.vaultsByRoleBound(role, grantee.getAddress(), from, to),
-    //       ).to.be.revertedWithCustomError(vaultViewer, "WrongPaginationRange");
-    //     });
-    //   });
-    // });
+    const failedRanges = [
+      { cursor: 0, limit: 0 },
+      { cursor: 0, limit: 3 },
+      { cursor: 0, limit: vaultSplitIndex },
+      { cursor: 0, limit: vaultSplitIndex * 10 },
+    ];
+
+    // TODO: add WrongCursorPagination
+    testCases.forEach(({ label, getGrantee }) => {
+      failedRanges.forEach(({ cursor, limit }) => {
+        it(`reverts with ZeroArgument for ${label} where cursor=${cursor}, limit=${limit}`, async () => {
+          const grantee = getGrantee();
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+
+          await expect(
+            vaultViewer.vaultsByRole(role, grantee.getAddress(), cursor, limit),
+          ).to.be.revertedWithCustomError(vaultViewer, "ZeroArgument");
+        });
+      });
+    });
   });
 
   context("get vault data", () => {
