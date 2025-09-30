@@ -261,9 +261,6 @@ describe("VaultViewer", () => {
     });
 
     [
-      // TODO
-      // { cursor: 0, limit: 0 }, // revert
-      // { cursor: 0, limit: 3 }, // revert
       { cursor: 1, limit: 1 },
       { cursor: 1, limit: 2 },
       { cursor: 3, limit: 6 },
@@ -293,9 +290,6 @@ describe("VaultViewer", () => {
     });
 
     [
-      // TODO
-      // { cursor: 0, limit: 0 }, // revert
-      // { cursor: 0, limit: 3 }, // revert
       { cursor: 1, limit: 1 },
       { cursor: 1, limit: 2 },
       { cursor: 3, limit: 6 },
@@ -433,23 +427,38 @@ describe("VaultViewer", () => {
       });
     });
 
-    const failedRanges = [
-      { cursor: 0, limit: 0 },
-      { cursor: 0, limit: 3 },
-      { cursor: 0, limit: vaultSplitIndex },
-      { cursor: 0, limit: vaultSplitIndex * 10 },
-    ];
-
-    // TODO: add WrongCursorPagination
     testCases.forEach(({ label, getGrantee }) => {
+      const failedRanges = [
+        { cursor: 0, limit: 0 },
+        { cursor: 0, limit: 3 },
+        { cursor: 0, limit: vaultSplitIndex },
+        { cursor: 0, limit: vaultSplitIndex * 10 },
+      ];
+
       failedRanges.forEach(({ cursor, limit }) => {
         it(`reverts with ZeroArgument for ${label} where cursor=${cursor}, limit=${limit}`, async () => {
           const grantee = getGrantee();
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
-
           await expect(
             vaultViewer.vaultsByRole(role, grantee.getAddress(), cursor, limit),
           ).to.be.revertedWithCustomError(vaultViewer, "ZeroArgument");
+        });
+      });
+    });
+
+    testCases.forEach(({ label, getGrantee }) => {
+      const failedRanges = [
+        { cursor: stakingVaultCount + 1, limit: 2 },
+        { cursor: stakingVaultCount * 10, limit: stakingVaultCount * 10 },
+      ];
+
+      failedRanges.forEach(({ cursor, limit }) => {
+        it(`reverts with WrongCursorPagination for ${label} where cursor=${cursor}, limit=${limit}`, async () => {
+          const grantee = getGrantee();
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+          await expect(
+            vaultViewer.vaultsByRole(role, grantee.getAddress(), cursor, limit),
+          ).to.be.revertedWithCustomError(vaultViewer, "WrongCursorPagination");
         });
       });
     });
