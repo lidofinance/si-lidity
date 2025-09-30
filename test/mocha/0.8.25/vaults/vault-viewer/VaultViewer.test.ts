@@ -140,7 +140,7 @@ describe("VaultViewer", () => {
   let vaultViewer: VaultViewer;
   let vaultImpl: StakingVault;
   let stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
-  // 6 is the minimum required number of vaults for tests.
+  // 3 is the minimum required number of vaults for tests.
   const stakingVaultCount = 30;
   const gasLimit = 500_000_000n; // Alchemy view gas limit is 550 million, DRPC view gas limit is 600 million
 
