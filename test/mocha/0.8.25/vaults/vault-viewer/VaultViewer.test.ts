@@ -143,7 +143,7 @@ describe("VaultViewer", () => {
   // 13 is the minimum required number of vaults for tests,
   // due to hardcoded ranges like { from: 12, to: 16 } used in success cases.
   const stakingVaultCount = 30;
-  const gasLimit = 2_000_000n;
+  const gasLimit = 500_000_000n; // Alchemy view gas limit is 550 million, DRPC view gas limit is 600 million
 
   // See the `mock_connectVault` in the `test/mocha/0.8.25/vaults/vault-data-viewer/contracts/VaultHub__MockForHubViewer.sol`
   const expectedVaultsData = {
@@ -336,7 +336,6 @@ describe("VaultViewer", () => {
     ].forEach(({ cursor, limit }) => {
       it(`returns zero vaults owned by a given address (ownerWithNoVaults) where cursor=${cursor}, limit=${limit}`, async () => {
         const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(ownerWithNoVaults, cursor, limit);
-        console.log("nextCursor:", nextCursor);
         expect(vaults.length).to.equal(0);
         expect(nextCursor).to.equal(0);
       });
@@ -414,25 +413,25 @@ describe("VaultViewer", () => {
           const grantee = getGrantee();
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
 
-          const [vaults /*, nextCursor */] = await vaultViewer.vaultsByRole(
-            role,
-            await grantee.getAddress(),
-            cursor,
-            limit,
-          );
+          const [vaults, nextCursor] = await vaultViewer.vaultsByRole(role, await grantee.getAddress(), cursor, limit);
 
           let expectedCount = 0;
-          for (let gi = cursor; gi <= stakingVaults.length && expectedCount < limit; gi++) {
-            const idx = gi - 1; // stakingVaults — 0-based
-
+          let gi = cursor;
+          for (; gi <= stakingVaults.length && expectedCount < limit; gi++) {
+            // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+            const idx = gi - 1;
             const grantedTo = idx < vaultSplitIndex ? firstBatchGrantee : secondBatchGrantee;
-
             if ((await grantee.getAddress()) === (await grantedTo.getAddress())) {
               expectedCount++;
             }
           }
 
+          // ✅ Check vaults count
           expect(vaults.length).to.equal(expectedCount);
+
+          // ✅ Check nextCursor
+          const expectedNextCursor = gi <= stakingVaults.length ? BigInt(gi) : 0n;
+          expect(nextCursor).to.equal(expectedNextCursor);
         });
       });
     });
