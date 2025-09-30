@@ -260,71 +260,48 @@ describe("VaultViewer", () => {
       }
     });
 
-    [
+    const testCases = [
+      { label: "firstBatchOwner", getOwner: () => firstBatchOwner },
+      { label: "secondBatchOwner", getOwner: () => secondBatchOwner },
+    ];
+
+    const successRanges = [
       { cursor: 1, limit: 1 },
       { cursor: 1, limit: 2 },
       { cursor: 3, limit: 6 },
       { cursor: vaultSplitIndex, limit: vaultSplitIndex },
       { cursor: 1, limit: vaultSplitIndex },
-    ].forEach(({ cursor, limit }) => {
-      it(`returns all vaults owned by a given address (firstBatchOwner) where cursor=${cursor}, limit=${limit}`, async () => {
-        const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(firstBatchOwner, cursor, limit);
+    ];
 
-        const expectedVaults: string[] = [];
-        let gi = cursor;
-        for (; gi <= stakingVaults.length && expectedVaults.length < limit; gi++) {
-          // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
-          const idx = gi - 1;
-          const { stakingVault } = stakingVaults[idx];
-          const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
-          if (ownerAtGi.address === firstBatchOwner.address) {
-            expectedVaults.push(await stakingVault.getAddress());
+    testCases.forEach(({ label, getOwner }) => {
+      successRanges.forEach(({ cursor, limit }) => {
+        it(`returns all vaults owned by a given address ${label} where cursor=${cursor}, limit=${limit}`, async () => {
+          const owner = getOwner();
+
+          const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(owner, cursor, limit);
+
+          const expectedVaults: string[] = [];
+          let gi = cursor;
+          for (; gi <= stakingVaults.length && expectedVaults.length < limit; gi++) {
+            // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+            const idx = gi - 1;
+            const { stakingVault } = stakingVaults[idx];
+            const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
+            if (ownerAtGi.address === owner.address) {
+              expectedVaults.push(await stakingVault.getAddress());
+            }
           }
-        }
 
-        // ✅ Check vaults
-        expect(vaults.length).to.equal(expectedVaults.length);
-        for (let i = 0; i < expectedVaults.length; i++) {
-          expect(vaults[i]).to.equal(expectedVaults[i]);
-        }
-
-        // ✅ Check nextCursor
-        const expectedNextCursor = gi <= stakingVaults.length ? BigInt(gi) : 0;
-        expect(nextCursor).to.equal(expectedNextCursor);
-      });
-    });
-
-    [
-      { cursor: 1, limit: 1 },
-      { cursor: 1, limit: 2 },
-      { cursor: 3, limit: 6 },
-      { cursor: vaultSplitIndex, limit: vaultSplitIndex },
-      { cursor: 1, limit: vaultSplitIndex },
-    ].forEach(({ cursor, limit }) => {
-      it(`returns all vaults owned by a given address (secondBatchOwner) where cursor=${cursor}, limit=${limit}`, async () => {
-        const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(secondBatchOwner, cursor, limit);
-
-        const expectedVaults: string[] = [];
-        let gi = cursor;
-        for (; gi <= stakingVaults.length && expectedVaults.length < limit; gi++) {
-          // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
-          const idx = gi - 1;
-          const { stakingVault } = stakingVaults[idx];
-          const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
-          if (ownerAtGi.address === secondBatchOwner.address) {
-            expectedVaults.push(await stakingVault.getAddress());
+          // ✅ Check vaults
+          expect(vaults.length).to.equal(expectedVaults.length);
+          for (let i = 0; i < expectedVaults.length; i++) {
+            expect(vaults[i]).to.equal(expectedVaults[i]);
           }
-        }
 
-        // ✅ Check vaults
-        expect(vaults.length).to.equal(expectedVaults.length);
-        for (let i = 0; i < expectedVaults.length; i++) {
-          expect(vaults[i]).to.equal(expectedVaults[i]);
-        }
-
-        // ✅ Check nextCursor
-        const expectedNextCursor = gi <= stakingVaults.length ? BigInt(gi) : 0;
-        expect(nextCursor).to.equal(expectedNextCursor);
+          // ✅ Check nextCursor
+          const expectedNextCursor = gi <= stakingVaults.length ? BigInt(gi) : 0;
+          expect(nextCursor).to.equal(expectedNextCursor);
+        });
       });
     });
 
@@ -618,8 +595,8 @@ describe("VaultViewer", () => {
       { from: 3, to: stakingVaultCount },
       { from: stakingVaultCount, to: stakingVaultCount },
       { from: 1, to: stakingVaultCount }, // All
-      { from: 1, to: stakingVaultCount + 1 },
-      { from: 1, to: stakingVaultCount + stakingVaultCount },
+      { from: 1, to: stakingVaultCount + 1 }, // more that all
+      { from: 1, to: stakingVaultCount + stakingVaultCount }, // more that all
     ].forEach(({ from, to }) => {
       it(`returns data for a batch of vaults with vaultsDataBound [${from}, ${to}]`, async () => {
         const totalVaults = stakingVaults.length;
@@ -696,7 +673,7 @@ describe("VaultViewer", () => {
     { from: 0, to: 2 },
     { from: stakingVaultCount, to: 0 },
   ].forEach(({ from, to }) => {
-    it(`reverts with WrongPaginationRange for invalid range [${from}, ${to}]`, async () => {
+    it(`reverts with ZeroArgument for invalid range [${from}, ${to}]`, async () => {
       await expect(vaultViewer.vaultsDataBound(from, to)).to.be.revertedWithCustomError(vaultViewer, "ZeroArgument");
     });
   });
