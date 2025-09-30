@@ -52,18 +52,6 @@ contract VaultViewer {
         LAZY_ORACLE = LazyOracle(LIDO_LOCATOR.lazyOracle());
     }
 
-    /// @notice Checks if a given address is a contract
-    /// @param account The address to check
-    /// @return True if the address is a contract, false otherwise
-    // TODO: internal method
-    function isContract(address account) public view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
-
     /// @notice Checks if a given address is the owner of a connection vault
     /// @param vault The vault to check
     /// @param _owner The address to check
@@ -248,7 +236,7 @@ contract VaultViewer {
         roleMembers.members = new address[][](roles.length);
 
         // owner may be an EOA wallet
-        if (!isContract(roleMembers.owner)) {
+        if (!_isContract(roleMembers.owner)) {
             return roleMembers;
         }
 
@@ -277,7 +265,7 @@ contract VaultViewer {
 
     /// @notice Safely attempt a staticcall to `getRoleMembers(bytes32)` on the owner address
     /// @dev common logic for getRoleMembers
-    /// @dev More gas-efficient to do any `isContract(owner)` check in the caller
+    /// @dev More gas-efficient to do any `_isContract(owner)` check in the caller
     /// @param owner The address to call (may be a contract or an EOA)
     /// @param role The role identifier
     /// @return members Array of addresses if the call succeeds; empty array otherwise
@@ -294,7 +282,7 @@ contract VaultViewer {
     /// @param _member addrress to check for role
     /// @return _role ACL role bytes
     function _checkHasRole(address _contract, address _member, bytes32 _role) internal view returns (bool) {
-        if (!isContract(_contract)) return false;
+        if (!_isContract(_contract)) return false;
 
         bytes memory payload = abi.encodeWithSignature("hasRole(bytes32,address)", _role, _member);
         (bool success, bytes memory result) = _contract.staticcall(payload);
@@ -311,7 +299,7 @@ contract VaultViewer {
     /// @param owner The address of the vault owner (can be either a contract or an EOA)
     /// @return fee The decoded fee value if present, otherwise 0
     function _getNodeOperatorFeeRate(address owner) internal view returns (uint256 fee) {
-        if (isContract(owner)) {
+        if (_isContract(owner)) {
             (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("nodeOperatorFeeRate()"));
             // Check ensures safe decoding — avoids abi.decode revert on short return data
             if (success && result.length >= 32) {
@@ -326,7 +314,7 @@ contract VaultViewer {
     /// @return operator The decoded nodeOperator address if present, otherwise address(0)
     /// @custom:todo Think about the need for this method
     function _getNodeOperatorAddress(address vault) internal view returns (address operator) {
-        if (isContract(vault)) {
+        if (_isContract(vault)) {
             (bool success, bytes memory result) = vault.staticcall(abi.encodeWithSignature("nodeOperator()"));
             // Check ensures safe decoding — avoids abi.decode revert on short return data
             if (success && result.length >= 32) {
@@ -335,6 +323,21 @@ contract VaultViewer {
         }
     }
 
+    /// @notice Checks if a given address is a contract
+    /// @param account The address to check
+    /// @return True if the address is a contract, false otherwise
+    function _isContract(address account) internal view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(account)
+        }
+        return size > 0;
+    }
+
+    /// @notice Reverts if a provided numeric argument is zero
+    /// @param _value The argument value to validate
+    /// @param _argName The name of the argument
+    /// @custom:error ZeroArgument Thrown when `_value` equals zero
     function _requireNotZero(uint256 _value, string memory _argName) internal pure {
         if (_value == 0) revert ZeroArgument(_argName);
     }
