@@ -903,13 +903,13 @@ describe("VaultViewer", () => {
         label: "vaultsDataBound",
         args: () => [0, stakingVaultCount],
       },
-      // {
-      //   label: "vaultsByRole",
-      //   args: async () => {
-      //     const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
-      //     return [role, await allStakingVaultsOwner.getAddress(), 0, stakingVaultCount];
-      //   },
-      // },
+      {
+        label: "vaultsByRole",
+        args: async () => {
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+          return [role, await allStakingVaultsOwner.getAddress(), 1, stakingVaultCount];
+        },
+      },
     ];
 
     cases.forEach(({ label, args }) => {
