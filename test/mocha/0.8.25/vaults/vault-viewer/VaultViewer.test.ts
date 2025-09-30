@@ -140,8 +140,7 @@ describe("VaultViewer", () => {
   let vaultViewer: VaultViewer;
   let vaultImpl: StakingVault;
   let stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
-  // 13 is the minimum required number of vaults for tests,
-  // due to hardcoded ranges like { from: 12, to: 16 } used in success cases.
+  // 6 is the minimum required number of vaults for tests.
   const stakingVaultCount = 30;
   const gasLimit = 500_000_000n; // Alchemy view gas limit is 550 million, DRPC view gas limit is 600 million
 
@@ -260,7 +259,7 @@ describe("VaultViewer", () => {
       }
     });
 
-    const testCases = [
+    const ownersTestCases = [
       { label: "firstBatchOwner", getOwner: () => firstBatchOwner },
       { label: "secondBatchOwner", getOwner: () => secondBatchOwner },
     ];
@@ -273,7 +272,7 @@ describe("VaultViewer", () => {
       { cursor: 1, limit: vaultSplitIndex },
     ];
 
-    testCases.forEach(({ label, getOwner }) => {
+    ownersTestCases.forEach(({ label, getOwner }) => {
       successRanges.forEach(({ cursor, limit }) => {
         it(`returns all vaults owned by a given address ${label} where cursor=${cursor}, limit=${limit}`, async () => {
           const owner = getOwner();
@@ -367,7 +366,7 @@ describe("VaultViewer", () => {
       }
     });
 
-    const testCases = [
+    const granteesTestCases = [
       { label: "firstBatchGrantee", getGrantee: () => firstBatchGrantee },
       {
         label: "secondBatchGrantee",
@@ -384,7 +383,7 @@ describe("VaultViewer", () => {
       { cursor: vaultSplitIndex, limit: vaultSplitIndex },
     ];
 
-    testCases.forEach(({ label, getGrantee }) => {
+    granteesTestCases.forEach(({ label, getGrantee }) => {
       successRanges.forEach(({ cursor, limit }) => {
         it(`returns vaults for ${label} where cursor=${cursor}, limit=${limit}`, async () => {
           const grantee = getGrantee();
@@ -413,7 +412,7 @@ describe("VaultViewer", () => {
       });
     });
 
-    testCases.forEach(({ label, getGrantee }) => {
+    granteesTestCases.forEach(({ label, getGrantee }) => {
       const failedRanges = [
         { cursor: 0, limit: 0 },
         { cursor: 0, limit: 3 },
@@ -432,7 +431,7 @@ describe("VaultViewer", () => {
       });
     });
 
-    testCases.forEach(({ label, getGrantee }) => {
+    granteesTestCases.forEach(({ label, getGrantee }) => {
       const failedRanges = [
         { cursor: stakingVaultCount + 1, limit: 2 },
         { cursor: stakingVaultCount * 10, limit: stakingVaultCount * 10 },
@@ -467,7 +466,7 @@ describe("VaultViewer", () => {
     it("returns data for first vault with vaultData", async () => {
       const vaultData = await vaultViewer.vaultData(await stakingVaults[0].stakingVault.getAddress());
 
-      // Sanity check: values are returned and types match
+      // ✅ Sanity check: values are returned and types match
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
       expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
       expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");
@@ -481,7 +480,7 @@ describe("VaultViewer", () => {
       expect(vaultData.quarantineInfo.startTimestamp).to.be.a("bigint");
       expect(vaultData.quarantineInfo.endTimestamp).to.be.a("bigint");
 
-      // Value check
+      // ✅ Value check
       expect(vaultData.vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.equal(
         expectedVaultsData.connection.forcedRebalanceThresholdBP,
@@ -504,7 +503,7 @@ describe("VaultViewer", () => {
     it("returns default values for zero address", async () => {
       const vaultData = await vaultViewer.vaultData(ethers.ZeroAddress);
 
-      // Sanity check: values are returned and types match
+      // ✅ Sanity check: values are returned and types match
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
       expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
       expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");
@@ -518,7 +517,7 @@ describe("VaultViewer", () => {
       expect(vaultData.quarantineInfo.startTimestamp).to.be.a("bigint");
       expect(vaultData.quarantineInfo.endTimestamp).to.be.a("bigint");
 
-      // Value check
+      // ✅ Value check
       expect(vaultData.vaultAddress).to.equal(ethers.ZeroAddress);
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.equal(0n);
       expect(vaultData.connection.infraFeeBP).to.equal(0n);
@@ -556,13 +555,13 @@ describe("VaultViewer", () => {
     it("returns data for first vault with vaultData", async () => {
       const vaultData = await vaultViewer.vaultData(await stakingVaults[0].stakingVault.getAddress());
 
-      // Sanity check: values are returned and types match
+      // ✅ Sanity check: values are returned and types match
       expect(vaultData.quarantineInfo.isActive).to.be.a("boolean");
       expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.be.a("bigint");
       expect(vaultData.quarantineInfo.startTimestamp).to.be.a("bigint");
       expect(vaultData.quarantineInfo.endTimestamp).to.be.a("bigint");
 
-      // Value check
+      // ✅ Value check
       expect(vaultData.vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
       expect(vaultData.quarantineInfo.isActive).to.equal(mockVaultToQuarantineExpectedData.isActive);
       expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.equal(
@@ -615,7 +614,7 @@ describe("VaultViewer", () => {
           // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
           expect(vaultsData[i].vaultAddress).to.equal(await stakingVaults[from - 1 + i].stakingVault.getAddress());
 
-          // Sanity check: values are returned and types match
+          // ✅ Sanity check: values are returned and types match
           expect(vaultsData[i].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
           expect(vaultsData[i].connection.infraFeeBP).to.be.a("bigint");
           expect(vaultsData[i].connection.liquidityFeeBP).to.be.a("bigint");
@@ -629,7 +628,7 @@ describe("VaultViewer", () => {
           expect(vaultsData[i].quarantineInfo.startTimestamp).to.be.a("bigint");
           expect(vaultsData[i].quarantineInfo.endTimestamp).to.be.a("bigint");
 
-          // Value check
+          // ✅ Value check
           expect(vaultsData[i].connection.forcedRebalanceThresholdBP).to.equal(
             expectedVaultsData.connection.forcedRebalanceThresholdBP,
           );
@@ -806,7 +805,6 @@ describe("VaultViewer", () => {
 
         const membersArray = roleMembers.members;
         expect(membersArray.length).to.equal(2);
-
         expect(membersArray[0].length).to.equal(0);
         expect(membersArray[1].length).to.equal(0);
       }
@@ -880,9 +878,7 @@ describe("VaultViewer", () => {
 
   context(`gas estimation check (connected vaults: ${stakingVaultCount})`, () => {
     const formatWithSpaces = (n: bigint | number): string => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-
     let allStakingVaultsOwner: HardhatEthersSigner;
-
     let someGrantee: HardhatEthersSigner;
 
     before(async () => {
@@ -892,7 +888,6 @@ describe("VaultViewer", () => {
       await steth.mock__setTotalShares(100n);
 
       const ownerAddr = await allStakingVaultsOwner.getAddress();
-
       for (const { stakingVault } of stakingVaults) {
         await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), ownerAddr);
       }
@@ -942,7 +937,6 @@ describe("VaultViewer", () => {
           .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await someGrantee.getAddress());
 
         await stakingVaults[i].dashboard.connect(hubSigner).grantRole(CHANGE_TIER_ROLE, await someGrantee.getAddress());
-
         await stakingVaults[i].dashboard.connect(hubSigner).grantRole(WITHDRAW_ROLE, await someGrantee.getAddress());
       }
 
