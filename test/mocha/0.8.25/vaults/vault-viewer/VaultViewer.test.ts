@@ -268,24 +268,29 @@ describe("VaultViewer", () => {
       { cursor: 1, limit: vaultSplitIndex },
     ].forEach(({ cursor, limit }) => {
       it(`returns all vaults owned by a given address (firstBatchOwner) where cursor=${cursor}, limit=${limit}`, async () => {
-        // TODO: add expect for 'nextCursor'
         const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(firstBatchOwner, cursor, limit);
-        console.log("nextCursor:", nextCursor);
 
-        const expected: string[] = [];
-        for (let gi = cursor; gi <= stakingVaults.length && expected.length < limit; gi++) {
-          const idx = gi - 1; // hub 1-based, stakingVaults 0-based (means in this tests)
+        const expectedVaults: string[] = [];
+        let gi = cursor;
+        for (; gi <= stakingVaults.length && expectedVaults.length < limit; gi++) {
+          // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+          const idx = gi - 1;
           const { stakingVault } = stakingVaults[idx];
           const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
           if (ownerAtGi.address === firstBatchOwner.address) {
-            expected.push(await stakingVault.getAddress());
+            expectedVaults.push(await stakingVault.getAddress());
           }
         }
 
-        expect(vaults.length).to.equal(expected.length);
-        for (let i = 0; i < expected.length; i++) {
-          expect(vaults[i]).to.equal(expected[i]);
+        // ✅ Check vaults
+        expect(vaults.length).to.equal(expectedVaults.length);
+        for (let i = 0; i < expectedVaults.length; i++) {
+          expect(vaults[i]).to.equal(expectedVaults[i]);
         }
+
+        // ✅ Check nextCursor
+        const expectedNextCursor = gi <= stakingVaults.length ? BigInt(gi) : 0;
+        expect(nextCursor).to.equal(expectedNextCursor);
       });
     });
 
@@ -297,24 +302,29 @@ describe("VaultViewer", () => {
       { cursor: 1, limit: vaultSplitIndex },
     ].forEach(({ cursor, limit }) => {
       it(`returns all vaults owned by a given address (secondBatchOwner) where cursor=${cursor}, limit=${limit}`, async () => {
-        // TODO: add expect for 'nextCursor'
         const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(secondBatchOwner, cursor, limit);
-        console.log("nextCursor:", nextCursor);
 
-        const expected: string[] = [];
-        for (let gi = cursor; gi <= stakingVaults.length && expected.length < limit; gi++) {
-          const idx = gi - 1; // hub 1-based, stakingVaults 0-based (means in this tests)
+        const expectedVaults: string[] = [];
+        let gi = cursor;
+        for (; gi <= stakingVaults.length && expectedVaults.length < limit; gi++) {
+          // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+          const idx = gi - 1;
           const { stakingVault } = stakingVaults[idx];
           const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
           if (ownerAtGi.address === secondBatchOwner.address) {
-            expected.push(await stakingVault.getAddress());
+            expectedVaults.push(await stakingVault.getAddress());
           }
         }
 
-        expect(vaults.length).to.equal(expected.length);
-        for (let i = 0; i < expected.length; i++) {
-          expect(vaults[i]).to.equal(expected[i]);
+        // ✅ Check vaults
+        expect(vaults.length).to.equal(expectedVaults.length);
+        for (let i = 0; i < expectedVaults.length; i++) {
+          expect(vaults[i]).to.equal(expectedVaults[i]);
         }
+
+        // ✅ Check nextCursor
+        const expectedNextCursor = gi <= stakingVaults.length ? BigInt(gi) : 0;
+        expect(nextCursor).to.equal(expectedNextCursor);
       });
     });
 
@@ -325,10 +335,10 @@ describe("VaultViewer", () => {
       { cursor: 1, limit: vaultSplitIndex * 10 },
     ].forEach(({ cursor, limit }) => {
       it(`returns zero vaults owned by a given address (ownerWithNoVaults) where cursor=${cursor}, limit=${limit}`, async () => {
-        // TODO: add expect for 'nextCursor'
         const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(ownerWithNoVaults, cursor, limit);
         console.log("nextCursor:", nextCursor);
         expect(vaults.length).to.equal(0);
+        expect(nextCursor).to.equal(0);
       });
     });
 
