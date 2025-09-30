@@ -280,7 +280,8 @@ contract VaultViewer {
     /// @notice safely returns if role member has given role
     /// @param _contract that can have ACL or not
     /// @param _member addrress to check for role
-    /// @return _role ACL role bytes
+    /// @param _role ACL role bytes
+    /// @return bool status of check
     function _checkHasRole(address _contract, address _member, bytes32 _role) internal view returns (bool) {
         if (!_isContract(_contract)) return false;
 
