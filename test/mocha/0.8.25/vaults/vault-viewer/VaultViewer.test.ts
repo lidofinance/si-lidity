@@ -1001,20 +1001,23 @@ describe("VaultViewer", () => {
     });
   });
 
-  context(`gas estimation check (connected vaults: ${stakingVaultCount})`, () => {
+  context(`gas estimation check (vaults: ${stakingVaultCount})`, () => {
     const formatWithSpaces = (n: bigint | number): string => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    let allStakingVaultsOwner: HardhatEthersSigner;
     let someGrantee: HardhatEthersSigner;
+    let allStakingVaultsOwnerAddr: string;
 
     before(async () => {
-      [, allStakingVaultsOwner, someGrantee] = await ethers.getSigners();
+      [, someGrantee] = await ethers.getSigners();
 
       await steth.mock__setTotalPooledEther(100n);
       await steth.mock__setTotalShares(100n);
 
-      const ownerAddr = await allStakingVaultsOwner.getAddress();
+      const dashboard = stakingVaults[0].dashboard;
+      const role = await dashboard.DEFAULT_ADMIN_ROLE();
+      allStakingVaultsOwnerAddr = await dashboard.getAddress();
       for (const { stakingVault } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), ownerAddr);
+        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), allStakingVaultsOwnerAddr);
+        await dashboard.connect(hubSigner).grantRole(role, allStakingVaultsOwnerAddr);
       }
     });
 
@@ -1031,15 +1034,14 @@ describe("VaultViewer", () => {
         label: "vaultsByRole",
         args: async () => {
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
-          return [role, await allStakingVaultsOwner.getAddress(), 1, stakingVaultCount];
+          return [role, allStakingVaultsOwnerAddr, 1, stakingVaultCount];
         },
       },
     ];
 
     cases.forEach(({ label, args }) => {
       it(`${label} gas estimation`, async () => {
-        const ownerAddr = await allStakingVaultsOwner.getAddress();
-        const resolvedArgs = typeof args === "function" ? await args(ownerAddr) : args;
+        const resolvedArgs = typeof args === "function" ? await args(allStakingVaultsOwnerAddr) : args;
 
         const gasEstimate = await ethers.provider.estimateGas({
           to: await vaultViewer.getAddress(),
