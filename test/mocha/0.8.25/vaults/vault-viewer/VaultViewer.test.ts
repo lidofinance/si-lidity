@@ -722,6 +722,47 @@ describe("VaultViewer", () => {
     });
 
     [
+      { from: 1, pageSize: 1 },
+      { from: 1, pageSize: 2 },
+      { from: 1, pageSize: 3 },
+      { from: 1, pageSize: stakingVaultCount }, // all
+      { from: 1, pageSize: stakingVaultCount + stakingVaultCount }, // more that all
+    ].forEach(({ from, pageSize }) => {
+      it(`walks all pages with vaultsDataBound(from=${from}, pageSize=${pageSize}) and returns all vaults in order`, async () => {
+        const collected: string[] = [];
+        const totalVaults = stakingVaults.length;
+        let to = from + pageSize - 1;
+
+        const maxPages = Math.ceil(totalVaults / pageSize) + 1;
+        for (let page = 0; page < maxPages; page++) {
+          const { vaultsData, leftover } = await vaultViewer.vaultsDataBound(from, to);
+
+          const safeTo = Math.min(to, totalVaults);
+          const expectedLength = safeTo >= from ? safeTo - from + 1 : 0;
+          expect(vaultsData.length).to.equal(expectedLength);
+
+          const expectedLeftover = BigInt(totalVaults - safeTo);
+          expect(leftover).to.equal(expectedLeftover);
+
+          for (let i = 0; i < vaultsData.length; i++) {
+            const expectedAddr = await stakingVaults[from - 1 + i].stakingVault.getAddress();
+            expect(vaultsData[i].vaultAddress).to.equal(expectedAddr);
+            collected.push(vaultsData[i].vaultAddress);
+          }
+
+          if (leftover === 0n) break;
+
+          from = to + 1;
+          to = from + pageSize - 1;
+        }
+
+        const expectedAll = await Promise.all(stakingVaults.map(({ stakingVault }) => stakingVault.getAddress()));
+
+        expect(collected).to.deep.equal(expectedAll);
+      });
+    });
+
+    [
       { from: stakingVaultCount + 1, to: stakingVaultCount * 10 },
       { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
       { from: stakingVaultCount * 100, to: stakingVaultCount * 10 },
