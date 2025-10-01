@@ -601,9 +601,9 @@ describe("VaultViewer", () => {
         const totalVaults = stakingVaults.length;
 
         // 1-based inclusive
-        let expectedLength = to >= from ? to - from + 1 : 0;
-        expectedLength = expectedLength > totalVaults ? totalVaults : expectedLength;
-        const expectedLeftover = totalVaults > to ? totalVaults - to : 0;
+        const safeTo = Math.min(to, totalVaults);
+        const expectedLength = safeTo >= from ? safeTo - from + 1 : 0;
+        const expectedLeftover = totalVaults > safeTo ? totalVaults - safeTo : 0;
 
         const { vaultsData, leftover } = await vaultViewer.vaultsDataBound(from, to);
 
@@ -718,7 +718,7 @@ describe("VaultViewer", () => {
         expect(roleMembers.nodeOperator).to.equal(operatorAddress);
 
         // 3: membersArray — array of arrays
-        const membersArray = roleMembers[3] as string[][];
+        const membersArray = roleMembers.members;
         expect(membersArray.length).to.equal(2);
 
         // Role 0: NODE_OPERATOR_MANAGER_ROLE
