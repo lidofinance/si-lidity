@@ -348,10 +348,12 @@ describe("VaultViewer", () => {
         { cursor: 1, limit: stakingVaultCount },
       ].forEach(({ cursor, limit }) => {
         it(`walks all pages(cursor=${cursor}, limit=${limit}) for ${label} via nextCursor and returns exactly his vaults in order`, async () => {
-          const owner = getOwner();
+          const maxIters = 100;
           const collected: string[] = [];
 
-          for (let safety = 0; safety < stakingVaultCount + 5; safety++) {
+          const owner = getOwner();
+
+          for (let i = 0; i < maxIters; i++) {
             const [page, nextCursor] = await vaultViewer.vaultsByOwner(owner, cursor, limit);
             collected.push(...page);
 
@@ -489,12 +491,13 @@ describe("VaultViewer", () => {
         { cursor: 1, limit: stakingVaultCount },
       ].forEach(({ cursor, limit }) => {
         it(`walks all pages(cursor=${cursor}, limit=${limit}) for ${label} via nextCursor and returns exactly matching vaults in order`, async () => {
+          const maxIters = 100;
+          const collected: string[] = [];
+
           const grantee = getGrantee();
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
 
-          const collected: string[] = [];
-
-          for (let safety = 0; safety < stakingVaultCount + 5; safety++) {
+          for (let i = 0; i < maxIters; i++) {
             const [page, nextCursor] = await vaultViewer.vaultsByRole(role, grantee, cursor, limit);
             collected.push(...page);
 
