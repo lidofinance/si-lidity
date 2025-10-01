@@ -88,6 +88,7 @@ contract VaultViewer {
     /// @param _limit Maximum number of owner-matching vaults to return (must be > 0)
     /// @return vaults Array of owner-matching vaults (max length <= _limit)
     /// @return nextCursor 1-based index to resume from, or 0 if end is reached
+    /// @custom:todo Handle `_ownerNoVaults` case by iterating over all vaults
     function vaultsByOwner(
         address _owner,
         uint256 _cursor,
@@ -130,6 +131,7 @@ contract VaultViewer {
     /// @param _limit Maximum number of matching vaults to return (must be > 0)
     /// @return vaults Array of vaults where `_member` has `_role` (max length ≤ _limit)
     /// @return nextCursor 1-based index to resume from, or 0 if end is reached
+    /// @custom:todo Handle `_memberNoRoles` case by iterating over all vaults
     function vaultsByRole(
         bytes32 _role,
         address _member,
