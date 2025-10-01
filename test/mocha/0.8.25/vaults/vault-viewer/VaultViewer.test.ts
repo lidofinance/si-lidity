@@ -264,16 +264,14 @@ describe("VaultViewer", () => {
       { label: "secondBatchOwner", getOwner: () => secondBatchOwner },
     ];
 
-    const successRanges = [
-      { cursor: 1, limit: 1 },
-      { cursor: 1, limit: 2 },
-      { cursor: 3, limit: 6 },
-      { cursor: vaultSplitIndex, limit: vaultSplitIndex },
-      { cursor: 1, limit: vaultSplitIndex },
-    ];
-
     ownersTestCases.forEach(({ label, getOwner }) => {
-      successRanges.forEach(({ cursor, limit }) => {
+      [
+        { cursor: 1, limit: 1 },
+        { cursor: 1, limit: 2 },
+        { cursor: 3, limit: 6 },
+        { cursor: vaultSplitIndex, limit: vaultSplitIndex },
+        { cursor: 1, limit: vaultSplitIndex },
+      ].forEach(({ cursor, limit }) => {
         it(`returns all vaults owned by a given address ${label} where cursor=${cursor}, limit=${limit}`, async () => {
           const owner = getOwner();
 
@@ -339,6 +337,41 @@ describe("VaultViewer", () => {
           vaultViewer,
           "ZeroArgument",
         );
+      });
+    });
+
+    ownersTestCases.forEach(({ label, getOwner }) => {
+      [
+        { cursor: 1, limit: 1 },
+        { cursor: 1, limit: 2 },
+        { cursor: 1, limit: 3 },
+        { cursor: 1, limit: stakingVaultCount },
+      ].forEach(({ cursor, limit }) => {
+        it(`walks all pages(cursor=${cursor}, limit=${limit}) for ${label} via nextCursor and returns exactly his vaults in order`, async () => {
+          const owner = getOwner();
+          const collected: string[] = [];
+
+          for (let safety = 0; safety < stakingVaultCount + 5; safety++) {
+            const [page, nextCursor] = await vaultViewer.vaultsByOwner(owner, cursor, limit);
+            collected.push(...page);
+
+            if (nextCursor === 0n) break;
+            cursor = Number(nextCursor);
+          }
+
+          const expected: string[] = [];
+          for (let gi = 1; gi <= stakingVaults.length; gi++) {
+            // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+            const idx = gi - 1;
+            const { stakingVault } = stakingVaults[idx];
+            const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
+            if (ownerAtGi.address === owner.address) {
+              expected.push(await stakingVault.getAddress());
+            }
+          }
+
+          expect(collected).to.deep.equal(expected);
+        });
       });
     });
   });
@@ -444,6 +477,43 @@ describe("VaultViewer", () => {
           await expect(
             vaultViewer.vaultsByRole(role, grantee.getAddress(), cursor, limit),
           ).to.be.revertedWithCustomError(vaultViewer, "WrongCursorPagination");
+        });
+      });
+    });
+
+    granteesTestCases.forEach(({ label, getGrantee }) => {
+      [
+        { cursor: 1, limit: 1 },
+        { cursor: 1, limit: 2 },
+        { cursor: 1, limit: 3 },
+        { cursor: 1, limit: stakingVaultCount },
+      ].forEach(({ cursor, limit }) => {
+        it(`walks all pages(cursor=${cursor}, limit=${limit}) for ${label} via nextCursor and returns exactly matching vaults in order`, async () => {
+          const grantee = getGrantee();
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+
+          const collected: string[] = [];
+
+          for (let safety = 0; safety < stakingVaultCount + 5; safety++) {
+            const [page, nextCursor] = await vaultViewer.vaultsByRole(role, grantee, cursor, limit);
+            collected.push(...page);
+
+            if (nextCursor === 0n) break;
+            cursor = Number(nextCursor);
+          }
+
+          const expected: string[] = [];
+          for (let gi = 1; gi <= stakingVaults.length; gi++) {
+            // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+            const idx = gi - 1;
+            const { stakingVault } = stakingVaults[idx];
+            const grantedAtGi = idx < vaultSplitIndex ? firstBatchGrantee : secondBatchGrantee;
+            if (grantedAtGi.address === grantee.address) {
+              expected.push(await stakingVault.getAddress());
+            }
+          }
+
+          expect(collected).to.deep.equal(expected);
         });
       });
     });
