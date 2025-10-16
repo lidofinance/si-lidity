@@ -42,8 +42,7 @@ Just updates submodules with:
 git submodule init
 git submodule update --remote --recursive
 cd submodules/lidofinance-core
-git checkout feat/testnet-3
-cd ../../
+git checkout feat/vaults
 ```
 
 ### 🏃‍♂️ Compile

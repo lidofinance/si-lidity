@@ -95,7 +95,7 @@ contract VaultHub__MockForHubViewer {
             uint16(1), // infraFeeBP
             uint16(1), // liquidityFeeBP
             uint16(1), // reservationFeeBP
-            false // isBeaconDepositsManuallyPaused
+            false // beaconChainDepositsPauseIntent
         );
 
         $.vaults.push(_vault);

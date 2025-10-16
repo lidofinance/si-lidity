@@ -8,7 +8,11 @@ import readline from "readline";
 
 import { log } from "lib/log";
 
-const API_URL = "https://api.etherscan.io/api";
+const API_URL = "https://api.etherscan.io/v2/api";
+
+export const getEtherscanApiUrl = (chainId: number) => {
+  return `${API_URL}?chainId=${chainId}`;
+};
 
 // The HardhatVerify haven't been ported to Hardhat 3 yet
 // This is a temporary solution until HardhatVerify is migrated to Hardhat 3.
@@ -64,7 +68,7 @@ export const verifyDeployedContracts = task(
       log("⏱ Waiting 5 seconds before checking verification status...");
       await new Promise((resolve) => setTimeout(resolve, 10_000));
 
-      await checkVerificationStatus(verificationStatusGuid);
+      await checkVerificationStatus(verificationStatusGuid, chainId);
     } catch (error) {
       log.error(`Error verifying the ${contractName} contract:`, error);
       throw error;
@@ -185,7 +189,7 @@ const verifyOnEtherscan = async (
     formData.append("constructorArguements", encodedConstructorArgs);
     formData.append("sourceCode", JSON.stringify(jsoned.input));
 
-    const response = await fetch(API_URL, {
+    const response = await fetch(getEtherscanApiUrl(chainId), {
       method: "POST",
       body: formData,
     });
@@ -204,7 +208,7 @@ const verifyOnEtherscan = async (
   }
 };
 
-const checkVerificationStatus = async (guid: string): Promise<void> => {
+const checkVerificationStatus = async (guid: string, chainId: number): Promise<void> => {
   try {
     const params = new URLSearchParams({
       apikey: process.env.ETHERSCAN_API_KEY,
@@ -213,7 +217,7 @@ const checkVerificationStatus = async (guid: string): Promise<void> => {
       guid,
     });
 
-    const response = await fetch(API_URL, {
+    const response = await fetch(getEtherscanApiUrl(chainId), {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
