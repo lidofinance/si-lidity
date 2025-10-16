@@ -42,8 +42,7 @@ Just updates submodules with:
 git submodule init
 git submodule update --remote --recursive
 cd submodules/lidofinance-core
-git checkout feat/audit-5
-// "feat/vaults" after hoodi public testnet deploy
+git checkout feat/vaults
 ```
 
 ### 🏃‍♂️ Compile
