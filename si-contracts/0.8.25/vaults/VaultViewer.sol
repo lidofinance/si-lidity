@@ -90,7 +90,7 @@ contract VaultViewer {
     /// @return nextCursor 1-based index to resume from, or 0 if end is reached
     /// @custom:note Avoid triggering the `_ownerNoVaults` case:
     /// Call this function only for owners that have at least one vault connected,
-    /// otherwise a fallback handling would require iterating over all vaults.
+    /// otherwise a fallback handling would require iterating over all vaults (needs 272_592_418 gas).
     function vaultsByOwner(
         address _owner,
         uint256 _cursor,
@@ -135,7 +135,7 @@ contract VaultViewer {
     /// @return nextCursor 1-based index to resume from, or 0 if end is reached
     /// @custom:note Avoid triggering the `_memberNoRoles` case:
     /// Call this function only for members that have at least one role assigned,
-    /// otherwise a fallback handling would require iterating over all vaults.
+    /// otherwise a fallback handling would require iterating over all vaults (needs 272_402_629 gas).
     function vaultsByRole(
         bytes32 _role,
         address _member,
