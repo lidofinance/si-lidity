@@ -84,6 +84,8 @@ const config: HardhatUserConfig = {
       {
         version: "0.8.25",
         settings: {
+          // like here https://github.com/lidofinance/core/blob/4af82f0d0851ec514b32c9ce40c7ac0cd2915d69/hardhat.config.ts
+          viaIR: true,
           optimizer: {
             enabled: true,
             runs: 200,
@@ -96,7 +98,11 @@ const config: HardhatUserConfig = {
     overrides: {
       "si-contracts/0.8.25/vaults/VaultViewer.sol": {
         version: "0.8.25",
-        settings: { optimizer: { enabled: true, runs: 999_999 } },
+        settings: {
+          // like here https://github.com/lidofinance/core/blob/4af82f0d0851ec514b32c9ce40c7ac0cd2915d69/hardhat.config.ts
+          viaIR: true,
+          optimizer: { enabled: true, runs: 999_999 },
+        },
       },
     },
   },
