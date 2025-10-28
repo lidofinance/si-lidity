@@ -274,12 +274,14 @@ describe("VaultViewer", () => {
       ].forEach(({ cursor, limit }) => {
         it(`returns all vaults owned by a given address ${label} where cursor=${cursor}, limit=${limit}`, async () => {
           const owner = getOwner();
-
           const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(owner, cursor, limit);
 
+          const total = stakingVaults.length;
+          const remaining = total - cursor + 1;
+          const maxScan = Math.min(limit, Math.max(remaining, 0));
+
           const expectedVaults: string[] = [];
-          let gi = cursor;
-          for (; gi <= stakingVaults.length && expectedVaults.length < limit; gi++) {
+          for (let gi = cursor; gi <= total && gi < cursor + maxScan; gi++) {
             // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
             const idx = gi - 1;
             const { stakingVault } = stakingVaults[idx];
@@ -296,7 +298,7 @@ describe("VaultViewer", () => {
           }
 
           // ✅ Check nextCursor
-          const expectedNextCursor = gi <= stakingVaults.length ? BigInt(gi) : 0;
+          const expectedNextCursor = cursor + maxScan <= total ? BigInt(cursor + maxScan) : 0;
           expect(nextCursor).to.equal(expectedNextCursor);
         });
       });
@@ -310,8 +312,17 @@ describe("VaultViewer", () => {
     ].forEach(({ cursor, limit }) => {
       it(`returns zero vaults owned by a given address (ownerWithNoVaults) where cursor=${cursor}, limit=${limit}`, async () => {
         const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(ownerWithNoVaults, cursor, limit);
+
+        const total = stakingVaults.length;
+        const remaining = total - cursor + 1;
+        const maxScan = Math.min(limit, Math.max(remaining, 0));
+
+        // ✅ Check vaults
         expect(vaults.length).to.equal(0);
-        expect(nextCursor).to.equal(0);
+
+        // ✅ Check nextCursor
+        const expectedNextCursor = cursor + maxScan <= total ? BigInt(cursor + maxScan) : 0n;
+        expect(nextCursor).to.equal(expectedNextCursor);
       });
     });
 
@@ -403,11 +414,7 @@ describe("VaultViewer", () => {
 
     const granteesTestCases = [
       { label: "firstBatchGrantee", getGrantee: () => firstBatchGrantee },
-      {
-        label: "secondBatchGrantee",
-        getGrantee: () => secondBatchGrantee,
-        ownedCount: () => stakingVaults.length - vaultSplitIndex,
-      },
+      { label: "secondBatchGrantee", getGrantee: () => secondBatchGrantee },
       { label: "granteeWithNoRoles", getGrantee: () => granteeWithNoRoles },
     ];
 
@@ -422,26 +429,29 @@ describe("VaultViewer", () => {
       successRanges.forEach(({ cursor, limit }) => {
         it(`returns vaults for ${label} where cursor=${cursor}, limit=${limit}`, async () => {
           const grantee = getGrantee();
+          const granteeAddr = await grantee.getAddress();
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
 
-          const [vaults, nextCursor] = await vaultViewer.vaultsByRole(role, await grantee.getAddress(), cursor, limit);
+          const [vaults, nextCursor] = await vaultViewer.vaultsByRole(role, granteeAddr, cursor, limit);
+
+          const total = stakingVaults.length;
+          const remaining = total - cursor + 1;
+          const scan = Math.min(limit, Math.max(remaining, 0));
 
           let expectedCount = 0;
-          let gi = cursor;
-          for (; gi <= stakingVaults.length && expectedCount < limit; gi++) {
+          for (let gi = cursor; gi <= total && gi < cursor + scan; gi++) {
             // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
             const idx = gi - 1;
             const grantedTo = idx < vaultSplitIndex ? firstBatchGrantee : secondBatchGrantee;
-            if ((await grantee.getAddress()) === (await grantedTo.getAddress())) {
-              expectedCount++;
-            }
+            const grantedAddr = await grantedTo.getAddress();
+            if (granteeAddr === grantedAddr) expectedCount++;
           }
 
           // ✅ Check vaults count
           expect(vaults.length).to.equal(expectedCount);
 
           // ✅ Check nextCursor
-          const expectedNextCursor = gi <= stakingVaults.length ? BigInt(gi) : 0n;
+          const expectedNextCursor = cursor + scan <= total ? BigInt(cursor + scan) : 0n;
           expect(nextCursor).to.equal(expectedNextCursor);
         });
       });

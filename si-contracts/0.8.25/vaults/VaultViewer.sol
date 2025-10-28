@@ -85,12 +85,9 @@ contract VaultViewer {
     /// @notice Returns vaults owned by `_owner` using `cursor-based` pagination
     /// @param _owner Address of the owner
     /// @param _cursor 1-based global index to start from (pass 1 to start from the first vault)
-    /// @param _limit Maximum number of owner-matching vaults to return (must be > 0)
+    /// @param _limit Maximum number of vaults to iterate over (must be > 0)
     /// @return vaults Array of owner-matching vaults (max length <= _limit)
     /// @return nextCursor 1-based index to resume from, or 0 if end is reached
-    /// @custom:note Avoid triggering the `_ownerNoVaults` case:
-    /// Call this function only for owners that have at least one vault connected,
-    /// otherwise a fallback handling would require iterating over all vaults (needs 272_592_418 gas).
     function vaultsByOwner(
         address _owner,
         uint256 _cursor,
@@ -102,15 +99,20 @@ contract VaultViewer {
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
-
         if (_cursor > vaultsCount) revert WrongCursorPagination(_cursor, vaultsCount);
 
-        vaults = new IStakingVault[](_limit);
+        uint256 remaining = vaultsCount - _cursor + 1;
+        uint256 scan = _limit < remaining ? _limit : remaining;
+
+        if (scan == 0) return (new IStakingVault[](0), 0);
+
+        vaults = new IStakingVault[](scan);
         IStakingVault vault;
         uint256 matchedCount = 0;
 
+        uint256 end = _cursor + scan;
         uint256 i = _cursor;
-        for (; i <= vaultsCount && matchedCount < _limit; ) {
+        for (; i < end; ) {
             vault = IStakingVault(vaultHub.vaultByIndex(i));
             if (isVaultOwner(vault, _owner)) {
                 vaults[matchedCount] = vault;
@@ -123,19 +125,16 @@ contract VaultViewer {
         assembly { mstore(vaults, matchedCount) }
 
         // next cursor (0 means end)
-        nextCursor = (i <= vaultsCount) ? i : 0;
+        nextCursor = (scan == remaining) ? 0 : (_cursor + scan);
     }
 
     /// @notice Returns vaults where `_member` has `_role`, using cursor-based pagination
     /// @param _role Role to check
     /// @param _member Address to check for the role
     /// @param _cursor 1-based global index to start from (pass 1 to start from the first vault)
-    /// @param _limit Maximum number of matching vaults to return (must be > 0)
+    /// @param _limit Maximum number of vaults to iterate over (must be > 0)
     /// @return vaults Array of vaults where `_member` has `_role` (max length ≤ _limit)
     /// @return nextCursor 1-based index to resume from, or 0 if end is reached
-    /// @custom:note Avoid triggering the `_memberNoRoles` case:
-    /// Call this function only for members that have at least one role assigned,
-    /// otherwise a fallback handling would require iterating over all vaults (needs 272_402_629 gas).
     function vaultsByRole(
         bytes32 _role,
         address _member,
@@ -151,12 +150,18 @@ contract VaultViewer {
 
         if (_cursor > vaultsCount) revert WrongCursorPagination(_cursor, vaultsCount);
 
-        vaults = new IStakingVault[](_limit);
+        uint256 remaining = vaultsCount - _cursor + 1;
+        uint256 scan = _limit < remaining ? _limit : remaining;
+
+        if (scan == 0) return (new IStakingVault[](0), 0);
+
+        vaults = new IStakingVault[](scan);
         IStakingVault vault;
         uint256 matchedCount = 0;
 
+        uint256 end = _cursor + scan;
         uint256 i = _cursor;
-        for (; i <= vaultsCount && matchedCount < _limit; ) {
+        for (; i < end; ) {
             vault = IStakingVault(vaultHub.vaultByIndex(i));
             if (hasRole(vault, _member, _role)) {
                 vaults[matchedCount] = vault;
@@ -169,7 +174,7 @@ contract VaultViewer {
         assembly { mstore(vaults, matchedCount) }
 
         // next cursor (0 means end)
-        nextCursor = (i <= vaultsCount) ? i : 0;
+        nextCursor = (scan == remaining) ? 0 : (_cursor + scan);
     }
 
     /// @notice Returns aggregated data for a single vault
