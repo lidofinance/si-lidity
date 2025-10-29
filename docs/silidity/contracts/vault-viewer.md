@@ -44,38 +44,12 @@ Holds information about members related to a vault:
 
 ## Methods
 
-### vaultsConnected
-
-Returns all connected vaults registered in the VaultHub.
-
-```solidity
-function vaultsConnected() view returns(IStakingVault[])
-```
-
-### vaultsConnectedBound
-
-Returns connected vaults within a specified index range and number of leftover vaults.
-
-```solidity
-function vaultsConnectedBound(uint256 _from, uint256 _to)
-view returns(IStakingVault[] memory, uint256)
-```
-
 ### vaultsByOwner
 
 Returns vaults owned by a specific address.
 
 ```solidity
-function vaultsByOwner(address _owner) view returns(IStakingVault[])
-```
-
-### vaultsByOwnerBound
-
-Returns vaults owned by an address within a specific range and leftover count.
-
-```solidity
-function vaultsByOwnerBound(address _owner, uint256 _from, uint256 _to)
-view returns(IStakingVault[] memory, uint256)
+function vaultsByOwner(address _owner, uint256 _cursor, uint256 _limit) view returns(IStakingVault[] memory vaults, uint256 nextCursor)
 ```
 
 ### vaultsByRole
@@ -83,16 +57,7 @@ view returns(IStakingVault[] memory, uint256)
 Returns vaults where a member holds a specific role on the vault's owner contract.
 
 ```solidity
-function vaultsByRole(bytes32 _role, address _member) view returns(IStakingVault[])
-```
-
-### vaultsByRoleBound
-
-Returns vaults for a role and member within a range and leftover count.
-
-```solidity
-function vaultsByRoleBound(bytes32 _role, address _member, uint256 _from, uint256 _to)
-view returns(IStakingVault[] memory, uint256)
+function vaultsByRole(bytes32 _role, address _member, uint256 _cursor, uint256 _limit) view returns(IStakingVault[] memory vaults, uint256 nextCursor)
 ```
 
 ### getVaultData
@@ -100,28 +65,16 @@ view returns(IStakingVault[] memory, uint256)
 Returns aggregated data for a specific vault, including value, liabilities, and operator fee.
 
 ```solidity
-function getVaultData(address vault)
-view returns(
-  VaultData {
-    address vaultAddress;
-    VaultHub.VaultConnection connection;
-    VaultHub.VaultRecord record;
-    uint256 totalValue;
-    uint256 liabilityStETH;
-    uint256 nodeOperatorFeeRate;
-    bool isReportFresh;
-    LazyOracle.QuarantineInfo: quarantineInfo
-  }
-)
+function vaultData(address vault) view returns(VaultData memory)
 ```
 
-### getVaultsDataBound
+### vaultsDataBound
 
 Returns aggregated data for connected vaults within a range.
 
 ```solidity
-function getVaultsDataBound(uint256 _from, uint256 _to)
-view returns(VaultData[] memory, uint256)
+function vaultsDataBound(uint256 _from, uint256 _to)
+view returns(VaultData[] memory vaultsData, uint256 leftover)
 ```
 
 ### getRoleMembers
@@ -129,15 +82,8 @@ view returns(VaultData[] memory, uint256)
 Returns detailed role members data for a vault owner.
 
 ```solidity
-function getRoleMembers(address vaultAddress, bytes32[] calldata roles)
-view returns(
-  VaultMembers {
-    address vault;
-    address owner;
-    address nodeOperator;
-    address[][] members;
-  }
-)
+function roleMembers(address vaultAddress, bytes32[] calldata roles)
+view returns(VaultMembers memory)
 ```
 
 ### getRoleMembersBatch
@@ -145,6 +91,6 @@ view returns(
 Returns role members data for multiple vaults.
 
 ```solidity
-function getRoleMembersBatch(address[] calldata vaultAddresses, bytes32[] calldata roles)
+function roleMembersBatch(address[] calldata vaultAddresses, bytes32[] calldata roles)
 view returns(VaultMembers[] memory)
 ```

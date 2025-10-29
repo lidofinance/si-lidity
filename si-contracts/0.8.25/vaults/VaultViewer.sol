@@ -280,8 +280,8 @@ contract VaultViewer {
 
     // ==================== Internal Functions ====================
 
-    /// @notice Safely attempt a staticcall to `getRoleMembers(bytes32)` on the owner address
-    /// @dev common logic for getRoleMembers
+    /// @notice Safely attempt a staticcall to `roleMembers(bytes32)` on the owner address
+    /// @dev common logic for roleMembers
     /// @dev More gas-efficient to do any `_isContract(owner)` check in the caller
     /// @param owner The address to call (may be a contract or an EOA)
     /// @param role The role identifier
