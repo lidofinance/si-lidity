@@ -52,6 +52,21 @@ Returns vaults owned by a specific address.
 function vaultsByOwner(address _owner, uint256 _cursor, uint256 _limit) view returns(IStakingVault[] memory vaults, uint256 nextCursor)
 ```
 
+<details>
+  <summary>⚠️ **Important** ⚠️</summary>
+
+The **\_limit** parameter defines the maximum number of vaults to iterate over, not the number of owner matches to return.
+
+Each call scans up to **\_limit** positions in the global vault list starting from **\_cursor**, regardless of how many vaults belong to **\_owner**.
+This ensures predictable gas usage and prevents excessive iteration when the owner has no vaults (**\_ownerNoVaults** case).
+
+If the provided owner address has no connected vaults, the function still stops after **\_limit** iterations —
+it will not perform a full scan across all vaults (≈272 M gas for full traversal).
+
+Continue paginating by calling again with **nextCursor** until it equals 0.
+
+</details>
+
 ### vaultsByRole
 
 Returns vaults where a member holds a specific role on the vault's owner contract.
@@ -59,6 +74,21 @@ Returns vaults where a member holds a specific role on the vault's owner contrac
 ```solidity
 function vaultsByRole(bytes32 _role, address _member, uint256 _cursor, uint256 _limit) view returns(IStakingVault[] memory vaults, uint256 nextCursor)
 ```
+
+<details>
+  <summary>⚠️ **Important** ⚠️</summary>
+
+The **\_limit** parameter specifies the maximum number of vaults to scan, not the number of matches where **\_member** has **\_role**.
+
+Each call examines up to **\_limit** vaults starting from **\_cursor**, regardless of how many contain the specified role.
+This guarantees bounded gas cost and prevents full-list scans when the member has no assigned roles (**\_memberNoRoles** case).
+
+If the provided member address has no matching roles, the function still stops after **\_limit** iterations —
+it will not iterate through all vaults (≈272 M gas for full traversal).
+
+Continue paginating by calling again with **nextCursor** until it equals 0.
+
+</details>
 
 ### getVaultData
 
