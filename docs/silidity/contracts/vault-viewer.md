@@ -44,6 +44,50 @@ Holds information about members related to a vault:
 
 ## Methods
 
+### vaultAddressesBound
+
+Returns vault addresses for a range of vaults (indices are 1-based, inclusive)
+
+```solidity
+function vaultAddressesBound(uint256 _from, uint256 _to)
+view returns(IStakingVault[] memory vaults, uint256 leftover)
+```
+
+### vaultData
+
+Returns aggregated data for a specific vault, including value, liabilities, and operator fee.
+
+```solidity
+function vaultData(address vault) view returns(VaultData memory)
+```
+
+### vaultsDataBound
+
+Returns aggregated data for a range of vaults (indices are 1-based, inclusive)
+
+```solidity
+function vaultsDataBound(uint256 _from, uint256 _to)
+view returns(VaultData[] memory vaultsData, uint256 leftover)
+```
+
+### roleMembers
+
+Returns detailed role members data for a vault owner.
+
+```solidity
+function roleMembers(address vaultAddress, bytes32[] calldata roles)
+view returns(VaultMembers memory)
+```
+
+### roleMembersBatch
+
+Returns role members data for multiple vaults.
+
+```solidity
+function roleMembersBatch(address[] calldata vaultAddresses, bytes32[] calldata roles)
+view returns(VaultMembers[] memory)
+```
+
 ### vaultsByOwner
 
 Returns vaults owned by a specific address.
@@ -89,38 +133,3 @@ it will not iterate through all vaults (≈272 M gas for full traversal).
 Continue paginating by calling again with **nextCursor** until it equals 0.
 
 </details>
-
-### getVaultData
-
-Returns aggregated data for a specific vault, including value, liabilities, and operator fee.
-
-```solidity
-function vaultData(address vault) view returns(VaultData memory)
-```
-
-### vaultsDataBound
-
-Returns aggregated data for connected vaults within a range.
-
-```solidity
-function vaultsDataBound(uint256 _from, uint256 _to)
-view returns(VaultData[] memory vaultsData, uint256 leftover)
-```
-
-### getRoleMembers
-
-Returns detailed role members data for a vault owner.
-
-```solidity
-function roleMembers(address vaultAddress, bytes32[] calldata roles)
-view returns(VaultMembers memory)
-```
-
-### getRoleMembersBatch
-
-Returns role members data for multiple vaults.
-
-```solidity
-function roleMembersBatch(address[] calldata vaultAddresses, bytes32[] calldata roles)
-view returns(VaultMembers[] memory)
-```
