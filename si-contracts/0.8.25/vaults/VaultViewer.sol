@@ -235,6 +235,39 @@ contract VaultViewer {
         leftover = vaultsCount > _to ? vaultsCount - _to : 0;
     }
 
+    /// @notice Returns vault addresses for a range of vaults (indices are 1-based, inclusive)
+    /// @param _from 1-based index to start from (inclusive)
+    /// @param _to 1-based index to end at (inclusive)
+    /// @return vaults Array of vault contracts (IStakingVault)
+    /// @return leftover Number of leftover vaults
+    function vaultAddressesBound(uint256 _from, uint256 _to) public view returns (IStakingVault[] memory vaults, uint256 leftover) {
+        // VaultHub index is 1-based
+        _requireNotZero(_from, '_from');
+        _requireNotZero(_to, '_to');
+
+        if (_from > _to) revert WrongPaginationRange(_from, _to);
+
+        VaultHub vaultHub = VAULT_HUB;
+        uint256 vaultsCount = vaultHub.vaultsCount();
+
+        if (_to > vaultsCount) {
+            _to = vaultsCount;
+        }
+
+        if (_from > vaultsCount) revert WrongPaginationRange(_from, _to);
+
+        uint256 outputCount = _to >= _from ? (_to - _from + 1) : 0;
+        vaults = new IStakingVault[](outputCount);
+
+        for (uint256 i = 0; i < outputCount; ) {
+            address vault = vaultHub.vaultByIndex(_from + i);
+            vaults[i] = IStakingVault(vault);
+        unchecked { ++i; }
+        }
+
+        leftover = vaultsCount > _to ? vaultsCount - _to : 0;
+    }
+
     /// @notice Returns the VaultMembers for each specified role on a single vault
     /// @param vaultAddress The address of the vault
     /// @param roles An array of role identifiers (bytes32) to query on the vault’s owner contract

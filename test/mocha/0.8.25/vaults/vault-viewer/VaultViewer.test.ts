@@ -242,6 +242,71 @@ describe("VaultViewer", () => {
     });
   });
 
+  context(`vault addresses bound`, () => {
+    beforeEach(async () => {
+      for (const { stakingVault, dashboard } of stakingVaults) {
+        await hub.connect(hubSigner).mock_connectVault(
+          await stakingVault.getAddress(),
+          // dashboard is owner of staking vault
+          await dashboard.getAddress(),
+        );
+      }
+    });
+
+    [
+      { from: 1, to: 1 },
+      { from: 1, to: 2 },
+      { from: 2, to: 3 },
+      { from: 1, to: stakingVaultCount },
+      { from: 3, to: stakingVaultCount },
+      { from: stakingVaultCount, to: stakingVaultCount },
+      { from: 1, to: stakingVaultCount }, // All
+      { from: 1, to: stakingVaultCount + 1 }, // more that all
+      { from: 1, to: stakingVaultCount + stakingVaultCount }, // more that all
+    ].forEach(({ from, to }) => {
+      it(`returns vault contracts in a given range [${from}, ${to}]`, async () => {
+        const [vaults, leftover] = await vaultViewer.vaultAddressesBound(from, to);
+
+        const safeTo = Math.min(to, stakingVaultCount);
+        const expectedLength = from > safeTo ? 0 : safeTo - from + 1;
+        expect(vaults.length).to.equal(expectedLength);
+
+        const expectedLeftover = Math.max(0, stakingVaultCount - safeTo);
+        expect(leftover).to.equal(expectedLeftover);
+      });
+    });
+
+    [
+      { from: 1_000, to: 10_000 },
+      { from: 3, to: 1 },
+      { from: stakingVaultCount, to: 1 },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
+      { from: stakingVaultCount * 10, to: stakingVaultCount * 100 },
+      { from: stakingVaultCount * 100, to: stakingVaultCount },
+    ].forEach(({ from, to }) => {
+      it(`reverts if given range is invalid [${from}, ${to}]`, async () => {
+        await expect(vaultViewer.vaultAddressesBound(from, to)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "WrongPaginationRange",
+        );
+      });
+    });
+
+    [
+      { from: 0, to: 0 },
+      { from: 0, to: 1 },
+      { from: 0, to: 2 },
+      { from: stakingVaultCount, to: 0 },
+    ].forEach(({ from, to }) => {
+      it(`reverts with ZeroArgument for invalid range [${from}, ${to}]`, async () => {
+        await expect(vaultViewer.vaultAddressesBound(from, to)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "ZeroArgument",
+        );
+      });
+    });
+  });
+
   context("vaults by owner", () => {
     const vaultSplitIndex = Math.ceil(stakingVaultCount / 3);
     let firstBatchOwner: HardhatEthersSigner;
