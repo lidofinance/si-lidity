@@ -276,7 +276,6 @@ contract VaultViewer {
         address vaultAddress,
         bytes32[] calldata roles
     ) public view returns (VaultMembers memory roleMembers) {
-        IStakingVault vaultContract = IStakingVault(vaultAddress);
         VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vaultAddress);
         // For connected vaults the `vaultContract.owner()` is VaultHub
         // connection.owner is the owner of the vault - dashboard contract
