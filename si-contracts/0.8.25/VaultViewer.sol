@@ -377,7 +377,7 @@ contract VaultViewer {
     /// @return fee The decoded fee value if present, otherwise 0
     function _getNodeOperatorFeeRate(address owner) internal view returns (uint256 fee) {
         if (isContract(owner)) {
-            (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("nodeOperatorFeeRate()"));
+            (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("feeRate()"));
             // Check ensures safe decoding — avoids abi.decode revert on short return data
             if (success && result.length >= 32) {
                 fee = abi.decode(result, (uint256));
