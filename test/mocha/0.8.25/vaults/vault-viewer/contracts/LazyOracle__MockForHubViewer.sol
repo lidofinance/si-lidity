@@ -8,6 +8,7 @@ contract LazyOracle__MockForHubViewer {
     struct Quarantine {
         uint128 pendingTotalValueIncrease;
         uint64 startTimestamp;
+        uint128 totalValueRemainder;
     }
 
     /// @notice Public view struct returned by vaultQuarantine
@@ -16,6 +17,7 @@ contract LazyOracle__MockForHubViewer {
         uint256 pendingTotalValueIncrease;
         uint256 startTimestamp;
         uint256 endTimestamp;
+        uint256 totalValueRemainder;
     }
 
     /// @notice Quarantine period used to compute endTimestamp
@@ -33,8 +35,17 @@ contract LazyOracle__MockForHubViewer {
     /// @param _vault Address of the vault to quarantine
     /// @param _pending Total value increase under quarantine
     /// @param _startTimestamp When the quarantine starts (unix seconds)
-    function mock_addVaultToQuarantine(address _vault, uint128 _pending, uint64 _startTimestamp) external {
-        vaultQuarantines[_vault] = Quarantine({pendingTotalValueIncrease: _pending, startTimestamp: _startTimestamp});
+    function mock_addVaultToQuarantine(
+        address _vault,
+        uint128 _pending,
+        uint128 _remainder,
+        uint64 _startTimestamp
+    ) external {
+        vaultQuarantines[_vault] = Quarantine({
+            pendingTotalValueIncrease: _pending,
+            totalValueRemainder: _remainder,
+            startTimestamp: _startTimestamp
+        });
     }
 
     /// @notice Returns the quarantine info for a given vault
@@ -43,7 +54,7 @@ contract LazyOracle__MockForHubViewer {
     function vaultQuarantine(address _vault) external view returns (QuarantineInfo memory) {
         Quarantine storage q = vaultQuarantines[_vault];
         if (q.pendingTotalValueIncrease == 0) {
-            return QuarantineInfo(false, 0, 0, 0);
+            return QuarantineInfo(false, 0, 0, 0, 0);
         }
 
         return
@@ -51,7 +62,8 @@ contract LazyOracle__MockForHubViewer {
                 isActive: true,
                 pendingTotalValueIncrease: q.pendingTotalValueIncrease,
                 startTimestamp: q.startTimestamp,
-                endTimestamp: q.startTimestamp + quarantinePeriod
+                endTimestamp: q.startTimestamp + quarantinePeriod,
+                totalValueRemainder: q.totalValueRemainder
             });
     }
 }
