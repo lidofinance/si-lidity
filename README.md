@@ -43,6 +43,7 @@ git submodule init
 git submodule update --remote --recursive
 cd submodules/lidofinance-core
 git checkout feat/vaults
+cd ../../
 ```
 
 ### 🏃‍♂️ Compile

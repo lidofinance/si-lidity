@@ -197,6 +197,7 @@ const verifyOnEtherscan = async (
     const data = await response.json();
 
     if (!data || data.status === "0") {
+      console.log(data);
       throw Error(`[verifyOnEtherscan] Bad response: ${data}`);
     }
 
@@ -204,6 +205,7 @@ const verifyOnEtherscan = async (
 
     return data.result; // guid for check a verification status
   } catch (err) {
+    console.log(err);
     throw new Error(`[verifyOnEtherscan] Error: ${err}`);
   }
 };

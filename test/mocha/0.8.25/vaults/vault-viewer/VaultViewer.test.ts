@@ -140,10 +140,9 @@ describe("VaultViewer", () => {
   let vaultViewer: VaultViewer;
   let vaultImpl: StakingVault;
   let stakingVaults: STAKING_VAULT_WRAPPER_TYPE[] = [];
-  // 13 is the minimum required number of vaults for tests,
-  // due to hardcoded ranges like { from: 12, to: 16 } used in success cases.
+  // 3 is the minimum required number of vaults for tests.
   const stakingVaultCount = 30;
-  const gasLimit = 2_000_000n;
+  const gasLimit = 500_000_000n; // Alchemy view gas limit is 550 million, DRPC view gas limit is 600 million
 
   // See the `mock_connectVault` in the `test/mocha/0.8.25/vaults/vault-data-viewer/contracts/VaultHub__MockForHubViewer.sol`
   const expectedVaultsData = {
@@ -245,31 +244,7 @@ describe("VaultViewer", () => {
     });
   });
 
-  context(`connected vaults (connected vaults count is ${stakingVaultCount})`, () => {
-    beforeEach(async () => {
-      for (const { stakingVault, dashboard } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(
-          await stakingVault.getAddress(),
-          // dashboard is owner of staking vault
-          await dashboard.getAddress(),
-        );
-      }
-    });
-
-    it("returns all connected vaults", async () => {
-      const vaults = await vaultViewer.vaultsConnected();
-      // check counts
-      expect(vaults.length).to.equal(stakingVaultCount);
-      expect(vaults.length).to.equal(await hub.vaultsCount());
-      // check addresses
-      expect(vaults[0]).to.equal(stakingVaults[0].stakingVault);
-      expect(vaults[1]).to.equal(stakingVaults[1].stakingVault);
-      expect(vaults[2]).to.equal(stakingVaults[2].stakingVault);
-      expect(vaults[stakingVaultCount - 1]).to.equal(stakingVaults[stakingVaultCount - 1].stakingVault);
-    });
-  });
-
-  context(`connected vaults bound (connected vaults count is ${stakingVaultCount})`, () => {
+  context(`vault addresses bound`, () => {
     beforeEach(async () => {
       for (const { stakingVault, dashboard } of stakingVaults) {
         await hub.connect(hubSigner).mock_connectVault(
@@ -281,86 +256,60 @@ describe("VaultViewer", () => {
     });
 
     [
-      { from: 0, to: 0 },
-      { from: 0, to: 3 },
       { from: 1, to: 1 },
       { from: 1, to: 2 },
-      { from: 3, to: 6 },
-      { from: 2, to: 10 },
-      { from: 9, to: 14 },
-      { from: 12, to: 16 },
+      { from: 2, to: 3 },
+      { from: 1, to: stakingVaultCount },
+      { from: 3, to: stakingVaultCount },
       { from: stakingVaultCount, to: stakingVaultCount },
-      { from: 0, to: stakingVaultCount },
-      { from: 0, to: stakingVaultCount * 10 },
+      { from: 1, to: stakingVaultCount }, // All
+      { from: 1, to: stakingVaultCount + 1 }, // more that all
+      { from: 1, to: stakingVaultCount + stakingVaultCount }, // more that all
     ].forEach(({ from, to }) => {
-      it(`returns all connected vaults in a given range [${from}, ${to}]`, async () => {
-        const [vaults, totalCount] = await vaultViewer.vaultsConnectedBound(from, to);
+      it(`returns vault contracts in a given range [${from}, ${to}]`, async () => {
+        const [vaults, leftover] = await vaultViewer.vaultAddressesBound(from, to);
 
-        const expectedLength = Math.max(0, Math.min(to, stakingVaultCount) - from);
+        const safeTo = Math.min(to, stakingVaultCount);
+        const expectedLength = from > safeTo ? 0 : safeTo - from + 1;
         expect(vaults.length).to.equal(expectedLength);
 
-        const expectedRemaining = Math.max(0, stakingVaultCount - to);
-        expect(totalCount).to.equal(expectedRemaining);
+        const expectedLeftover = Math.max(0, stakingVaultCount - safeTo);
+        expect(leftover).to.equal(expectedLeftover);
       });
     });
 
     [
       { from: 1_000, to: 10_000 },
       { from: 3, to: 1 },
+      { from: stakingVaultCount, to: 1 },
       { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
       { from: stakingVaultCount * 10, to: stakingVaultCount * 100 },
       { from: stakingVaultCount * 100, to: stakingVaultCount },
     ].forEach(({ from, to }) => {
       it(`reverts if given range is invalid [${from}, ${to}]`, async () => {
-        await expect(vaultViewer.vaultsConnectedBound(from, to)).to.be.revertedWithCustomError(
+        await expect(vaultViewer.vaultAddressesBound(from, to)).to.be.revertedWithCustomError(
           vaultViewer,
           "WrongPaginationRange",
         );
       });
     });
-  });
 
-  context(`vaults by owner (vaults count is ${stakingVaultCount})`, () => {
-    const vaultSplitIndex = Math.ceil(stakingVaultCount / 2);
-    let firstBatchOwner: HardhatEthersSigner;
-    let secondBatchOwner: HardhatEthersSigner;
-    let ownerWithNoVaults: HardhatEthersSigner;
-
-    beforeEach(async () => {
-      [, firstBatchOwner, secondBatchOwner, ownerWithNoVaults] = await ethers.getSigners();
-
-      for (let i = 0; i < stakingVaults.length; i++) {
-        const { stakingVault } = stakingVaults[i];
-        const owner = i < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
-
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), owner);
-      }
-    });
-
-    it("returns all vaults owned by a given address (firstBatchOwner)", async () => {
-      const vaults = await vaultViewer.vaultsByOwner(firstBatchOwner);
-      expect(vaults.length).to.equal(vaultSplitIndex);
-      for (let i = 0; i < vaultSplitIndex; i++) {
-        expect(vaults[i]).to.equal(stakingVaults[i].stakingVault);
-      }
-    });
-
-    it("returns all vaults owned by a given address (secondBatchOwner)", async () => {
-      const vaults = await vaultViewer.vaultsByOwner(secondBatchOwner);
-      const expectedCount = stakingVaults.length - vaultSplitIndex;
-      expect(vaults.length).to.equal(expectedCount);
-      for (let i = 0; i < expectedCount; i++) {
-        expect(vaults[i]).to.equal(stakingVaults[vaultSplitIndex + i].stakingVault);
-      }
-    });
-
-    it("returns zero vaults for an owner with no vaults", async () => {
-      const vaults = await vaultViewer.vaultsByOwner(ownerWithNoVaults);
-      expect(vaults.length).to.equal(0);
+    [
+      { from: 0, to: 0 },
+      { from: 0, to: 1 },
+      { from: 0, to: 2 },
+      { from: stakingVaultCount, to: 0 },
+    ].forEach(({ from, to }) => {
+      it(`reverts with ZeroArgument for invalid range [${from}, ${to}]`, async () => {
+        await expect(vaultViewer.vaultAddressesBound(from, to)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "ZeroArgument",
+        );
+      });
     });
   });
 
-  context("vaults by owner bound", () => {
+  context("vaults by owner", () => {
     const vaultSplitIndex = Math.ceil(stakingVaultCount / 3);
     let firstBatchOwner: HardhatEthersSigner;
     let secondBatchOwner: HardhatEthersSigner;
@@ -377,181 +326,137 @@ describe("VaultViewer", () => {
       }
     });
 
-    [
-      { from: 0, to: 0 },
-      { from: 0, to: 3 },
-      { from: 1, to: 1 },
-      { from: 1, to: 2 },
-      { from: 3, to: 6 },
-      { from: vaultSplitIndex, to: vaultSplitIndex },
-      { from: 0, to: vaultSplitIndex },
-      { from: 0, to: vaultSplitIndex * 10 },
-    ].forEach(({ from, to }) => {
-      it(`returns all vaults owned by a given address (firstBatchOwner) in a given range - [${from}, ${to}]`, async () => {
-        const [vaults, leftover] = await vaultViewer.vaultsByOwnerBound(firstBatchOwner, from, to);
+    const ownersTestCases = [
+      { label: "firstBatchOwner", getOwner: () => firstBatchOwner },
+      { label: "secondBatchOwner", getOwner: () => secondBatchOwner },
+    ];
 
-        const ownedVaults = stakingVaults.slice(0, vaultSplitIndex); // only vaults owned by firstBatchOwner
-        const expectedLength = Math.max(0, Math.min(to, ownedVaults.length) - from);
-        const expectedLeftover = Math.max(0, ownedVaults.length - to);
+    ownersTestCases.forEach(({ label, getOwner }) => {
+      [
+        { cursor: 1, limit: 1 },
+        { cursor: 1, limit: 2 },
+        { cursor: 3, limit: 6 },
+        { cursor: vaultSplitIndex, limit: vaultSplitIndex },
+        { cursor: 1, limit: vaultSplitIndex },
+      ].forEach(({ cursor, limit }) => {
+        it(`returns all vaults owned by a given address ${label} where cursor=${cursor}, limit=${limit}`, async () => {
+          const owner = getOwner();
+          const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(owner, cursor, limit);
 
-        expect(vaults.length).to.equal(expectedLength);
-        expect(leftover).to.equal(expectedLeftover);
+          const total = stakingVaults.length;
+          const remaining = total - cursor + 1;
+          const maxScan = Math.min(limit, Math.max(remaining, 0));
 
-        for (let i = 0; i < expectedLength; i++) {
-          expect(vaults[i]).to.equal(ownedVaults[from + i].stakingVault);
-        }
+          const expectedVaults: string[] = [];
+          for (let gi = cursor; gi <= total && gi < cursor + maxScan; gi++) {
+            // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+            const idx = gi - 1;
+            const { stakingVault } = stakingVaults[idx];
+            const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
+            if (ownerAtGi.address === owner.address) {
+              expectedVaults.push(await stakingVault.getAddress());
+            }
+          }
+
+          // ✅ Check vaults
+          expect(vaults.length).to.equal(expectedVaults.length);
+          for (let i = 0; i < expectedVaults.length; i++) {
+            expect(vaults[i]).to.equal(expectedVaults[i]);
+          }
+
+          // ✅ Check nextCursor
+          const expectedNextCursor = cursor + maxScan <= total ? BigInt(cursor + maxScan) : 0;
+          expect(nextCursor).to.equal(expectedNextCursor);
+        });
       });
     });
 
     [
-      { from: 0, to: 0 },
-      { from: 0, to: 3 },
-      { from: 1, to: 1 },
-      { from: 1, to: 2 },
-      { from: 3, to: 6 },
-      { from: 0, to: vaultSplitIndex },
-      { from: 0, to: vaultSplitIndex * 10 },
-    ].forEach(({ from, to }) => {
-      it(`returns all vaults owned by a given address (secondBatchOwner) in a given range - [${from}, ${to}]`, async () => {
-        const [vaults, leftover] = await vaultViewer.vaultsByOwnerBound(secondBatchOwner, from, to);
+      { cursor: 1, limit: 1 },
+      { cursor: 1, limit: 2 },
+      { cursor: 1, limit: vaultSplitIndex },
+      { cursor: 1, limit: vaultSplitIndex * 10 },
+    ].forEach(({ cursor, limit }) => {
+      it(`returns zero vaults owned by a given address (ownerWithNoVaults) where cursor=${cursor}, limit=${limit}`, async () => {
+        const [vaults, nextCursor] = await vaultViewer.vaultsByOwner(ownerWithNoVaults, cursor, limit);
 
-        const owned = stakingVaults.slice(vaultSplitIndex); // only vaults owned by secondBatchOwner
-        const expectedLength = Math.max(0, Math.min(to, owned.length) - from);
-        const expectedLeftover = Math.max(0, owned.length - to);
+        const total = stakingVaults.length;
+        const remaining = total - cursor + 1;
+        const maxScan = Math.min(limit, Math.max(remaining, 0));
 
-        expect(vaults.length).to.equal(expectedLength);
-        expect(leftover).to.equal(expectedLeftover);
-
-        for (let i = 0; i < expectedLength; i++) {
-          expect(vaults[i]).to.equal(owned[from + i].stakingVault);
-        }
-      });
-    });
-
-    [
-      { from: 0, to: 0 },
-      { from: 0, to: vaultSplitIndex },
-      { from: 0, to: vaultSplitIndex * 10 },
-      // for { from: 1 and more } will be WrongPaginationRange
-    ].forEach(({ from, to }) => {
-      it(`returns zero vaults owned by a given address (ownerWithNoVaults) in a given range - [${from}, ${to}]`, async () => {
-        const [vaults, leftover] = await vaultViewer.vaultsByOwnerBound(ownerWithNoVaults, from, to);
+        // ✅ Check vaults
         expect(vaults.length).to.equal(0);
-        expect(leftover).to.equal(0);
+
+        // ✅ Check nextCursor
+        const expectedNextCursor = cursor + maxScan <= total ? BigInt(cursor + maxScan) : 0n;
+        expect(nextCursor).to.equal(expectedNextCursor);
       });
     });
 
     [
-      { from: stakingVaultCount, to: vaultSplitIndex },
-      { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
-    ].forEach(({ from, to }) => {
-      it(`reverts with WrongPaginationRange [${from}, ${to}]`, async () => {
-        await expect(vaultViewer.vaultsByOwnerBound(secondBatchOwner, from, to)).to.be.revertedWithCustomError(
+      { cursor: stakingVaultCount + 1, limit: 2 },
+      { cursor: stakingVaultCount * 10, limit: stakingVaultCount * 10 },
+    ].forEach(({ cursor, limit }) => {
+      it(`reverts with WrongCursorPagination where cursor=${cursor}, limit=${limit}`, async () => {
+        await expect(vaultViewer.vaultsByOwner(secondBatchOwner, cursor, limit)).to.be.revertedWithCustomError(
           vaultViewer,
-          "WrongPaginationRange",
+          "WrongCursorPagination",
         );
+      });
+    });
+
+    [
+      { cursor: 0, limit: 0 },
+      { cursor: 0, limit: 2 },
+      { cursor: 2, limit: 0 },
+    ].forEach(({ cursor, limit }) => {
+      it(`reverts with ZeroArgument where cursor=${cursor}, limit=${limit}`, async () => {
+        await expect(vaultViewer.vaultsByOwner(secondBatchOwner, cursor, limit)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "ZeroArgument",
+        );
+      });
+    });
+
+    ownersTestCases.forEach(({ label, getOwner }) => {
+      [
+        { cursor: 1, limit: 1 },
+        { cursor: 1, limit: 2 },
+        { cursor: 1, limit: 3 },
+        { cursor: 1, limit: stakingVaultCount },
+      ].forEach(({ cursor, limit }) => {
+        it(`walks all pages(cursor=${cursor}, limit=${limit}) for ${label} via nextCursor and returns exactly his vaults in order`, async () => {
+          const maxIters = 100;
+          const collected: string[] = [];
+
+          const owner = getOwner();
+
+          for (let i = 0; i < maxIters; i++) {
+            const [page, nextCursor] = await vaultViewer.vaultsByOwner(owner, cursor, limit);
+            collected.push(...page);
+
+            if (nextCursor === 0n) break;
+            cursor = Number(nextCursor);
+          }
+
+          const expected: string[] = [];
+          for (let gi = 1; gi <= stakingVaults.length; gi++) {
+            // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+            const idx = gi - 1;
+            const { stakingVault } = stakingVaults[idx];
+            const ownerAtGi = idx < vaultSplitIndex ? firstBatchOwner : secondBatchOwner;
+            if (ownerAtGi.address === owner.address) {
+              expected.push(await stakingVault.getAddress());
+            }
+          }
+
+          expect(collected).to.deep.equal(expected);
+        });
       });
     });
   });
 
   context("vaults by role", () => {
-    let grantedDefaultAdmin: HardhatEthersSigner;
-    let grantedPdgCompensatePredeposit: HardhatEthersSigner;
-    let userWithoutRole: HardhatEthersSigner;
-
-    beforeEach(async () => {
-      [, grantedDefaultAdmin, grantedPdgCompensatePredeposit, userWithoutRole] = await ethers.getSigners();
-      for (const { stakingVault, dashboard } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(
-          await stakingVault.getAddress(),
-          // dashboard is owner of staking vault
-          await dashboard.getAddress(),
-        );
-      }
-    });
-
-    [
-      {
-        label: "DEFAULT_ADMIN_ROLE",
-        getRole: async (dashboard: Dashboard) => await dashboard.DEFAULT_ADMIN_ROLE(),
-        getGrantee: () => grantedDefaultAdmin,
-      },
-      {
-        label: "PDG_COMPENSATE_PREDEPOSIT_ROLE",
-        getRole: async () => PDG_COMPENSATE_PREDEPOSIT_ROLE,
-        getGrantee: () => grantedPdgCompensatePredeposit,
-      },
-      // Add more roles here when needed
-    ].forEach(({ label, getRole, getGrantee }) => {
-      it(`returns all vaults (1) with a given role (${label}) on Dashboard (roles was granted)`, async () => {
-        const { stakingVault, dashboard } = stakingVaults[0];
-        const role = await getRole(dashboard);
-        const grantee = getGrantee();
-
-        await dashboard.connect(hubSigner).grantRole(role, grantee.getAddress());
-        const vaults = await vaultViewer.vaultsByRole(role, grantee.getAddress());
-
-        expect(vaults.length).to.equal(1);
-        expect(vaults[0]).to.equal(stakingVault);
-      });
-    });
-
-    [
-      {
-        label: "DEFAULT_ADMIN_ROLE",
-        getRole: async (dashboard: Dashboard) => await dashboard.DEFAULT_ADMIN_ROLE(),
-        getGrantee: () => grantedDefaultAdmin,
-      },
-      {
-        label: "PDG_COMPENSATE_PREDEPOSIT_ROLE",
-        getRole: async () => PDG_COMPENSATE_PREDEPOSIT_ROLE,
-        getGrantee: () => grantedPdgCompensatePredeposit,
-      },
-      // Add more roles here when needed
-    ].forEach(({ label, getRole, getGrantee }) => {
-      it(`returns all vaults (${stakingVaultCount}) with a given role (${label}) across all dashboards (roles was granted)`, async () => {
-        const grantee = getGrantee();
-
-        for (const { dashboard } of stakingVaults) {
-          const role = await getRole(dashboard);
-          await dashboard.connect(hubSigner).grantRole(role, grantee.getAddress());
-        }
-
-        const role = await getRole(stakingVaults[0].dashboard);
-        const vaults = await vaultViewer.vaultsByRole(role, grantee.getAddress());
-
-        expect(vaults.length).to.equal(stakingVaults.length);
-        expect(vaults.length).to.equal(stakingVaultCount);
-
-        for (let i = 0; i < stakingVaults.length; i++) {
-          expect(vaults[i]).to.equal(stakingVaults[i].stakingVault);
-        }
-      });
-    });
-
-    [
-      {
-        label: "DEFAULT_ADMIN_ROLE",
-        getRole: async (dashboard: Dashboard) => await dashboard.DEFAULT_ADMIN_ROLE(),
-        getGrantee: () => userWithoutRole,
-      },
-      {
-        label: "PDG_COMPENSATE_PREDEPOSIT_ROLE",
-        getRole: async () => PDG_COMPENSATE_PREDEPOSIT_ROLE,
-        getGrantee: () => userWithoutRole,
-      },
-    ].forEach(({ label, getRole, getGrantee }) => {
-      it(`returns zero vaults with a given role (${label}) on Dashboard (roles wasn't granted)`, async () => {
-        const grantee = getGrantee();
-        const role = await getRole(stakingVaults[0].dashboard);
-
-        const vaults = await vaultViewer.vaultsByRole(role, grantee.getAddress());
-        expect(vaults.length).to.equal(0);
-      });
-    });
-  });
-
-  context("vaults by role bound", () => {
     const vaultSplitIndex = Math.ceil(stakingVaultCount / 3);
     let firstBatchGrantee: HardhatEthersSigner;
     let secondBatchGrantee: HardhatEthersSigner;
@@ -574,55 +479,121 @@ describe("VaultViewer", () => {
       }
     });
 
-    const testCases = [
-      { label: "firstBatchGrantee", getGrantee: () => firstBatchGrantee, ownedCount: () => vaultSplitIndex },
-      {
-        label: "secondBatchGrantee",
-        getGrantee: () => secondBatchGrantee,
-        ownedCount: () => stakingVaults.length - vaultSplitIndex,
-      },
-      { label: "granteeWithNoRoles", getGrantee: () => granteeWithNoRoles, ownedCount: () => 0 },
+    const granteesTestCases = [
+      { label: "firstBatchGrantee", getGrantee: () => firstBatchGrantee },
+      { label: "secondBatchGrantee", getGrantee: () => secondBatchGrantee },
+      { label: "granteeWithNoRoles", getGrantee: () => granteeWithNoRoles },
     ];
 
     const successRanges = [
-      { from: 0, to: 0 },
-      { from: 0, to: 3 },
-      { from: 0, to: vaultSplitIndex },
-      { from: 0, to: vaultSplitIndex * 10 },
+      { cursor: 1, limit: 1 },
+      { cursor: 1, limit: 2 },
+      { cursor: 3, limit: 6 },
+      { cursor: vaultSplitIndex, limit: vaultSplitIndex },
     ];
 
-    testCases.forEach(({ label, getGrantee, ownedCount }) => {
-      successRanges.forEach(({ from, to }) => {
-        it(`returns vaults for ${label} in range [${from}, ${to}]`, async () => {
+    granteesTestCases.forEach(({ label, getGrantee }) => {
+      successRanges.forEach(({ cursor, limit }) => {
+        it(`returns vaults for ${label} where cursor=${cursor}, limit=${limit}`, async () => {
           const grantee = getGrantee();
+          const granteeAddr = await grantee.getAddress();
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
 
-          const [vaults, leftover] = await vaultViewer.vaultsByRoleBound(role, grantee.getAddress(), from, to);
+          const [vaults, nextCursor] = await vaultViewer.vaultsByRole(role, granteeAddr, cursor, limit);
 
-          const expectedLength = Math.max(0, Math.min(to, ownedCount()) - from);
-          const expectedLeftover = Math.max(0, ownedCount() - to);
+          const total = stakingVaults.length;
+          const remaining = total - cursor + 1;
+          const scan = Math.min(limit, Math.max(remaining, 0));
 
-          expect(vaults.length).to.equal(expectedLength);
-          expect(leftover).to.equal(expectedLeftover);
+          let expectedCount = 0;
+          for (let gi = cursor; gi <= total && gi < cursor + scan; gi++) {
+            // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+            const idx = gi - 1;
+            const grantedTo = idx < vaultSplitIndex ? firstBatchGrantee : secondBatchGrantee;
+            const grantedAddr = await grantedTo.getAddress();
+            if (granteeAddr === grantedAddr) expectedCount++;
+          }
+
+          // ✅ Check vaults count
+          expect(vaults.length).to.equal(expectedCount);
+
+          // ✅ Check nextCursor
+          const expectedNextCursor = cursor + scan <= total ? BigInt(cursor + scan) : 0n;
+          expect(nextCursor).to.equal(expectedNextCursor);
         });
       });
     });
 
-    const failedRanges = [
-      { from: stakingVaultCount, to: vaultSplitIndex },
-      { from: stakingVaultCount, to: vaultSplitIndex * 10 },
-      { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
-    ];
+    granteesTestCases.forEach(({ label, getGrantee }) => {
+      const failedRanges = [
+        { cursor: 0, limit: 0 },
+        { cursor: 0, limit: 3 },
+        { cursor: 0, limit: vaultSplitIndex },
+        { cursor: 0, limit: vaultSplitIndex * 10 },
+      ];
 
-    testCases.forEach(({ label, getGrantee }) => {
-      failedRanges.forEach(({ from, to }) => {
-        it(`reverts with WrongPaginationRange for ${label} in range [${from}, ${to}]`, async () => {
+      failedRanges.forEach(({ cursor, limit }) => {
+        it(`reverts with ZeroArgument for ${label} where cursor=${cursor}, limit=${limit}`, async () => {
+          const grantee = getGrantee();
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+          await expect(
+            vaultViewer.vaultsByRole(role, grantee.getAddress(), cursor, limit),
+          ).to.be.revertedWithCustomError(vaultViewer, "ZeroArgument");
+        });
+      });
+    });
+
+    granteesTestCases.forEach(({ label, getGrantee }) => {
+      const failedRanges = [
+        { cursor: stakingVaultCount + 1, limit: 2 },
+        { cursor: stakingVaultCount * 10, limit: stakingVaultCount * 10 },
+      ];
+
+      failedRanges.forEach(({ cursor, limit }) => {
+        it(`reverts with WrongCursorPagination for ${label} where cursor=${cursor}, limit=${limit}`, async () => {
+          const grantee = getGrantee();
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+          await expect(
+            vaultViewer.vaultsByRole(role, grantee.getAddress(), cursor, limit),
+          ).to.be.revertedWithCustomError(vaultViewer, "WrongCursorPagination");
+        });
+      });
+    });
+
+    granteesTestCases.forEach(({ label, getGrantee }) => {
+      [
+        { cursor: 1, limit: 1 },
+        { cursor: 1, limit: 2 },
+        { cursor: 1, limit: 3 },
+        { cursor: 1, limit: stakingVaultCount },
+      ].forEach(({ cursor, limit }) => {
+        it(`walks all pages(cursor=${cursor}, limit=${limit}) for ${label} via nextCursor and returns exactly matching vaults in order`, async () => {
+          const maxIters = 100;
+          const collected: string[] = [];
+
           const grantee = getGrantee();
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
 
-          await expect(
-            vaultViewer.vaultsByRoleBound(role, grantee.getAddress(), from, to),
-          ).to.be.revertedWithCustomError(vaultViewer, "WrongPaginationRange");
+          for (let i = 0; i < maxIters; i++) {
+            const [page, nextCursor] = await vaultViewer.vaultsByRole(role, grantee, cursor, limit);
+            collected.push(...page);
+
+            if (nextCursor === 0n) break;
+            cursor = Number(nextCursor);
+          }
+
+          const expected: string[] = [];
+          for (let gi = 1; gi <= stakingVaults.length; gi++) {
+            // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+            const idx = gi - 1;
+            const { stakingVault } = stakingVaults[idx];
+            const grantedAtGi = idx < vaultSplitIndex ? firstBatchGrantee : secondBatchGrantee;
+            if (grantedAtGi.address === grantee.address) {
+              expected.push(await stakingVault.getAddress());
+            }
+          }
+
+          expect(collected).to.deep.equal(expected);
         });
       });
     });
@@ -642,10 +613,10 @@ describe("VaultViewer", () => {
       }
     });
 
-    it("returns data for first vault with getVaultData", async () => {
-      const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
+    it("returns data for first vault with vaultData", async () => {
+      const vaultData = await vaultViewer.vaultData(await stakingVaults[0].stakingVault.getAddress());
 
-      // Sanity check: values are returned and types match
+      // ✅ Sanity check: values are returned and types match
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
       expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
       expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");
@@ -660,7 +631,7 @@ describe("VaultViewer", () => {
       expect(vaultData.quarantineInfo.endTimestamp).to.be.a("bigint");
       expect(vaultData.quarantineInfo.totalValueRemainder).to.be.a("bigint");
 
-      // Value check
+      // ✅ Value check
       expect(vaultData.vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.equal(
         expectedVaultsData.connection.forcedRebalanceThresholdBP,
@@ -684,9 +655,9 @@ describe("VaultViewer", () => {
     });
 
     it("returns default values for zero address", async () => {
-      const vaultData = await vaultViewer.getVaultData(ethers.ZeroAddress);
+      const vaultData = await vaultViewer.vaultData(ethers.ZeroAddress);
 
-      // Sanity check: values are returned and types match
+      // ✅ Sanity check: values are returned and types match
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.be.a("bigint");
       expect(vaultData.connection.infraFeeBP).to.be.a("bigint");
       expect(vaultData.connection.liquidityFeeBP).to.be.a("bigint");
@@ -701,7 +672,7 @@ describe("VaultViewer", () => {
       expect(vaultData.quarantineInfo.endTimestamp).to.be.a("bigint");
       expect(vaultData.quarantineInfo.totalValueRemainder).to.be.a("bigint");
 
-      // Value check
+      // ✅ Value check
       expect(vaultData.vaultAddress).to.equal(ethers.ZeroAddress);
       expect(vaultData.connection.forcedRebalanceThresholdBP).to.equal(0n);
       expect(vaultData.connection.infraFeeBP).to.equal(0n);
@@ -738,17 +709,17 @@ describe("VaultViewer", () => {
       );
     });
 
-    it("returns data for first vault with getVaultData", async () => {
-      const vaultData = await vaultViewer.getVaultData(await stakingVaults[0].stakingVault.getAddress());
+    it("returns data for first vault with vaultData", async () => {
+      const vaultData = await vaultViewer.vaultData(await stakingVaults[0].stakingVault.getAddress());
 
-      // Sanity check: values are returned and types match
+      // ✅ Sanity check: values are returned and types match
       expect(vaultData.quarantineInfo.isActive).to.be.a("boolean");
       expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.be.a("bigint");
       expect(vaultData.quarantineInfo.startTimestamp).to.be.a("bigint");
       expect(vaultData.quarantineInfo.endTimestamp).to.be.a("bigint");
       expect(vaultData.quarantineInfo.totalValueRemainder).to.be.a("bigint");
 
-      // Value check
+      // ✅ Value check
       expect(vaultData.vaultAddress).to.equal(await stakingVaults[0].stakingVault.getAddress());
 
       expect(vaultData.quarantineInfo.isActive).to.equal(mockVaultToQuarantineExpectedData.isActive);
@@ -778,27 +749,34 @@ describe("VaultViewer", () => {
     });
 
     [
-      { from: 0, to: 1 },
-      { from: 0, to: 2 },
-      { from: 1, to: 3 },
-      { from: 0, to: stakingVaultCount },
-      { from: 2, to: stakingVaultCount },
+      { from: 1, to: 1 },
+      { from: 1, to: 2 },
+      { from: 2, to: 3 },
+      { from: 1, to: stakingVaultCount },
+      { from: 3, to: stakingVaultCount },
       { from: stakingVaultCount, to: stakingVaultCount },
+      { from: 1, to: stakingVaultCount }, // All
+      { from: 1, to: stakingVaultCount + 1 }, // more that all
+      { from: 1, to: stakingVaultCount + stakingVaultCount }, // more that all
     ].forEach(({ from, to }) => {
-      it(`returns data for a batch of vaults with getVaultsDataBound [${from}, ${to}]`, async () => {
-        const expectedLength = to >= from ? to - from : 0;
+      it(`returns data for a batch of vaults with vaultsDataBound [${from}, ${to}]`, async () => {
         const totalVaults = stakingVaults.length;
-        const expectedLeftover = totalVaults > to ? totalVaults - to : 0;
 
-        const { vaultsData, leftover } = await vaultViewer.getVaultsDataBound(from, to);
+        // 1-based inclusive
+        const safeTo = Math.min(to, totalVaults);
+        const expectedLength = safeTo >= from ? safeTo - from + 1 : 0;
+        const expectedLeftover = totalVaults > safeTo ? totalVaults - safeTo : 0;
+
+        const { vaultsData, leftover } = await vaultViewer.vaultsDataBound(from, to);
 
         expect(vaultsData.length).to.equal(expectedLength);
         expect(leftover).to.equal(expectedLeftover);
 
         for (let i = 0; i < vaultsData.length; i++) {
-          expect(vaultsData[i].vaultAddress).to.equal(await stakingVaults[from + i].stakingVault.getAddress());
+          // vaultHub uses 1-based indexing, but stakingVaults is a regular 0-based JS array.
+          expect(vaultsData[i].vaultAddress).to.equal(await stakingVaults[from - 1 + i].stakingVault.getAddress());
 
-          // Sanity check: values are returned and types match
+          // ✅ Sanity check: values are returned and types match
           expect(vaultsData[i].connection.forcedRebalanceThresholdBP).to.be.a("bigint");
           expect(vaultsData[i].connection.infraFeeBP).to.be.a("bigint");
           expect(vaultsData[i].connection.liquidityFeeBP).to.be.a("bigint");
@@ -813,7 +791,7 @@ describe("VaultViewer", () => {
           expect(vaultsData[i].quarantineInfo.endTimestamp).to.be.a("bigint");
           expect(vaultsData[i].quarantineInfo.totalValueRemainder).to.be.a("bigint");
 
-          // Value check
+          // ✅ Value check
           expect(vaultsData[i].connection.forcedRebalanceThresholdBP).to.equal(
             expectedVaultsData.connection.forcedRebalanceThresholdBP,
           );
@@ -840,17 +818,80 @@ describe("VaultViewer", () => {
     });
 
     [
+      { from: 1, pageSize: 1 },
+      { from: 1, pageSize: 2 },
+      { from: 2, pageSize: 2 },
+      { from: 1, pageSize: 3 },
+      { from: 2, pageSize: 3 },
+      { from: 1, pageSize: stakingVaultCount }, // all
+      { from: 2, pageSize: stakingVaultCount }, // all
+      { from: 1, pageSize: stakingVaultCount + stakingVaultCount }, // more than all
+      { from: 2, pageSize: stakingVaultCount + stakingVaultCount }, // more than all
+    ].forEach(({ from, pageSize }) => {
+      it(`walks all pages with vaultsDataBound(from=${from}, pageSize=${pageSize}) and returns vaults in order`, async () => {
+        const collected: string[] = [];
+        const totalVaults = stakingVaults.length;
+
+        let curFrom = from;
+        let curTo = curFrom + pageSize - 1;
+
+        const remaining = Math.max(0, totalVaults - (curFrom - 1));
+        const maxPages = Math.ceil(remaining / pageSize) + 1;
+        for (let page = 0; page < maxPages; page++) {
+          const { vaultsData, leftover } = await vaultViewer.vaultsDataBound(curFrom, curTo);
+
+          const safeTo = Math.min(curTo, totalVaults);
+          const expectedLength = safeTo >= curFrom ? safeTo - curFrom + 1 : 0;
+          expect(vaultsData.length).to.equal(expectedLength);
+
+          // leftover = vaultsCount - safeTo
+          const expectedLeftover = BigInt(totalVaults - safeTo);
+          expect(leftover).to.equal(expectedLeftover);
+
+          for (let i = 0; i < vaultsData.length; i++) {
+            const expectedAddr = await stakingVaults[curFrom - 1 + i].stakingVault.getAddress();
+            expect(vaultsData[i].vaultAddress).to.equal(expectedAddr);
+            collected.push(vaultsData[i].vaultAddress);
+          }
+
+          if (leftover === 0n) break;
+
+          // next page
+          curFrom = curTo + 1;
+          curTo = curFrom + pageSize - 1;
+        }
+
+        const expectedAll = await Promise.all(
+          stakingVaults.slice(from - 1).map(({ stakingVault }) => stakingVault.getAddress()),
+        );
+
+        expect(collected).to.deep.equal(expectedAll);
+      });
+    });
+
+    [
       { from: stakingVaultCount + 1, to: stakingVaultCount * 10 },
       { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
       { from: stakingVaultCount * 100, to: stakingVaultCount * 10 },
       { from: stakingVaultCount * 10, to: stakingVaultCount * 100 },
     ].forEach(({ from, to }) => {
       it(`reverts with WrongPaginationRange for invalid range [${from}, ${to}]`, async () => {
-        await expect(vaultViewer.getVaultsDataBound(from, to)).to.be.revertedWithCustomError(
+        await expect(vaultViewer.vaultsDataBound(from, to)).to.be.revertedWithCustomError(
           vaultViewer,
           "WrongPaginationRange",
         );
       });
+    });
+  });
+
+  [
+    { from: 0, to: 0 },
+    { from: 0, to: 1 },
+    { from: 0, to: 2 },
+    { from: stakingVaultCount, to: 0 },
+  ].forEach(({ from, to }) => {
+    it(`reverts with ZeroArgument for invalid range [${from}, ${to}]`, async () => {
+      await expect(vaultViewer.vaultsDataBound(from, to)).to.be.revertedWithCustomError(vaultViewer, "ZeroArgument");
     });
   });
 
@@ -878,7 +919,7 @@ describe("VaultViewer", () => {
         await dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await firstGrantee.getAddress());
         await dashboard.connect(hubSigner).grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await secondGrantee.getAddress());
 
-        const roleMembers = await vaultViewer.getRoleMembers(vaultAddress, [
+        const roleMembers = await vaultViewer.roleMembers(vaultAddress, [
           NODE_OPERATOR_MANAGER_ROLE,
           PDG_COMPENSATE_PREDEPOSIT_ROLE,
         ]);
@@ -895,7 +936,7 @@ describe("VaultViewer", () => {
         expect(roleMembers.nodeOperator).to.equal(operatorAddress);
 
         // 3: membersArray — array of arrays
-        const membersArray = roleMembers[3] as string[][];
+        const membersArray = roleMembers.members;
         expect(membersArray.length).to.equal(2);
 
         // Role 0: NODE_OPERATOR_MANAGER_ROLE
@@ -929,7 +970,7 @@ describe("VaultViewer", () => {
           await dashboard.connect(hubSigner).grantRole(WITHDRAW_ROLE, await secondGrantee.getAddress());
         }
 
-        const roleMembers = await vaultViewer.getRoleMembers(vaultAddress, roles);
+        const roleMembers = await vaultViewer.roleMembers(vaultAddress, roles);
 
         expect(roleMembers.length).to.equal(4);
 
@@ -971,7 +1012,7 @@ describe("VaultViewer", () => {
       const zeroAddresses = [ethers.ZeroAddress, ethers.ZeroAddress, ethers.ZeroAddress];
 
       for (const vaultAddress of zeroAddresses) {
-        const roleMembers = await vaultViewer.getRoleMembers(vaultAddress, [
+        const roleMembers = await vaultViewer.roleMembers(vaultAddress, [
           NODE_OPERATOR_MANAGER_ROLE,
           PDG_COMPENSATE_PREDEPOSIT_ROLE,
         ]);
@@ -982,7 +1023,6 @@ describe("VaultViewer", () => {
 
         const membersArray = roleMembers.members;
         expect(membersArray.length).to.equal(2);
-
         expect(membersArray[0].length).to.equal(0);
         expect(membersArray[1].length).to.equal(0);
       }
@@ -1028,7 +1068,7 @@ describe("VaultViewer", () => {
           vaultsSubset.map(({ operator: _operator }) => _operator.getAddress()),
         );
 
-        const membersBatch = await vaultViewer.getRoleMembersBatch(vaultAddresses, roles);
+        const membersBatch = await vaultViewer.roleMembersBatch(vaultAddresses, roles);
 
         expect(membersBatch.length).to.equal(count);
 
@@ -1054,60 +1094,47 @@ describe("VaultViewer", () => {
     });
   });
 
-  context(`gas estimation check (connected vaults: ${stakingVaultCount})`, () => {
+  context(`gas estimation check (vaults: ${stakingVaultCount})`, () => {
     const formatWithSpaces = (n: bigint | number): string => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-
-    let allStakingVaultsOwner: HardhatEthersSigner;
-
     let someGrantee: HardhatEthersSigner;
+    let allStakingVaultsOwnerAddr: string;
 
     before(async () => {
-      [, allStakingVaultsOwner, someGrantee] = await ethers.getSigners();
+      [, someGrantee] = await ethers.getSigners();
 
       await steth.mock__setTotalPooledEther(100n);
       await steth.mock__setTotalShares(100n);
 
-      const ownerAddr = await allStakingVaultsOwner.getAddress();
-
+      const dashboard = stakingVaults[0].dashboard;
+      const role = await dashboard.DEFAULT_ADMIN_ROLE();
+      allStakingVaultsOwnerAddr = await dashboard.getAddress();
       for (const { stakingVault } of stakingVaults) {
-        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), ownerAddr);
+        await hub.connect(hubSigner).mock_connectVault(await stakingVault.getAddress(), allStakingVaultsOwnerAddr);
+        await dashboard.connect(hubSigner).grantRole(role, allStakingVaultsOwnerAddr);
       }
     });
 
     const cases = [
       {
-        label: "vaultsConnected",
-        args: [],
-      },
-      {
-        label: "vaultsConnectedBound",
-        args: () => [0, stakingVaultCount],
-      },
-      {
         label: "vaultsByOwner",
-        args: async (owner: string) => [owner],
+        args: async (owner: string) => [owner, 1, stakingVaultCount],
       },
       {
-        label: "vaultsByOwnerBound",
-        args: async (owner: string) => [owner, 0, stakingVaultCount],
+        label: "vaultsDataBound",
+        args: () => [1, stakingVaultCount],
       },
       {
-        label: "getVaultsDataBound",
-        args: () => [0, stakingVaultCount],
-      },
-      {
-        label: "vaultsByRoleBound",
+        label: "vaultsByRole",
         args: async () => {
           const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
-          return [role, await allStakingVaultsOwner.getAddress(), 0, stakingVaultCount];
+          return [role, allStakingVaultsOwnerAddr, 1, stakingVaultCount];
         },
       },
     ];
 
     cases.forEach(({ label, args }) => {
       it(`${label} gas estimation`, async () => {
-        const ownerAddr = await allStakingVaultsOwner.getAddress();
-        const resolvedArgs = typeof args === "function" ? await args(ownerAddr) : args;
+        const resolvedArgs = typeof args === "function" ? await args(allStakingVaultsOwnerAddr) : args;
 
         const gasEstimate = await ethers.provider.estimateGas({
           to: await vaultViewer.getAddress(),
@@ -1121,7 +1148,7 @@ describe("VaultViewer", () => {
     });
 
     // role grants here do not affect tests above
-    it("getRoleMembersBatch gas estimation (with role grants)", async () => {
+    it("roleMembersBatch gas estimation (with role grants)", async () => {
       const roles = [NODE_OPERATOR_MANAGER_ROLE, PDG_COMPENSATE_PREDEPOSIT_ROLE, CHANGE_TIER_ROLE, WITHDRAW_ROLE];
 
       for (let i = 0; i < stakingVaults.length; i++) {
@@ -1130,7 +1157,6 @@ describe("VaultViewer", () => {
           .grantRole(PDG_COMPENSATE_PREDEPOSIT_ROLE, await someGrantee.getAddress());
 
         await stakingVaults[i].dashboard.connect(hubSigner).grantRole(CHANGE_TIER_ROLE, await someGrantee.getAddress());
-
         await stakingVaults[i].dashboard.connect(hubSigner).grantRole(WITHDRAW_ROLE, await someGrantee.getAddress());
       }
 
@@ -1138,10 +1164,10 @@ describe("VaultViewer", () => {
 
       const gasEstimate = await ethers.provider.estimateGas({
         to: await vaultViewer.getAddress(),
-        data: vaultViewer.interface.encodeFunctionData("getRoleMembersBatch", [vaultAddresses, roles]),
+        data: vaultViewer.interface.encodeFunctionData("roleMembersBatch", [vaultAddresses, roles]),
       });
 
-      console.log("⛽️ getRoleMembersBatch gas estimate (vaults: %d):", stakingVaultCount);
+      console.log("⛽️ roleMembersBatch gas estimate (vaults: %d):", stakingVaultCount);
       console.log("   %s", formatWithSpaces(gasEstimate));
       expect(gasEstimate).to.lte(gasLimit);
     });

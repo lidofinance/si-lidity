@@ -16,7 +16,7 @@ import { abisExtractTask, verifyDeployedContracts } from "./tasks";
 
 const config: HardhatUserConfig = {
   paths: {
-    sources: ["./si-contracts/0.8.25/WstethStaker"],
+    sources: ["./si-contracts/0.8.25/wsteth-staker"],
   },
   plugins: [
     HardhatEthers,
@@ -92,7 +92,7 @@ const config: HardhatUserConfig = {
       },
     ],
     overrides: {
-      "si-contracts/0.8.25/WstethStaker.sol": {
+      "si-contracts/0.8.25/wsteth-staker/WstethStaker.sol": {
         version: "0.8.25",
         settings: { optimizer: { enabled: true, runs: 999_999 } },
       },
