@@ -245,7 +245,6 @@ contract VaultViewer {
     /// @param _offset Zero-based offset in the vaults list [0, vaultsCount)
     /// @param _limit Maximum number of vaults to return (must be > 0)
     /// @return vaults Array of vault contracts (IStakingVault)
-    /// @custom:todo vaultAddressesBound --> vaultAddressesBatch
     function vaultAddressesBound(uint256 _offset, uint256 _limit) public view returns (IStakingVault[] memory vaults) {
         _requireNotZero(_limit, '_limit');
 

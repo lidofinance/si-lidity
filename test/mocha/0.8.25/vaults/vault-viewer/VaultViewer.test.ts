@@ -275,7 +275,7 @@ describe("VaultViewer", () => {
         const total = stakingVaultCount;
         const expectedLength = offset >= total ? 0 : Math.min(limit, total - offset);
 
-        const vaults = await vaultViewer.vaultAddressesBound(offset, limit);
+        const vaults = await vaultViewer.vaultAddressesBatch(offset, limit);
         expect(vaults.length).to.equal(expectedLength);
 
         for (let i = 0; i < vaults.length; i++) {
@@ -295,7 +295,7 @@ describe("VaultViewer", () => {
       { offset: stakingVaultCount * 10, limit: stakingVaultCount * 100 },
     ].forEach(({ offset, limit }) => {
       it(`returns empty for out-of-range (offset=${offset}, limit=${limit})`, async () => {
-        const vaults = await vaultViewer.vaultAddressesBound(offset, limit);
+        const vaults = await vaultViewer.vaultAddressesBatch(offset, limit);
         expect(vaults.length).to.equal(0);
       });
     });
@@ -307,7 +307,7 @@ describe("VaultViewer", () => {
       { offset: stakingVaultCount * 10, limit: 0 },
     ].forEach(({ offset, limit }) => {
       it(`reverts with ZeroArgument when limit is zero (offset=${offset}, limit=${limit})`, async () => {
-        await expect(vaultViewer.vaultAddressesBound(offset, limit)).to.be.revertedWithCustomError(
+        await expect(vaultViewer.vaultAddressesBatch(offset, limit)).to.be.revertedWithCustomError(
           vaultViewer,
           "ZeroArgument",
         );
