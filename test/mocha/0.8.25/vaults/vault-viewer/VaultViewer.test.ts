@@ -255,58 +255,64 @@ describe("VaultViewer", () => {
       }
     });
 
-    // [
-    //   { from: 1, to: 1 },
-    //   { from: 1, to: 2 },
-    //   { from: 2, to: 3 },
-    //   { from: 1, to: stakingVaultCount },
-    //   { from: 3, to: stakingVaultCount },
-    //   { from: stakingVaultCount, to: stakingVaultCount },
-    //   { from: 1, to: stakingVaultCount }, // All
-    //   { from: 1, to: stakingVaultCount + 1 }, // more that all
-    //   { from: 1, to: stakingVaultCount + stakingVaultCount }, // more that all
-    // ].forEach(({ from, to }) => {
-    //   it(`returns vault contracts in a given range [${from}, ${to}]`, async () => {
-    //     const [vaults, leftover] = await vaultViewer.vaultAddressesBound(from, to);
-    //
-    //     const safeTo = Math.min(to, stakingVaultCount);
-    //     const expectedLength = from > safeTo ? 0 : safeTo - from + 1;
-    //     expect(vaults.length).to.equal(expectedLength);
-    //
-    //     const expectedLeftover = Math.max(0, stakingVaultCount - safeTo);
-    //     expect(leftover).to.equal(expectedLeftover);
-    //   });
-    // });
+    [
+      { offset: 0, limit: 1 },
+      { offset: 0, limit: 2 },
+      { offset: 1, limit: 2 },
+      // all
+      { offset: 0, limit: stakingVaultCount },
+      { offset: 2, limit: stakingVaultCount },
+      // only last
+      { offset: stakingVaultCount - 1, limit: stakingVaultCount },
+      { offset: 0, limit: stakingVaultCount + 1 },
+      { offset: 0, limit: stakingVaultCount * 2 },
+      // empty
+      { offset: stakingVaultCount, limit: 10 },
+      // empty
+      { offset: stakingVaultCount + 5, limit: 10 },
+    ].forEach(({ offset, limit }) => {
+      it(`returns vault contracts for (offset=${offset}, limit=${limit})`, async () => {
+        const total = stakingVaultCount;
+        const expectedLength = offset >= total ? 0 : Math.min(limit, total - offset);
 
-    // [
-    //   { from: 1_000, to: 10_000 },
-    //   { from: 3, to: 1 },
-    //   { from: stakingVaultCount, to: 1 },
-    //   { from: stakingVaultCount * 10, to: stakingVaultCount * 10 },
-    //   { from: stakingVaultCount * 10, to: stakingVaultCount * 100 },
-    //   { from: stakingVaultCount * 100, to: stakingVaultCount },
-    // ].forEach(({ from, to }) => {
-    //   it(`reverts if given range is invalid [${from}, ${to}]`, async () => {
-    //     await expect(vaultViewer.vaultAddressesBound(from, to)).to.be.revertedWithCustomError(
-    //       vaultViewer,
-    //       "WrongPaginationRange",
-    //     );
-    //   });
-    // });
+        const vaults = await vaultViewer.vaultAddressesBound(offset, limit);
+        expect(vaults.length).to.equal(expectedLength);
 
-    //   [
-    //     { from: 0, to: 0 },
-    //     { from: 0, to: 1 },
-    //     { from: 0, to: 2 },
-    //     { from: stakingVaultCount, to: 0 },
-    //   ].forEach(({ from, to }) => {
-    //     it(`reverts with ZeroArgument for invalid range [${from}, ${to}]`, async () => {
-    //       await expect(vaultViewer.vaultAddressesBound(from, to)).to.be.revertedWithCustomError(
-    //         vaultViewer,
-    //         "ZeroArgument",
-    //       );
-    //     });
-    //   });
+        for (let i = 0; i < vaults.length; i++) {
+          const expectedAddr = await stakingVaults[offset + i].stakingVault.getAddress();
+          expect(vaults[i]).to.equal(expectedAddr);
+        }
+      });
+    });
+
+    [
+      { offset: stakingVaultCount, limit: 1 },
+      { offset: stakingVaultCount * 10, limit: 5 },
+      { offset: stakingVaultCount * 100, limit: stakingVaultCount },
+      { offset: stakingVaultCount + 1, limit: stakingVaultCount * 10 },
+      { offset: stakingVaultCount * 10, limit: stakingVaultCount * 10 },
+      { offset: stakingVaultCount * 100, limit: stakingVaultCount * 10 },
+      { offset: stakingVaultCount * 10, limit: stakingVaultCount * 100 },
+    ].forEach(({ offset, limit }) => {
+      it(`returns empty for out-of-range (offset=${offset}, limit=${limit})`, async () => {
+        const vaults = await vaultViewer.vaultAddressesBound(offset, limit);
+        expect(vaults.length).to.equal(0);
+      });
+    });
+
+    [
+      { offset: 0, limit: 0 },
+      { offset: 1, limit: 0 },
+      { offset: stakingVaultCount, limit: 0 },
+      { offset: stakingVaultCount * 10, limit: 0 },
+    ].forEach(({ offset, limit }) => {
+      it(`reverts with ZeroArgument when limit is zero (offset=${offset}, limit=${limit})`, async () => {
+        await expect(vaultViewer.vaultAddressesBound(offset, limit)).to.be.revertedWithCustomError(
+          vaultViewer,
+          "ZeroArgument",
+        );
+      });
+    });
   });
 
   context("vaults by owner", () => {
@@ -883,6 +889,9 @@ describe("VaultViewer", () => {
     });
 
     [
+      { offset: stakingVaultCount, limit: 1 },
+      { offset: stakingVaultCount * 10, limit: 5 },
+      { offset: stakingVaultCount * 100, limit: stakingVaultCount },
       { offset: stakingVaultCount + 1, limit: stakingVaultCount * 10 },
       { offset: stakingVaultCount * 10, limit: stakingVaultCount * 10 },
       { offset: stakingVaultCount * 100, limit: stakingVaultCount * 10 },
