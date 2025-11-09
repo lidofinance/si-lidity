@@ -770,9 +770,9 @@ describe("VaultViewer", () => {
       // empty
       { offset: stakingVaultCount + 5, limit: 10 },
     ].forEach(({ offset, limit }) => {
-      it(`returns data for a batch of vaults with vaultsDataBound(offset=${offset}, limit=${limit})`, async () => {
+      it(`returns data for a batch of vaults with vaultsDataBatch(offset=${offset}, limit=${limit})`, async () => {
         const totalVaults = stakingVaults.length;
-        const vaultsData = await vaultViewer.vaultsDataBound(offset, limit);
+        const vaultsData = await vaultViewer.vaultsDataBatch(offset, limit);
 
         // ✅ Length check
         const expectedLength = offset >= totalVaults ? 0 : Math.min(limit, totalVaults - offset);
@@ -852,7 +852,7 @@ describe("VaultViewer", () => {
       { startOffset: stakingVaultCount, pageSize: stakingVaultCount },
       // /empty
     ].forEach(({ startOffset, pageSize }) => {
-      it(`walks pages with vaultsDataBound(offset=${startOffset}, limit=${pageSize}) and preserves order`, async () => {
+      it(`walks pages with vaultsDataBatch(offset=${startOffset}, limit=${pageSize}) and preserves order`, async () => {
         const collected: string[] = [];
         const total = stakingVaults.length;
 
@@ -861,7 +861,7 @@ describe("VaultViewer", () => {
         const maxPages = Math.ceil(Math.max(0, total - startOffset) / Math.max(1, pageSize)) + 2;
 
         for (let page = 0; page < maxPages; page++) {
-          const batch = await vaultViewer.vaultsDataBound(offset, pageSize);
+          const batch = await vaultViewer.vaultsDataBatch(offset, pageSize);
 
           // ✅ Length check
           const expectedSize = offset >= total ? 0 : Math.min(pageSize, total - offset);
@@ -898,7 +898,7 @@ describe("VaultViewer", () => {
       { offset: stakingVaultCount * 10, limit: stakingVaultCount * 100 },
     ].forEach(({ offset, limit }) => {
       it(`returns empty array for out-of-range (offset=${offset}, limit=${limit})`, async () => {
-        const result = await vaultViewer.vaultsDataBound(offset, limit);
+        const result = await vaultViewer.vaultsDataBatch(offset, limit);
         expect(result.length).to.equal(0);
       });
     });
@@ -910,7 +910,7 @@ describe("VaultViewer", () => {
       { offset: stakingVaultCount * 10, limit: 0 },
     ].forEach(({ offset, limit }) => {
       it(`reverts with ZeroArgument when limit == 0 [${offset}, ${limit}]`, async () => {
-        await expect(vaultViewer.vaultsDataBound(offset, limit)).to.be.revertedWithCustomError(
+        await expect(vaultViewer.vaultsDataBatch(offset, limit)).to.be.revertedWithCustomError(
           vaultViewer,
           "ZeroArgument",
         );
@@ -1143,7 +1143,7 @@ describe("VaultViewer", () => {
     //     args: async (owner: string) => [owner, 1, stakingVaultCount],
     //   },
     //   {
-    //     label: "vaultsDataBound",
+    //     label: "vaultsDataBatch",
     //     args: () => [1, stakingVaultCount],
     //   },
     //   {
