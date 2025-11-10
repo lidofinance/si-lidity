@@ -1167,38 +1167,38 @@ describe("VaultViewer", () => {
       }
     });
 
-    // const cases = [
-    //   {
-    //     label: "vaultsByOwner",
-    //     args: async (owner: string) => [owner, 1, stakingVaultCount],
-    //   },
-    //   {
-    //     label: "vaultsDataBatch",
-    //     args: () => [1, stakingVaultCount],
-    //   },
-    //   {
-    //     label: "vaultsByRole",
-    //     args: async () => {
-    //       const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
-    //       return [role, allStakingVaultsOwnerAddr, 1, stakingVaultCount];
-    //     },
-    //   },
-    // ];
+    const cases = [
+      {
+        label: "vaultsByOwnerBatch",
+        args: async (owner: string) => [owner, 1, stakingVaultCount],
+      },
+      {
+        label: "vaultsDataBatch",
+        args: () => [1, stakingVaultCount],
+      },
+      {
+        label: "vaultsByRoleBatch",
+        args: async () => {
+          const role = await stakingVaults[0].dashboard.DEFAULT_ADMIN_ROLE();
+          return [role, allStakingVaultsOwnerAddr, 1, stakingVaultCount];
+        },
+      },
+    ];
 
-    // cases.forEach(({ label, args }) => {
-    //   it(`${label} gas estimation`, async () => {
-    //     const resolvedArgs = typeof args === "function" ? await args(allStakingVaultsOwnerAddr) : args;
-    //
-    //     const gasEstimate = await ethers.provider.estimateGas({
-    //       to: await vaultViewer.getAddress(),
-    //       data: vaultViewer.interface.encodeFunctionData(label, resolvedArgs),
-    //     });
-    //
-    //     console.log(`⛽️ ${label} gas estimate (vaults: ${stakingVaultCount}):`);
-    //     console.log(`   ${formatWithSpaces(gasEstimate)}`);
-    //     expect(gasEstimate).to.lte(gasLimit);
-    //   });
-    // });
+    cases.forEach(({ label, args }) => {
+      it(`${label} gas estimation`, async () => {
+        const resolvedArgs = typeof args === "function" ? await args(allStakingVaultsOwnerAddr) : args;
+
+        const gasEstimate = await ethers.provider.estimateGas({
+          to: await vaultViewer.getAddress(),
+          data: vaultViewer.interface.encodeFunctionData(label, resolvedArgs),
+        });
+
+        console.log(`⛽️ ${label} gas estimate (vaults: ${stakingVaultCount}):`);
+        console.log(`   ${formatWithSpaces(gasEstimate)}`);
+        expect(gasEstimate).to.lte(gasLimit);
+      });
+    });
 
     // role grants here do not affect tests above
     it("roleMembersBatch gas estimation (with role grants)", async () => {
