@@ -46,11 +46,11 @@ Holds information about members related to a vault:
 
 ### vaultAddressesBound
 
-Returns vault addresses for a range of vaults (indices are 1-based, inclusive)
+Returns vault addresses for a range of vaults
 
 ```solidity
-function vaultAddressesBound(uint256 _from, uint256 _to)
-view returns(IStakingVault[] memory vaults, uint256 leftover)
+function vaultAddressesBatch(uint256 _offset, uint256 _limit)
+view returns(IStakingVault[] memory vaults)
 ```
 
 ### vaultData
@@ -63,10 +63,10 @@ function vaultData(address vault) view returns(VaultData memory)
 
 ### vaultsDataBound
 
-Returns aggregated data for a range of vaults (indices are 1-based, inclusive)
+Returns aggregated data for a range of vaults
 
 ```solidity
-function vaultsDataBound(uint256 _from, uint256 _to)
+function vaultsDataBatch(uint256 _offset, uint256 _limit)
 view returns(VaultData[] memory vaultsData, uint256 leftover)
 ```
 
@@ -93,7 +93,7 @@ view returns(VaultMembers[] memory)
 Returns vaults owned by a specific address.
 
 ```solidity
-function vaultsByOwner(address _owner, uint256 _cursor, uint256 _limit) view returns(IStakingVault[] memory vaults, uint256 nextCursor)
+function vaultsByOwnerBatch(address _owner, uint256 _offset, uint256 _limit) view returns(IStakingVault[] memory vaults, uint256 nextCursor)
 ```
 
 <details>
@@ -101,7 +101,7 @@ function vaultsByOwner(address _owner, uint256 _cursor, uint256 _limit) view ret
 
 The **\_limit** parameter defines the maximum number of vaults to iterate over, not the number of owner matches to return.
 
-Each call scans up to **\_limit** positions in the global vault list starting from **\_cursor**, regardless of how many vaults belong to **\_owner**.
+Each call scans up to **\_limit** positions in the global vault list starting from **\_offset**, regardless of how many vaults belong to **\_owner**.
 This ensures predictable gas usage and prevents excessive iteration when the owner has no vaults (**\_ownerNoVaults** case).
 
 If the provided owner address has no connected vaults, the function still stops after **\_limit** iterations —
@@ -116,7 +116,7 @@ Continue paginating by calling again with **nextCursor** until it equals 0.
 Returns vaults where a member holds a specific role on the vault's owner contract.
 
 ```solidity
-function vaultsByRole(bytes32 _role, address _member, uint256 _cursor, uint256 _limit) view returns(IStakingVault[] memory vaults, uint256 nextCursor)
+function vaultsByRoleBatch(bytes32 _role, address _member, uint256 _offset, uint256 _limit) view returns(IStakingVault[] memory vaults, uint256 nextCursor)
 ```
 
 <details>
@@ -124,7 +124,7 @@ function vaultsByRole(bytes32 _role, address _member, uint256 _cursor, uint256 _
 
 The **\_limit** parameter specifies the maximum number of vaults to scan, not the number of matches where **\_member** has **\_role**.
 
-Each call examines up to **\_limit** vaults starting from **\_cursor**, regardless of how many contain the specified role.
+Each call examines up to **\_limit** vaults starting from **\_offset**, regardless of how many contain the specified role.
 This guarantees bounded gas cost and prevents full-list scans when the member has no assigned roles (**\_memberNoRoles** case).
 
 If the provided member address has no matching roles, the function still stops after **\_limit** iterations —
