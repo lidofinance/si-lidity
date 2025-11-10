@@ -134,54 +134,47 @@ contract VaultViewer {
         assembly { mstore(vaults, matchedCount) }
     }
 
-
-    /// @notice Returns vaults where `_member` has `_role`, using cursor-based pagination
+    /// @notice Returns vaults where `_member` has `_role`, scanning a batch of the global vault list
     /// @param _role Role to check
     /// @param _member Address to check for the role
-    /// @param _cursor 1-based global index to start from (pass 1 to start from the first vault)
-    /// @param _limit Maximum number of vaults to iterate over (must be > 0)
-    /// @return vaults Array of vaults where `_member` has `_role` (max length ≤ _limit)
-    /// @return nextCursor 1-based index to resume from, or 0 if end is reached
-    function vaultsByRole(
+    /// @param _offset Zero-based offset in the vaults list [0, vaultsCount)
+    /// @param _limit Maximum number of vaults to SCAN (must be > 0)
+    /// @return vaults Array of vaults where `_member` has `_role` found within the scanned window (length ≤ _limit)
+    function vaultsByRoleBatch(
         bytes32 _role,
         address _member,
-        uint256 _cursor,
+        uint256 _offset,
         uint256 _limit
-    ) public view returns (IStakingVault[] memory vaults, uint256 nextCursor) {
-        // VaultHub index is 1-based
-        _requireNotZero(_cursor, '_cursor');
-        _requireNotZero(_limit, '_limit');
+    ) public view returns (IStakingVault[] memory vaults) {
+        _requireNotZero(_limit, "_limit");
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
 
-        if (_cursor > vaultsCount) revert WrongCursorPagination(_cursor, vaultsCount);
+        if (_offset >= vaultsCount) {
+            return new IStakingVault[](0);
+        }
 
-        uint256 remaining = vaultsCount - _cursor + 1;
-        uint256 scan = _limit < remaining ? _limit : remaining;
+        uint256 scanSize = _offset + _limit > vaultsCount ? vaultsCount - _offset : _limit;
 
-        if (scan == 0) return (new IStakingVault[](0), 0);
-
-        vaults = new IStakingVault[](scan);
+        vaults = new IStakingVault[](scanSize);
         IStakingVault vault;
         uint256 matchedCount = 0;
 
-        uint256 end = _cursor + scan;
-        uint256 i = _cursor;
+        uint256 end = _offset + scanSize;
+        uint256 i = _offset;
         for (; i < end; ) {
-            vault = IStakingVault(vaultHub.vaultByIndex(i));
+            // vaultByIndex is 1-based, _offset is 0-based → add +1
+            vault = IStakingVault(vaultHub.vaultByIndex(i + 1));
             if (hasRole(vault, _member, _role)) {
                 vaults[matchedCount] = vault;
-                unchecked { ++matchedCount; }
+            unchecked { ++matchedCount; }
             }
-            unchecked { ++i; }
+        unchecked { ++i; }
         }
 
         // shrink to actual number of matches
         assembly { mstore(vaults, matchedCount) }
-
-        // next cursor (0 means end)
-        nextCursor = (scan == remaining) ? 0 : (_cursor + scan);
     }
 
     /// @notice returns the number of vaults connected to the VaultHub
