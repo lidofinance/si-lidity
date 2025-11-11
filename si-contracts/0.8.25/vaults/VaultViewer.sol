@@ -384,9 +384,4 @@ contract VaultViewer {
     /// @notice Error for zero address arguments
     /// @param argName Name of the argument that is zero
     error ZeroArgument(string argName);
-
-    /// @notice Error for wrong cursor in the pagination
-    /// @param _cursor The 1-based cursor value provided by the caller
-    /// @param vaultsCount The total number of vaults available for pagination
-    error WrongCursorPagination(uint256 _cursor, uint256 vaultsCount);
 }
