@@ -214,12 +214,12 @@ contract VaultViewer {
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
-        uint256 batchSize;
+
         if (_offset >= vaultsCount) {
-            batchSize = 0;
-        } else {
-            batchSize = _offset + _limit > vaultsCount ? vaultsCount - _offset : _limit;
+            return new VaultData[](0);
         }
+
+        uint256 batchSize = _offset + _limit > vaultsCount ? vaultsCount - _offset : _limit;
 
         vaultsData = new VaultData[](batchSize);
         for (uint256 i = 0; i < batchSize; ) {
@@ -239,15 +239,15 @@ contract VaultViewer {
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
-        uint256 outputCount;
+
         if (_offset >= vaultsCount) {
-            outputCount = 0;
-        } else {
-            outputCount = _offset + _limit > vaultsCount ? vaultsCount - _offset : _limit;
+            return new IStakingVault[](0);
         }
 
-        vaults = new IStakingVault[](outputCount);
-        for (uint256 i = 0; i < outputCount; ) {
+        uint256 batchSize = _offset + _limit > vaultsCount ? vaultsCount - _offset : _limit;
+
+        vaults = new IStakingVault[](batchSize);
+        for (uint256 i = 0; i < batchSize; ) {
             // vaultByIndex is 1-based, _offset is 0-based → add +1
             address vaultAddress = vaultHub.vaultByIndex(_offset + i + 1);
             vaults[i] = IStakingVault(vaultAddress);
