@@ -93,99 +93,94 @@ contract VaultViewer {
         return _checkHasRole(connection.owner, _member, _role);
     }
 
-    /// @notice Returns vaults owned by `_owner` using `cursor-based` pagination
+    /// @notice Returns vaults owned by `_owner` using batch pagination over the global vault list
     /// @param _owner Address of the owner
-    /// @param _cursor 1-based global index to start from (pass 1 to start from the first vault)
-    /// @param _limit Maximum number of vaults to iterate over (must be > 0)
-    /// @return vaults Array of owner-matching vaults (max length <= _limit)
-    /// @return nextCursor 1-based index to resume from, or 0 if end is reached
-    function vaultsByOwner(
+    /// @param _offset Zero-based offset in the vaults list [0, vaultsCount)
+    /// @param _limit Maximum number of vaults to SCAN (must be > 0)
+    /// @return vaults Array of owner-matching vaults found within the scanned window (length <= _limit)
+    function vaultsByOwnerBatch(
         address _owner,
-        uint256 _cursor,
+        uint256 _offset,
         uint256 _limit
-    ) public view returns (IStakingVault[] memory vaults, uint256 nextCursor) {
-        // VaultHub index is 1-based
-        _requireNotZero(_cursor, '_cursor');
-        _requireNotZero(_limit, '_limit');
+    ) public view returns (IStakingVault[] memory vaults) {
+        _requireNotZero(_limit, "_limit");
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
-        if (_cursor > vaultsCount) revert WrongCursorPagination(_cursor, vaultsCount);
 
-        uint256 remaining = vaultsCount - _cursor + 1;
-        uint256 scan = _limit < remaining ? _limit : remaining;
+        if (_offset >= vaultsCount) {
+            return new IStakingVault[](0);
+        }
 
-        if (scan == 0) return (new IStakingVault[](0), 0);
+        uint256 scanSize = _offset + _limit > vaultsCount ? vaultsCount - _offset : _limit;
 
-        vaults = new IStakingVault[](scan);
+        vaults = new IStakingVault[](scanSize);
         IStakingVault vault;
         uint256 matchedCount = 0;
 
-        uint256 end = _cursor + scan;
-        uint256 i = _cursor;
+        uint256 end = _offset + scanSize;
+        uint256 i = _offset;
         for (; i < end; ) {
-            vault = IStakingVault(vaultHub.vaultByIndex(i));
+            // vaultByIndex is 1-based, _offset is 0-based → add +1
+            vault = IStakingVault(vaultHub.vaultByIndex(i + 1));
             if (isVaultOwner(vault, _owner)) {
                 vaults[matchedCount] = vault;
-                unchecked { ++matchedCount; }
+            unchecked { ++matchedCount; }
             }
-            unchecked { ++i; }
+        unchecked { ++i; }
         }
 
         // shrink to actual length
         assembly { mstore(vaults, matchedCount) }
-
-        // next cursor (0 means end)
-        nextCursor = (scan == remaining) ? 0 : (_cursor + scan);
     }
 
-    /// @notice Returns vaults where `_member` has `_role`, using cursor-based pagination
+    /// @notice Returns vaults where `_member` has `_role`, scanning a batch of the global vault list
     /// @param _role Role to check
     /// @param _member Address to check for the role
-    /// @param _cursor 1-based global index to start from (pass 1 to start from the first vault)
-    /// @param _limit Maximum number of vaults to iterate over (must be > 0)
-    /// @return vaults Array of vaults where `_member` has `_role` (max length ≤ _limit)
-    /// @return nextCursor 1-based index to resume from, or 0 if end is reached
-    function vaultsByRole(
+    /// @param _offset Zero-based offset in the vaults list [0, vaultsCount)
+    /// @param _limit Maximum number of vaults to SCAN (must be > 0)
+    /// @return vaults Array of vaults where `_member` has `_role` found within the scanned window (length ≤ _limit)
+    function vaultsByRoleBatch(
         bytes32 _role,
         address _member,
-        uint256 _cursor,
+        uint256 _offset,
         uint256 _limit
-    ) public view returns (IStakingVault[] memory vaults, uint256 nextCursor) {
-        // VaultHub index is 1-based
-        _requireNotZero(_cursor, '_cursor');
-        _requireNotZero(_limit, '_limit');
+    ) public view returns (IStakingVault[] memory vaults) {
+        _requireNotZero(_limit, "_limit");
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
 
-        if (_cursor > vaultsCount) revert WrongCursorPagination(_cursor, vaultsCount);
+        if (_offset >= vaultsCount) {
+            return new IStakingVault[](0);
+        }
 
-        uint256 remaining = vaultsCount - _cursor + 1;
-        uint256 scan = _limit < remaining ? _limit : remaining;
+        uint256 scanSize = _offset + _limit > vaultsCount ? vaultsCount - _offset : _limit;
 
-        if (scan == 0) return (new IStakingVault[](0), 0);
-
-        vaults = new IStakingVault[](scan);
+        vaults = new IStakingVault[](scanSize);
         IStakingVault vault;
         uint256 matchedCount = 0;
 
-        uint256 end = _cursor + scan;
-        uint256 i = _cursor;
+        uint256 end = _offset + scanSize;
+        uint256 i = _offset;
         for (; i < end; ) {
-            vault = IStakingVault(vaultHub.vaultByIndex(i));
+            // vaultByIndex is 1-based, _offset is 0-based → add +1
+            vault = IStakingVault(vaultHub.vaultByIndex(i + 1));
             if (hasRole(vault, _member, _role)) {
                 vaults[matchedCount] = vault;
-                unchecked { ++matchedCount; }
+            unchecked { ++matchedCount; }
             }
-            unchecked { ++i; }
+        unchecked { ++i; }
         }
 
         // shrink to actual number of matches
         assembly { mstore(vaults, matchedCount) }
+    }
 
-        // next cursor (0 means end)
-        nextCursor = (scan == remaining) ? 0 : (_cursor + scan);
+    /// @notice returns the number of vaults connected to the VaultHub
+    /// @return the number of vaults connected to the VaultHub
+    function vaultsCount() external view returns (uint256) {
+        return VAULT_HUB.vaultsCount();
     }
 
     /// @notice Returns aggregated data for a single vault
@@ -210,73 +205,54 @@ contract VaultViewer {
         });
     }
 
-    /// @notice Returns aggregated data for a range of vaults (indices are 1-based, inclusive)
-    /// @param _from 1-based index to start from (inclusive)
-    /// @param _to 1-based index to end at (inclusive)
-    /// @return vaultsData Array of aggregated vault data
-    /// @return leftover Number of leftover vaults
-    function vaultsDataBound(
-        uint256 _from,
-        uint256 _to
-    ) external view returns (VaultData[] memory vaultsData, uint256 leftover) {
-        // VaultHub index is 1-based
-        _requireNotZero(_from, '_from');
-        _requireNotZero(_to, '_to');
-
-        if (_from > _to) revert WrongPaginationRange(_from, _to);
+    /// @notice Returns aggregated data for a batch of vaults
+    /// @param _offset Zero-based offset in the vaults list [0, vaultsCount)
+    /// @param _limit Maximum number of vaults to return (must be > 0)
+    /// @return vaultsData Array of aggregated vault data (length <= _limit)
+    function vaultsDataBatch(uint256 _offset, uint256 _limit) external view returns (VaultData[] memory vaultsData) {
+        _requireNotZero(_limit, '_limit');
 
         VaultHub vaultHub = VAULT_HUB;
         uint256 vaultsCount = vaultHub.vaultsCount();
 
-        if (_to > vaultsCount) {
-            _to = vaultsCount;
+        if (_offset >= vaultsCount) {
+            return new VaultData[](0);
         }
 
-        if (_from > vaultsCount) revert WrongPaginationRange(_from, _to);
+        uint256 batchSize = _offset + _limit > vaultsCount ? vaultsCount - _offset : _limit;
 
-        uint256 outputCount = _to >= _from ? (_to - _from + 1) : 0;
-        vaultsData = new VaultData[](outputCount);
-
-        for (uint256 i = 0; i < outputCount; ) {
-            address va = vaultHub.vaultByIndex(_from + i);
-            vaultsData[i] = vaultData(va);
-            unchecked { ++i; }
-        }
-
-        leftover = vaultsCount > _to ? vaultsCount - _to : 0;
-    }
-
-    /// @notice Returns vault addresses for a range of vaults (indices are 1-based, inclusive)
-    /// @param _from 1-based index to start from (inclusive)
-    /// @param _to 1-based index to end at (inclusive)
-    /// @return vaults Array of vault contracts (IStakingVault)
-    /// @return leftover Number of leftover vaults
-    function vaultAddressesBound(uint256 _from, uint256 _to) public view returns (IStakingVault[] memory vaults, uint256 leftover) {
-        // VaultHub index is 1-based
-        _requireNotZero(_from, '_from');
-        _requireNotZero(_to, '_to');
-
-        if (_from > _to) revert WrongPaginationRange(_from, _to);
-
-        VaultHub vaultHub = VAULT_HUB;
-        uint256 vaultsCount = vaultHub.vaultsCount();
-
-        if (_to > vaultsCount) {
-            _to = vaultsCount;
-        }
-
-        if (_from > vaultsCount) revert WrongPaginationRange(_from, _to);
-
-        uint256 outputCount = _to >= _from ? (_to - _from + 1) : 0;
-        vaults = new IStakingVault[](outputCount);
-
-        for (uint256 i = 0; i < outputCount; ) {
-            address vault = vaultHub.vaultByIndex(_from + i);
-            vaults[i] = IStakingVault(vault);
+        vaultsData = new VaultData[](batchSize);
+        for (uint256 i = 0; i < batchSize; ) {
+            // vaultByIndex is 1-based, _offset is 0-based → add +1
+            address vaultAddress = vaultHub.vaultByIndex(_offset + i + 1);
+            vaultsData[i] = vaultData(vaultAddress);
         unchecked { ++i; }
         }
+    }
 
-        leftover = vaultsCount > _to ? vaultsCount - _to : 0;
+    /// @notice Returns vault addresses for a range of vaults
+    /// @param _offset Zero-based offset in the vaults list [0, vaultsCount)
+    /// @param _limit Maximum number of vaults to return (must be > 0)
+    /// @return vaults Array of vault contracts (IStakingVault)
+    function vaultAddressesBatch(uint256 _offset, uint256 _limit) public view returns (IStakingVault[] memory vaults) {
+        _requireNotZero(_limit, '_limit');
+
+        VaultHub vaultHub = VAULT_HUB;
+        uint256 vaultsCount = vaultHub.vaultsCount();
+
+        if (_offset >= vaultsCount) {
+            return new IStakingVault[](0);
+        }
+
+        uint256 batchSize = _offset + _limit > vaultsCount ? vaultsCount - _offset : _limit;
+
+        vaults = new IStakingVault[](batchSize);
+        for (uint256 i = 0; i < batchSize; ) {
+            // vaultByIndex is 1-based, _offset is 0-based → add +1
+            address vaultAddress = vaultHub.vaultByIndex(_offset + i + 1);
+            vaults[i] = IStakingVault(vaultAddress);
+        unchecked { ++i; }
+        }
     }
 
     /// @notice Returns the VaultMembers for each specified role on a single vault
@@ -408,14 +384,4 @@ contract VaultViewer {
     /// @notice Error for zero address arguments
     /// @param argName Name of the argument that is zero
     error ZeroArgument(string argName);
-
-    /// @notice Error for wrong pagination range
-    /// @param _from Start of the range
-    /// @param _to End of the range
-    error WrongPaginationRange(uint256 _from, uint256 _to);
-
-    /// @notice Error for wrong cursor in the pagination
-    /// @param _cursor The 1-based cursor value provided by the caller
-    /// @param vaultsCount The total number of vaults available for pagination
-    error WrongCursorPagination(uint256 _cursor, uint256 vaultsCount);
 }

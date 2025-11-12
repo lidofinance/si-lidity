@@ -10,7 +10,7 @@ Hoodi is the main operational and maintained protocol testnet.
 
 ## Contracts
 
-- Vault Viewer: [`0x3194B50c26108438Cfc9A916A24Ba8aAB9C17CAB`](https://hoodi.etherscan.io/address/0x3194B50c26108438Cfc9A916A24Ba8aAB9C17CAB)
+- Vault Viewer: [`0xBa9a3127f053a6548FE3874326569E1821783e03`](https://hoodi.etherscan.io/address/0xBa9a3127f053a6548FE3874326569E1821783e03)
 
   <a href="/si-lidity/abi/VaultViewer.json" download>📥 Download ABI</a>
 
