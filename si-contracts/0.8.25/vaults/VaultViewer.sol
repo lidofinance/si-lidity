@@ -52,17 +52,6 @@ contract VaultViewer {
         LAZY_ORACLE = LazyOracle(LIDO_LOCATOR.lazyOracle());
     }
 
-    /// @notice Checks if a given address is a contract
-    /// @param account The address to check
-    /// @return True if the address is a contract, false otherwise
-    function isContract(address account) public view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
-
     /// @notice Checks if a given address is the owner of a connection vault
     /// @param vault The vault to check
     /// @param _owner The address to check
@@ -337,7 +326,7 @@ contract VaultViewer {
     /// @return fee The decoded fee value if present, otherwise 0
     function _getNodeOperatorFeeRate(address owner) internal view returns (uint256 fee) {
         if (_isContract(owner)) {
-            (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("nodeOperatorFeeRate()"));
+            (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("feeRate()"));
             // Check ensures safe decoding — avoids abi.decode revert on short return data
             if (success && result.length >= 32) {
                 fee = abi.decode(result, (uint256));
