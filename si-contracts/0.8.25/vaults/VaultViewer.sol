@@ -52,17 +52,6 @@ contract VaultViewer {
         LAZY_ORACLE = LazyOracle(LIDO_LOCATOR.lazyOracle());
     }
 
-    /// @notice Checks if a given address is a contract
-    /// @param account The address to check
-    /// @return True if the address is a contract, false otherwise
-    function isContract(address account) public view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
-
     /// @notice Checks if a given address is the owner of a connection vault
     /// @param vault The vault to check
     /// @param _owner The address to check
