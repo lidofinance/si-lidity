@@ -16,7 +16,8 @@ contract VaultViewer {
         VaultHub.VaultRecord record;
         uint256 totalValue;
         uint256 liabilityStETH;
-        uint256 nodeOperatorFeeRate;
+        uint16 nodeOperatorFeeRate;
+        int128 settledGrowth;
         bool isReportFresh;
         LazyOracle.QuarantineInfo quarantineInfo;
     }
@@ -179,7 +180,8 @@ contract VaultViewer {
         ILido lido = VAULT_HUB.LIDO();
         VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
         VaultHub.VaultRecord memory record = VAULT_HUB.vaultRecord(vault);
-        uint256 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
+        uint16 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
+        int128 settledGrowth = _getSettledGrowth(connection.owner);
         LazyOracle.QuarantineInfo memory quarantineInfo = LAZY_ORACLE.vaultQuarantine(vault);
 
         data = VaultData({
@@ -189,6 +191,7 @@ contract VaultViewer {
             totalValue: VAULT_HUB.totalValue(vault),
             liabilityStETH: lido.getPooledEthBySharesRoundUp(record.liabilityShares),
             nodeOperatorFeeRate: nodeOperatorFeeRate,
+            settledGrowth: settledGrowth,
             isReportFresh: VAULT_HUB.isReportFresh(vault),
             quarantineInfo: quarantineInfo
         });
@@ -320,16 +323,32 @@ contract VaultViewer {
         }
     }
 
-    /// @notice Tries to fetch nodeOperatorFeeRate() from the vault owner if it's a dashboard contract
+    /// @notice Tries to fetch nodeOperator - feeRate() from the vault owner if it's a dashboard contract
     /// @dev Uses low-level staticcall to avoid reverting when the method is missing or the address is an EOA
     /// @param owner The address of the vault owner (can be either a contract or an EOA)
     /// @return fee The decoded fee value if present, otherwise 0
-    function _getNodeOperatorFeeRate(address owner) internal view returns (uint256 fee) {
+    function _getNodeOperatorFeeRate(address owner) internal view returns (uint16 fee) {
         if (_isContract(owner)) {
+            // if dashboard contract and have feeRate method
             (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("feeRate()"));
             // Check ensures safe decoding — avoids abi.decode revert on short return data
             if (success && result.length >= 32) {
-                fee = abi.decode(result, (uint256));
+                fee = abi.decode(result, (uint16));
+            }
+        }
+    }
+
+    /// @notice Tries to fetch settledGrowth() from the vault owner if it's a dashboard contract
+    /// @dev Uses low-level staticcall to avoid reverting when the method is missing or the address is an EOA
+    /// @param owner The address of the vault owner (can be either a contract or an EOA)
+    /// @return settledGrowth The decoded fee value if present, otherwise 0
+    function _getSettledGrowth(address owner) internal view returns (int128 settledGrowth) {
+        if (_isContract(owner)) {
+            // if dashboard contract and have settledGrowth method
+            (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("settledGrowth()"));
+            // Check ensures safe decoding — avoids abi.decode revert on short return data
+            if (success && result.length >= 32) {
+                settledGrowth = abi.decode(result, (int128));
             }
         }
     }
