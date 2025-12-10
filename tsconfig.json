@@ -24,7 +24,8 @@
   "files": [
     "./hardhat.config.ts",
     "./hardhat.wsteth-staker.config.ts",
-    "hardhat.vault-viewer.config.ts",
+    "./hardhat.vault-viewer.config.ts",
+    "./hardhat.dashboard-factory.config.ts",
     "./commitlint.config.ts",
     "./globals.d.ts"
   ]
