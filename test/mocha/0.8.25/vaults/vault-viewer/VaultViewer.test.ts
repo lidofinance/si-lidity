@@ -157,7 +157,7 @@ describe("VaultViewer", () => {
     totalValue: 9n,
     liabilityStETH: 1n,
     nodeOperatorFeeRate: 0n,
-    settledGrowth: 0n,
+    accruedFee: 0n,
     isReportFresh: true,
     quarantineInfo: {
       isActive: false,
@@ -661,7 +661,7 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.be.a("bigint");
       expect(vaultData.liabilityStETH).to.be.a("bigint");
       expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
-      expect(vaultData.settledGrowth).to.be.a("bigint");
+      expect(vaultData.accruedFee).to.be.a("bigint");
       expect(vaultData.isReportFresh).to.be.a("boolean");
       expect(vaultData.quarantineInfo.isActive).to.be.a("boolean");
       expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.be.a("bigint");
@@ -680,7 +680,7 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.equal(expectedVaultsData.totalValue);
       expect(vaultData.liabilityStETH).to.equal(expectedVaultsData.liabilityStETH);
       expect(vaultData.nodeOperatorFeeRate).to.equal(expectedVaultsData.nodeOperatorFeeRate);
-      expect(vaultData.settledGrowth).to.equal(expectedVaultsData.settledGrowth);
+      expect(vaultData.accruedFee).to.equal(expectedVaultsData.accruedFee);
       expect(vaultData.isReportFresh).to.equal(expectedVaultsData.isReportFresh);
       expect(vaultData.quarantineInfo.isActive).to.equal(expectedVaultsData.quarantineInfo.isActive);
       expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.equal(
@@ -704,7 +704,7 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.be.a("bigint");
       expect(vaultData.liabilityStETH).to.be.a("bigint");
       expect(vaultData.nodeOperatorFeeRate).to.be.a("bigint");
-      expect(vaultData.settledGrowth).to.be.a("bigint");
+      expect(vaultData.accruedFee).to.be.a("bigint");
       expect(vaultData.isReportFresh).to.be.a("boolean");
       expect(vaultData.quarantineInfo.isActive).to.be.a("boolean");
       expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.be.a("bigint");
@@ -721,7 +721,7 @@ describe("VaultViewer", () => {
       expect(vaultData.totalValue).to.equal(0n);
       expect(vaultData.liabilityStETH).to.equal(0n);
       expect(vaultData.nodeOperatorFeeRate).to.equal(0n);
-      expect(vaultData.settledGrowth).to.equal(0n);
+      expect(vaultData.accruedFee).to.equal(0n);
       expect(vaultData.isReportFresh).to.equal(true);
       expect(vaultData.quarantineInfo.isActive).to.equal(false);
       expect(vaultData.quarantineInfo.pendingTotalValueIncrease).to.equal(0n);
@@ -826,7 +826,7 @@ describe("VaultViewer", () => {
           expect(vaultsData[i].totalValue).to.be.a("bigint");
           expect(vaultsData[i].liabilityStETH).to.be.a("bigint");
           expect(vaultsData[i].nodeOperatorFeeRate).to.be.a("bigint");
-          expect(vaultsData[i].settledGrowth).to.be.a("bigint");
+          expect(vaultsData[i].accruedFee).to.be.a("bigint");
           expect(vaultsData[i].isReportFresh).to.be.a("boolean");
           expect(vaultsData[i].quarantineInfo.isActive).to.be.a("boolean");
           expect(vaultsData[i].quarantineInfo.pendingTotalValueIncrease).to.be.a("bigint");
@@ -844,7 +844,7 @@ describe("VaultViewer", () => {
           expect(vaultsData[i].totalValue).to.equal(expectedVaultsData.totalValue);
           expect(vaultsData[i].liabilityStETH).to.equal(expectedVaultsData.liabilityStETH);
           expect(vaultsData[i].nodeOperatorFeeRate).to.equal(expectedVaultsData.nodeOperatorFeeRate);
-          expect(vaultsData[i].settledGrowth).to.equal(expectedVaultsData.settledGrowth);
+          expect(vaultsData[i].accruedFee).to.equal(expectedVaultsData.accruedFee);
           expect(vaultsData[i].isReportFresh).to.equal(expectedVaultsData.isReportFresh);
           expect(vaultsData[i].quarantineInfo.isActive).to.equal(expectedVaultsData.quarantineInfo.isActive);
           expect(vaultsData[i].quarantineInfo.pendingTotalValueIncrease).to.equal(
