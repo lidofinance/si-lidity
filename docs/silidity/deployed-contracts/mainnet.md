@@ -10,7 +10,7 @@ This page lists production contract addresses on Mainnets.
 
 ## Contracts
 
-- Vault Viewer: [`0x9E90338495FfD691bDDC680e47D94b60cF66dDad`](https://etherscan.io/address/0x9E90338495FfD691bDDC680e47D94b60cF66dDad)
+- Vault Viewer: [`0x57dAb476c3E37a2410076C9568d796e429fd8418`](https://etherscan.io/address/0x57dAb476c3E37a2410076C9568d796e429fd8418)
 
   **IMPORTANT: The contract will be redeployed after the v3 updates are activated on mainnet!!!**
 
