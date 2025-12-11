@@ -17,6 +17,7 @@ contract VaultViewer {
         uint256 totalValue;
         uint256 liabilityStETH;
         uint256 nodeOperatorFeeRate;
+        uint256 accruedFee;
         bool isReportFresh;
         LazyOracle.QuarantineInfo quarantineInfo;
     }
@@ -180,6 +181,7 @@ contract VaultViewer {
         VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
         VaultHub.VaultRecord memory record = VAULT_HUB.vaultRecord(vault);
         uint256 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
+        uint256 accruedFee = _getAccruedFee(connection.owner);
         LazyOracle.QuarantineInfo memory quarantineInfo = LAZY_ORACLE.vaultQuarantine(vault);
 
         data = VaultData({
@@ -189,6 +191,7 @@ contract VaultViewer {
             totalValue: VAULT_HUB.totalValue(vault),
             liabilityStETH: lido.getPooledEthBySharesRoundUp(record.liabilityShares),
             nodeOperatorFeeRate: nodeOperatorFeeRate,
+            accruedFee: accruedFee,
             isReportFresh: VAULT_HUB.isReportFresh(vault),
             quarantineInfo: quarantineInfo
         });
@@ -320,16 +323,32 @@ contract VaultViewer {
         }
     }
 
-    /// @notice Tries to fetch nodeOperatorFeeRate() from the vault owner if it's a dashboard contract
+    /// @notice Tries to fetch nodeOperator - feeRate() from the vault owner if it's a dashboard contract
     /// @dev Uses low-level staticcall to avoid reverting when the method is missing or the address is an EOA
     /// @param owner The address of the vault owner (can be either a contract or an EOA)
     /// @return fee The decoded fee value if present, otherwise 0
     function _getNodeOperatorFeeRate(address owner) internal view returns (uint256 fee) {
         if (_isContract(owner)) {
+            // if dashboard contract and have feeRate method
             (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("feeRate()"));
             // Check ensures safe decoding — avoids abi.decode revert on short return data
             if (success && result.length >= 32) {
                 fee = abi.decode(result, (uint256));
+            }
+        }
+    }
+
+    /// @notice Tries to fetch accruedFee() from the vault owner if it's a dashboard contract
+    /// @dev Uses low-level staticcall to avoid reverting when the method is missing or the address is an EOA
+    /// @param owner The address of the vault owner (can be either a contract or an EOA)
+    /// @return accruedFee The decoded fee value if present, otherwise 0
+    function _getAccruedFee(address owner) internal view returns (uint256 accruedFee) {
+        if (_isContract(owner)) {
+            // if dashboard contract and have accruedFee method
+            (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("accruedFee()"));
+            // Check ensures safe decoding — avoids abi.decode revert on short return data
+            if (success && result.length >= 32) {
+                accruedFee = abi.decode(result, (uint256));
             }
         }
     }
