@@ -33,18 +33,15 @@ contract DashboardFactory {
      *  - `dashboard.connectToVaultHub(...)`
      * MUST be executed manually by the caller after the dashboard is created
      */
-    /// @param vault The StakingVault for which the Dashboard is being created
+    /// @param _vault The StakingVault for which the Dashboard is being created
     /// @param _defaultAdmin Address that will receive DEFAULT_ADMIN_ROLE on the new Dashboard
     /// @return dashboard The address of the newly created Dashboard
-    function createDashboard(IStakingVault vault, address _defaultAdmin) external returns (Dashboard dashboard) {
+    function createDashboard(IStakingVault _vault, address _defaultAdmin) external returns (Dashboard dashboard) {
         VaultFactory factory = VaultFactory(LIDO_LOCATOR.vaultFactory());
-        bytes memory immutableArgs = abi.encode(address(vault));
+        bytes memory immutableArgs = abi.encode(address(_vault));
         dashboard = Dashboard(payable(Clones.cloneWithImmutableArgs(factory.DASHBOARD_IMPL(), immutableArgs)));
 
-        dashboard.grantRole(dashboard.DEFAULT_ADMIN_ROLE(), _defaultAdmin);
-        dashboard.revokeRole(dashboard.DEFAULT_ADMIN_ROLE(), address(this));
-
-        emit DashboardCreated(address(dashboard), address(vault), _defaultAdmin);
+        emit DashboardCreated(address(dashboard), address(_vault), _defaultAdmin);
     }
 
     // ==================== Internal Functions ====================
