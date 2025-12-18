@@ -6,6 +6,7 @@ pragma solidity 0.8.25;
 
 import { Clones } from "@openzeppelin/contracts-v5.2/proxy/Clones.sol";
 import { Dashboard } from "contracts/0.8.25/vaults/dashboard/Dashboard.sol";
+import { Permissions } from "contracts/0.8.25/vaults/dashboard/Permissions.sol";
 import { VaultFactory } from "contracts/0.8.25/vaults/VaultFactory.sol";
 import { ILidoLocator } from "contracts/common/interfaces/ILidoLocator.sol";
 import { IStakingVault } from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
@@ -35,11 +36,32 @@ contract DashboardFactory {
      */
     /// @param _vault The StakingVault for which the Dashboard is being created
     /// @param _defaultAdmin Address that will receive DEFAULT_ADMIN_ROLE on the new Dashboard
+    /// @param _nodeOperator The address of the node operator of the StakingVault
+    /// @param _nodeOperatorManager The address of the node operator manager in the Dashboard
+    /// @param _nodeOperatorFeeBP The node operator fee in basis points
+    /// @param _confirmExpiry The confirmation expiry in seconds
+    /// @param _roleAssignments The optional role assignments to be made (only _defaultAdmin sub-roles)
     /// @return dashboard The address of the newly created Dashboard
-    function createDashboard(IStakingVault _vault, address _defaultAdmin) external returns (Dashboard dashboard) {
+    function createDashboard(
+        IStakingVault _vault,
+        address _defaultAdmin,
+        address _nodeOperator,
+        address _nodeOperatorManager,
+        uint256 _nodeOperatorFeeBP,
+        uint256 _confirmExpiry,
+        Permissions.RoleAssignment[] calldata _roleAssignments
+    ) external returns (Dashboard dashboard) {
         VaultFactory factory = VaultFactory(LIDO_LOCATOR.vaultFactory());
         bytes memory immutableArgs = abi.encode(address(_vault));
         dashboard = Dashboard(payable(Clones.cloneWithImmutableArgs(factory.DASHBOARD_IMPL(), immutableArgs)));
+
+        // initialize Dashboard with the factory address as the default admin, grant optional roles and connect to VaultHub
+        dashboard.initialize(address(this), _nodeOperatorManager, _nodeOperatorManager, _nodeOperatorFeeBP, _confirmExpiry);
+
+        if (_roleAssignments.length > 0) dashboard.grantRoles(_roleAssignments);
+
+        dashboard.grantRole(dashboard.DEFAULT_ADMIN_ROLE(), _defaultAdmin);
+        dashboard.revokeRole(dashboard.DEFAULT_ADMIN_ROLE(), address(this));
 
         emit DashboardCreated(address(dashboard), address(_vault), _defaultAdmin);
     }
