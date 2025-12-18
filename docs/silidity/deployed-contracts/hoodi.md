@@ -18,6 +18,6 @@ Hoodi is the main operational and maintained protocol testnet.
 
   <a href="/si-lidity/abi/WstETHReferralStaker.json" download>📥 Download ABI</a>
 
-- Dashboard Factory: [`0x8eaeeeff64398f28864dbd39492889ff078e04ff`](https://hoodi.etherscan.io/address/0x8eaeeeff64398f28864dbd39492889ff078e04ff)
+- Dashboard Factory: [`0xbfe0650638e8a6657Fd04B6156E552F3A6211e33`](https://hoodi.etherscan.io/address/0xbfe0650638e8a6657Fd04B6156E552F3A6211e33)
 
   <a href="/si-lidity/abi/DashboardFactory.json" download>📥 Download ABI</a>
