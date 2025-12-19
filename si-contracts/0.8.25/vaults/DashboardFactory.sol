@@ -11,11 +11,11 @@ import { VaultFactory } from "contracts/0.8.25/vaults/VaultFactory.sol";
 import { ILidoLocator } from "contracts/common/interfaces/ILidoLocator.sol";
 import { IStakingVault } from "contracts/0.8.25/vaults/interfaces/IStakingVault.sol";
 
-/**
- * @title DashboardFactory
- * @author Lido
- * @notice The factory contract for Dashboard
- */
+///
+/// @title DashboardFactory
+/// @author Lido
+/// @notice The factory contract for Dashboard
+///
 contract DashboardFactory {
     ILidoLocator public immutable LIDO_LOCATOR;
 
@@ -68,12 +68,12 @@ contract DashboardFactory {
 
     // ==================== Internal Functions ====================
 
-    /**
-     * @notice Event emitted on a Dashboard creation
-     * @param dashboard The address of the created Dashboard
-     * @param vault The address of the created Vault
-     * @param admin The address of the Dashboard admin
-     */
+    ///
+    /// @notice Event emitted on a Dashboard creation
+    /// @param dashboard The address of the created Dashboard
+    /// @param vault The address of the created Vault
+    /// @param admin The address of the Dashboard admin
+    ///
     event DashboardCreated(address indexed dashboard, address indexed vault, address indexed admin);
 
     // ==================== Errors ====================
