@@ -1,0 +1,31 @@
+{
+  // TODO: https://github.com/NomicFoundation/hardhat/tree/v-next/config-v-next
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      // TODO
+      //      "lib": ["./lib"],
+      "test/*": ["./test/*"],
+      "typechain-types": ["./typechain-types"]
+    }
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  },
+  "include": ["./lib", "./test", "./tasks", "./typechain-types", "./ignition/modules", "./eslint.config.ts", "./docs"],
+  "files": [
+    "./hardhat.config.ts",
+    "./hardhat.wsteth-staker.config.ts",
+    "hardhat.vault-viewer.config.ts",
+    "./commitlint.config.ts",
+    "./globals.d.ts"
+  ]
+}
