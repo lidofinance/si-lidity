@@ -10,6 +10,7 @@
     "deploy-wrs:mainnet": "hardhat --config hardhat.wsteth-staker.config.ts ignition deploy ignition/modules/WstETHReferralStakerMainnet.ts --network mainnet",
     "deploy-wrs:hoodi": "hardhat --config hardhat.wsteth-staker.config.ts ignition deploy ignition/modules/WstETHReferralStakerHoodi.ts --network hoodi",
     "deploy-wrs:sepolia": "hardhat --config hardhat.wsteth-staker.config.ts ignition deploy ignition/modules/WstETHReferralStakerSepolia.ts --network sepolia",
+    "deploy-df:hoodi": "hardhat --config hardhat.dashboard-factory.config.ts ignition deploy ignition/modules/DashboardFactoryHoodi.ts --network hoodi",
     "verify:deployed-contracts": "hardhat verify:deployed-contracts",
     "abis:extract": "hardhat abis:extract",
     "lint:sol": "solhint 'si-contracts/**/*.sol'",
