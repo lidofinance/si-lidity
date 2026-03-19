@@ -18,8 +18,17 @@ contract VaultViewer {
         uint256 liabilityStETH;
         uint256 nodeOperatorFeeRate;
         uint256 accruedFee;
+        uint256 settledGrowth;
         bool isReportFresh;
         LazyOracle.QuarantineInfo quarantineInfo;
+    }
+
+    struct VaultDashboardData {
+        address vaultAddress;
+        VaultHub.VaultConnection connection;
+        uint256 nodeOperatorFeeRate;
+        uint256 accruedFee;
+        uint256 settledGrowth;
     }
 
     struct VaultMembers {
@@ -182,6 +191,7 @@ contract VaultViewer {
         VaultHub.VaultRecord memory record = VAULT_HUB.vaultRecord(vault);
         uint256 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
         uint256 accruedFee = _getAccruedFee(connection.owner);
+        uint256 settledGrowth = _getSettledGrowth(connection.owner);
         LazyOracle.QuarantineInfo memory quarantineInfo = LAZY_ORACLE.vaultQuarantine(vault);
 
         data = VaultData({
@@ -192,6 +202,7 @@ contract VaultViewer {
             liabilityStETH: lido.getPooledEthBySharesRoundUp(record.liabilityShares),
             nodeOperatorFeeRate: nodeOperatorFeeRate,
             accruedFee: accruedFee,
+            settledGrowth: settledGrowth,
             isReportFresh: VAULT_HUB.isReportFresh(vault),
             quarantineInfo: quarantineInfo
         });
@@ -289,6 +300,25 @@ contract VaultViewer {
         }
     }
 
+    function vaultDashboardData(address vault ) public view returns (VaultDashboardData memory data) {
+        VaultHub vaultHub = VAULT_HUB;
+        VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
+
+        // uint16
+        uint256 nodeOperatorFeeRate = _getNodeOperatorFeeRate(connection.owner);
+        // int128
+        uint256 settledGrowth = _getSettledGrowth(connection.owner);
+        uint256 accruedFee = _getAccruedFee(connection.owner);
+
+        data = VaultDashboardData({
+            vaultAddress: vault,
+            connection: connection,
+            nodeOperatorFeeRate: nodeOperatorFeeRate,
+            accruedFee: accruedFee,
+            settledGrowth: settledGrowth
+        });
+    }
+
     // ==================== Internal Functions ====================
 
     /// @notice Safely attempt a staticcall to `roleMembers(bytes32)` on the owner address
@@ -349,6 +379,21 @@ contract VaultViewer {
             // Check ensures safe decoding — avoids abi.decode revert on short return data
             if (success && result.length >= 32) {
                 accruedFee = abi.decode(result, (uint256));
+            }
+        }
+    }
+
+    /// @notice Tries to fetch settledGrowth() from the vault owner if it's a dashboard contract
+    /// @dev Uses low-level staticcall to avoid reverting when the method is missing or the address is an EOA
+    /// @param owner The address of the vault owner (can be either a contract or an EOA)
+    /// @return settledGrowth The decoded fee value if present, otherwise 0
+    function _getSettledGrowth(address owner) internal view returns (uint256 settledGrowth) {
+        if (_isContract(owner)) {
+            // if dashboard contract and have settledGrowth method
+            (bool success, bytes memory result) = owner.staticcall(abi.encodeWithSignature("settledGrowth()"));
+            // Check ensures safe decoding — avoids abi.decode revert on short return data
+            if (success && result.length >= 32) {
+                settledGrowth = abi.decode(result, (uint256));
             }
         }
     }
