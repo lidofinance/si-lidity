@@ -38,17 +38,6 @@ contract VaultViewer {
         address[][] members;
     }
 
-    enum VaultDataField {
-        SettledGrowth,         // 0
-        NodeOperatorFeeRate,   // 1
-        AccruedFee             // 2
-    }
-
-    struct VaultDataValue {
-        VaultDataField field;
-        bytes value;
-    }
-
     /**
      * @notice Strict true value for checking role membership
      */
@@ -311,10 +300,7 @@ contract VaultViewer {
         }
     }
 
-    function vaultDashboardData(
-        address vault,
-        VaultDataField[] calldata fields
-    ) public view returns (VaultDashboardData memory data) {
+    function vaultDashboardData(address vault ) public view returns (VaultDashboardData memory data) {
         VaultHub vaultHub = VAULT_HUB;
         VaultHub.VaultConnection memory connection = VAULT_HUB.vaultConnection(vault);
 
