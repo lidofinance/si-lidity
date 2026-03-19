@@ -42,7 +42,7 @@ Just updates submodules with:
 git submodule init
 git submodule update --remote --recursive
 cd submodules/lidofinance-core
-git checkout feat/vaults
+git checkout origin/develop
 cd ../../
 ```
 
