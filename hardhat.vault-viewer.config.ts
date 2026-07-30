@@ -112,7 +112,7 @@ const config: HardhatUserConfig = {
     dontOverrideCompile: false,
   },
   networks: {
-    hardhat: {
+    "hardhat": {
       // setting base fee to 0 to avoid extra calculations doesn't work :(
       // minimal base fee is 1 for EIP-1559
       // gasPrice: 0,
@@ -126,19 +126,26 @@ const config: HardhatUserConfig = {
         accountsBalance: "100000000000000000000000",
       },
     },
-    mainnet: {
+    "mainnet": {
       type: "http",
       url: process.env.RPC_URL_1,
       accounts: [process.env.PRIVATE_KEY],
     },
-    hoodi: {
+    "hoodi": {
       type: "http",
       url: process.env.RPC_URL_560048,
       accounts: [process.env.PRIVATE_KEY],
     },
-    sepolia: {
+    "sepolia": {
       type: "http",
       url: process.env.RPC_URL_11155111,
+      accounts: [process.env.PRIVATE_KEY],
+    },
+    "32382": {
+      type: "http",
+      chainType: "l1",
+      chainId: 32382,
+      url: process.env.RPC_URL_32382,
       accounts: [process.env.PRIVATE_KEY],
     },
   },
