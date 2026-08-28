@@ -42,7 +42,10 @@ Just updates submodules with:
 git submodule init
 git submodule update --remote --recursive
 cd submodules/lidofinance-core
+# devnet-7
 git checkout fix/glamsterdam-external-devnet-deploy
+# devnet-8
+git checkout feat/gloas-devnet
 cd ../../
 ```
 

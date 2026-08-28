@@ -148,6 +148,13 @@ const config: HardhatUserConfig = {
       url: process.env.RPC_URL_32382,
       accounts: [process.env.PRIVATE_KEY],
     },
+    "7091047534": {
+      type: "http",
+      chainType: "l1",
+      chainId: 7091047534,
+      url: process.env.RPC_URL_7091047534,
+      accounts: [process.env.PRIVATE_KEY],
+    },
   },
 };
 
