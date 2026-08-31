@@ -45,7 +45,7 @@ cd submodules/lidofinance-core
 # devnet-7
 git checkout fix/glamsterdam-external-devnet-deploy
 # devnet-8
-git checkout feat/gloas-devnet
+git checkout feat/develop
 cd ../../
 ```
 
